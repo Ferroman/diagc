@@ -42,7 +42,7 @@ import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './layout/git
 import { ABOVE_BOXES_Z } from './canvas/stacking';
 import { planArrow, type ArrowEnd } from './edge/plan-arrow';
 import type { LayoutResult, NotationLayoutInput } from './layout/layout';
-import { PLAN_LAYOUT, planChips, planGraphCached, planLabelSides, planLayout } from './layout/plan-layout';
+import { PLAN_LAYOUT, planChips, planGraphCached, planLabelSides, planLayout, planStripes } from './layout/plan-layout';
 import { DEFAULT_TYPE_STYLES, type KindStyle, type TypeStyle } from './registry';
 import { stateMachineColors, stateMachineEdgeColor } from './state-kinds';
 
@@ -60,6 +60,15 @@ export interface NodeChip {
 
 /** the side of its box a name drawn outside the box hangs on */
 export type LabelSide = 'left' | 'right';
+
+/** A stretch of a box hatched over — a plan period's days on a bar it
+ * interrupts — in px from the box's left edge, with the period's name and colour. */
+export interface NodeStripe {
+  x: number;
+  width: number;
+  title: string;
+  color?: string;
+}
 
 /** A visual language: default look plus registry/chrome overrides for a plane's notation. */
 export interface NotationProfile {
@@ -130,6 +139,10 @@ export interface NotationProfile {
      * narrow for its name. Keyed by node id, one derivation per model like
      * chips; absent = the name sits inside, as on every other box. */
     labelSides?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, LabelSide>;
+    /** stretches drawn hatched over a box (a plan bar's interrupted days),
+     * keyed by node id, one derivation per model like chips; part of the box,
+     * so they move and resize with it */
+    stripes?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, NodeStripe[]>;
     /** a role chip opens a menu that changes or removes the role, in edit mode */
     roleChips?: boolean;
     /** types outlined in their own colour when the selection's neighbourhood
@@ -440,6 +453,7 @@ const PLAN: NotationProfile = {
     leafSize: (n) => (n.type === PLAN_EVENT_TYPE ? { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT } : undefined),
     chips: planChips,
     labelSides: planLabelSides,
+    stripes: planStripes,
     roleChips: true,
     actorOutline: (type) => PLAN_ACTOR_TYPES.has(type),
     resizable: (n) => (n.type === PLAN_ZONE_TYPE ? 'x' : undefined),

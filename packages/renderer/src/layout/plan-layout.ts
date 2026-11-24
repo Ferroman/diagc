@@ -11,6 +11,7 @@ import {
   isPlanPeriod,
   isPlanRole,
   periodSpanOf,
+  planPeriodsOf,
   planGraph,
   planSubtree,
   planSubtreeRange,
@@ -25,7 +26,7 @@ import {
   type Point,
   type ViewNode,
 } from '@diagc/core/internal';
-import type { LabelSide, NodeChip } from '../notations';
+import type { LabelSide, NodeChip, NodeStripe } from '../notations';
 import { textWidth, wrapText } from './box-size';
 import type { LayoutResult, NodeGeometry, NotationLayoutInput } from './layout';
 
@@ -346,6 +347,51 @@ function arrowEnds(model: DiagramModel, graph: PlanGraph, end: 'from' | 'to'): S
     }
   }
   return ends;
+}
+
+const stripesCache = new WeakMap<DiagramModel, Map<string | undefined, ReadonlyMap<string, NodeStripe[]>>>();
+
+/**
+ * Each interrupted zone's stripes: the days of each period that interrupts it
+ * which fall inside its own span, in px from the bar's left edge (a bar's x is
+ * its start day, so the offset is the same folded, open, dragged or opened on
+ * its own). A period that does not overlap the bar draws nothing on it; a row
+ * inside an interrupted zone is striped only if it is named too.
+ */
+export function planStripes(model: DiagramModel, plane: string | undefined): ReadonlyMap<string, NodeStripe[]> {
+  let byPlane = stripesCache.get(model);
+  if (byPlane === undefined) {
+    byPlane = new Map();
+    stripesCache.set(model, byPlane);
+  }
+  const cached = byPlane.get(plane);
+  if (cached !== undefined) return cached;
+  const { DAY } = PLAN_LAYOUT;
+  const graph = planGraphCached(model, plane);
+  const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
+  const stripes = new Map<string, NodeStripe[]>();
+  for (const id of graph.zones) {
+    const bar = spanOf(byId.get(id)!);
+    if (bar === undefined) continue;
+    const own: NodeStripe[] = [];
+    for (const pid of planPeriodsOf(model, id)) {
+      const period = byId.get(pid);
+      const days = period === undefined ? undefined : periodSpanOf(period);
+      if (period === undefined || days === undefined) continue;
+      const start = Math.max(days.start, bar.start);
+      const end = Math.min(days.end, bar.end);
+      if (end < start) continue;
+      own.push({
+        x: (start - bar.start) * DAY,
+        width: (end - start + 1) * DAY,
+        title: period.name,
+        ...(period.color !== undefined ? { color: period.color } : {}),
+      });
+    }
+    if (own.length > 0) stripes.set(id, own);
+  }
+  byPlane.set(plane, stripes);
+  return stripes;
 }
 
 const nodeOf = (run: PlanRun, id: string): DiagramNode => run.byId.get(id)!;

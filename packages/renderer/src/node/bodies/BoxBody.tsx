@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactElement, ReactNode } from 'react';
 import type { FontScale, TextRun } from '@diagc/core/internal';
+import { NodeStripes } from '../NodeStripes';
 import type { NotationProfile } from '../../notations';
 import { hueInk } from '../../canvas/type-hues';
 import type { TypeStyle } from '../../registry';
@@ -52,6 +53,7 @@ export function BoxBody(props: BodyProps) {
       <XResizer id={id} data={data} selected={selected} />
       {!isTypelessText && sketchOf(data, style.shape, { id, width, height })}
       {style.shape === 'diamond' && data.stylePreset?.rough === undefined && <DiamondGlyph accent={look.accent} />}
+      <NodeStripes stripes={data.stripes} />
       <BoxRow {...props} />
       <TypeSubtitle data={data} style={style} />
       <MetaBadges data={data} />

@@ -46,7 +46,7 @@ import {
 import type { IconRegistry } from '@diagc/icons';
 import type { AnnotationCounts } from '../notes/comment-badge';
 import type { EdgeRouting } from './useViewLayout';
-import type { LabelSide, NodeChip } from '../notations';
+import type { LabelSide, NodeChip, NodeStripe } from '../notations';
 import type { KindStyle, Registry, TypeStyle } from '../registry';
 import type { EdgeLook, StylePreset } from '../sketch/stylePresets';
 import { nodeHue, type TypeHues } from './type-hues';
@@ -83,6 +83,9 @@ export interface NodeDataContext {
   /** the notation's outside-label sides per node id (profile.node.labelSides);
    * absent = every name inside its box */
   labelSides?: ReadonlyMap<string, LabelSide>;
+  /** hatched stretches per node id (profile.node.stripes): a plan bar's
+   * interrupted days, drawn folded or open alike */
+  stripes?: ReadonlyMap<string, NodeStripe[]>;
   /** a container the notation never folds (useNotation's isAlwaysExpanded):
    * it gets no fold or enter chip, since the view would refuse either */
   isAlwaysExpanded?: (id: string) => boolean;
@@ -267,6 +270,8 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
 function bindNotationMarks(data: DiagramNodeData, n: ViewNode, ctx: NodeDataContext): void {
   const separator = ctx.regionSeparators?.get(n.id);
   if (separator !== undefined) data.regionSeparator = separator;
+  const stripes = ctx.stripes?.get(n.id);
+  if (stripes !== undefined) data.stripes = stripes;
   if (n.state !== 'expanded') {
     const labelSide = ctx.labelSides?.get(n.id);
     if (labelSide !== undefined) data.labelSide = labelSide;
@@ -498,6 +503,7 @@ const NODE_CTX_FIELDS = [
   'regionSeparators',
   'isAlwaysExpanded',
   'labelSides',
+  'stripes',
 ] as const;
 const _nodeCtxFields: SameKeys<keyof NodeDataContext, (typeof NODE_CTX_FIELDS)[number]> = true;
 void _nodeCtxFields;

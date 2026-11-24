@@ -1,6 +1,14 @@
 import { useMemo } from 'react';
 import { useNodes, ViewportPortal } from '@xyflow/react';
-import { atOf, dayOf, isPlanEvent, planSubtreeRange, type DiagramModel } from '@diagc/core/internal';
+import {
+  PLAN_INTERRUPTS,
+  atOf,
+  dayOf,
+  isPlanEvent,
+  periodSpanOf,
+  planSubtreeRange,
+  type DiagramModel,
+} from '@diagc/core/internal';
 import { absoluteRects } from '../loops/loops';
 import { PLAN_LAYOUT, planGraphCached, planX } from '../layout/plan-layout';
 import { MARGIN_AFTER, MARGIN_BEFORE, timeAxis } from './time-axis';
@@ -24,7 +32,8 @@ const DATE_Y = -9;
 
 /**
  * The calendar header of a plan: month, week and day bands above y = 0,
- * weekends shaded and a faint grid line per week down to the content, a dashed
+ * weekends shaded and a faint grid line per week down to the content, a period
+ * that interrupts no row shaded the same way (a holiday for everyone), a dashed
  * rule under each root event, and today as its own marked day. Reads RENDERED positions from the store (like
  * GitLanesOverlay) so the grid follows a drag; must be mounted inside
  * <ReactFlow>. Dates come from the cached plan graph, never from the DOM.
@@ -51,6 +60,13 @@ export function TimeAxisOverlay({ model, plane, today, root }: TimeAxisOverlayPr
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
   // the view's top-level events: the plan's, or the opened zone's own
   const rootEvents = g.events.filter((id) => g.parent.get(id) === root && isPlanEvent(byId.get(id)!));
+  // a period pausing no row in particular pauses the whole chart: shaded under
+  // every bar, like a weekend; one pausing rows is hatched on those bars instead
+  const interrupting = new Set(model.relations.filter((r) => r.kind === PLAN_INTERRUPTS).map((r) => r.from));
+  const holidays = g.periods
+    .filter((id) => !interrupting.has(id))
+    .map((id) => periodSpanOf(byId.get(id)!))
+    .filter((s) => s !== undefined && s.start <= range.end && s.end >= range.start);
   const todayDay = today === undefined || today === null ? undefined : dayOf(today);
   // "inside the drawn extent" is the axis's own question, so it reads the
   // axis's own margins rather than a second copy of 7 and 8
@@ -71,6 +87,16 @@ export function TimeAxisOverlay({ model, plane, today, root }: TimeAxisOverlayPr
         {/* first, so the grid, the rules and today all draw over the shading */}
         {axis.weekends.map((w) => (
           <rect key={w.x} className="dg-time-axis-weekend" x={w.x} y={-DAY_H} width={w.width} height={DAY_H + bottom} />
+        ))}
+        {holidays.map((s) => (
+          <rect
+            key={s!.start}
+            className="dg-time-axis-period"
+            x={planX(s!.start, origin)}
+            y={-DAY_H}
+            width={(s!.end - s!.start + 1) * DAY}
+            height={DAY_H + bottom}
+          />
         ))}
         {axis.months.map((m) => (
           <g key={m.x}>

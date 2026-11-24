@@ -13,7 +13,7 @@ import type { IconRegistry } from '@diagc/icons';
 import type { Registry, TypeStyle } from '../registry';
 import type { AnnotationCounts } from '../notes/comment-badge';
 import { LoopHighlightContext } from '../loops/loop-highlight';
-import { notationProfile, type LabelSide, type NodeChip } from '../notations';
+import { notationProfile, type LabelSide, type NodeChip, type NodeStripe } from '../notations';
 import type { StylePreset } from '../sketch/stylePresets';
 import type { EditingApi } from '../canvas/view-types';
 import type { RegionSeparator } from '../layout/state-machine-layout';
@@ -90,6 +90,9 @@ export interface DiagramNodeData {
   /** the name is drawn beside the box, on this side, not in it: the box is
    * too narrow for it and its width means something (a plan's short bar) */
   labelSide?: LabelSide;
+  /** stretches drawn hatched over the box (a plan period's days on a bar it
+   * interrupts), in px from its left edge */
+  stripes?: NodeStripe[];
   /** the node's name is being edited in place (double-click in edit mode) */
   labelEditing?: boolean;
   /** commit the in-place edit; null = cancelled */

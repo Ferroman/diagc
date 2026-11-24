@@ -9,7 +9,7 @@ import {
   type DiagramModel,
 } from '@diagc/core/internal';
 import { notationProfile } from '../notations';
-import { PLAN_LAYOUT, planLabelSides, planLayout, planX } from './plan-layout';
+import { PLAN_LAYOUT, planLabelSides, planLayout, planStripes, planX } from './plan-layout';
 
 const { DAY, BAR_H, TITLE_H, PAD, ROW_GAP, EVENT, HEADER_H, MONTH_H, WEEK_H, DAY_H, ROSTER_GAP } = PLAN_LAYOUT;
 
@@ -440,6 +440,32 @@ describe('planLayout', () => {
     const z = p.zone('z', { name: 'Staging and QA', start: '2026-11-30', end: '2026-11-30' });
     z.owner(p.person('ana', 'Ana'));
     expect(planLabelSides(m.toJSON(), 'plan').get('z')).toBe('right');
+  });
+
+  it("stripes each interrupted bar over the period's days inside its own, in px from the bar's left edge", () => {
+    const m = model('freeze');
+    const p = m.plan();
+    const temporal = p.zone('temporal', { name: 'Temporal', start: '2026-12-07', end: '2027-01-19' });
+    const late = p.zone('late', { name: 'Late', start: '2026-12-28', end: '2027-01-12' });
+    const early = p.zone('early', { name: 'Early', start: '2026-11-30', end: '2026-12-11' });
+    p.zone('quiet', { name: 'Quiet', start: '2026-12-01', end: '2027-01-30' });
+    p.period('freeze', {
+      name: 'Holiday change freeze',
+      start: '2026-12-21',
+      end: '2027-01-03',
+      interrupts: [temporal, late, early],
+      color: '#999999',
+    });
+    const stripes = planStripes(m.toJSON(), 'plan');
+    expect(stripes.get('temporal')).toEqual([
+      { x: 14 * DAY, width: 14 * DAY, title: 'Holiday change freeze', color: '#999999' },
+    ]);
+    // starts before the bar: clipped to it
+    expect(stripes.get('late')).toEqual([{ x: 0, width: 7 * DAY, title: 'Holiday change freeze', color: '#999999' }]);
+    // over before the freeze: nothing to draw
+    expect(stripes.has('early')).toBe(false);
+    // not interrupted, though the freeze falls in its days
+    expect(stripes.has('quiet')).toBe(false);
   });
 
   it('gives a zone with rows a side too, for when it is folded into a bar', () => {

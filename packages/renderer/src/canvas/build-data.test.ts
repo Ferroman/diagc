@@ -130,6 +130,14 @@ describe('buildNodeData', () => {
     expect(buildNodeData(viewNode({ id: 'n2' }), ctx).labelSide).toBeUndefined();
   });
 
+  it("carries a bar's stripes folded and open alike: an open zone's band is the bar too", () => {
+    const stripes = [{ x: 40, width: 60, title: 'Freeze' }];
+    const ctx = nodeCtx({ stripes: new Map([['n1', stripes]]) });
+    expect(buildNodeData(viewNode(), ctx).stripes).toBe(stripes);
+    expect(buildNodeData(viewNode({ state: 'expanded' }), ctx).stripes).toBe(stripes);
+    expect(buildNodeData(viewNode({ id: 'n2' }), ctx).stripes).toBeUndefined();
+  });
+
   it('marks external stubs', () => {
     expect(buildNodeData(viewNode({ external: 'real-id' }), nodeCtx()).external).toBe(true);
   });
@@ -748,6 +756,7 @@ describe('the data caches compare every context field', () => {
     regionSeparators: { regionSeparators: new Map() },
     isAlwaysExpanded: { isAlwaysExpanded: () => false },
     labelSides: { labelSides: new Map() },
+    stripes: { stripes: new Map() },
   };
   it.each(Object.entries(nodeVariants))('rebuilds the node data when only %s changes', (_field, over) => {
     const n = viewNode();

@@ -1639,6 +1639,23 @@ describe('plan chips and x-resize', () => {
     const unnamed = renderNode({ typeId: 'plan-event', label: '' });
     expect(unnamed.container.querySelector('.dg-event-tag')).toBeNull();
   });
+  it('draws a stripe per period over a bar, at its offset and width, titled, in a leaf and in an open zone', () => {
+    const stripes = [
+      { x: 40, width: 60, title: 'Holiday change freeze' },
+      { x: 120, width: 20, title: 'Offsite', color: '#cc3333' },
+    ];
+    const { container } = renderNode({ typeId: 'plan-zone', label: 'Temporal', stripes });
+    const drawn = [...container.querySelectorAll('.dg-stripe')] as HTMLElement[];
+    expect(drawn.map((d) => [d.style.left, d.style.width, d.getAttribute('title')])).toEqual([
+      ['40px', '60px', 'Holiday change freeze'],
+      ['120px', '20px', 'Offsite'],
+    ]);
+    expect(drawn[1]!.style.getPropertyValue('--dg-stripe')).toBe('#cc3333');
+    cleanup();
+    const open = renderNode({ typeId: 'plan-zone', label: 'Temporal', state: 'expanded', stripes });
+    expect(open.container.querySelector('.dg-group .dg-stripe')).not.toBeNull();
+  });
+
   it('a period is a bracket over its days with its name, in its colour', () => {
     const { container } = renderNode({ typeId: 'plan-period', label: 'Holiday change freeze', color: '#7ba7d9' });
     const root = container.querySelector(".dg-node.dg-period-node[data-type='plan-period']") as HTMLElement;
