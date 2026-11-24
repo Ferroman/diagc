@@ -63,8 +63,18 @@ function ownGroups(model: DiagramModel, byId: ReadonlyMap<string, DiagramNode>, 
   return out;
 }
 
+/** Does any zone below `zoneId` have own groups? */
+function ownBelow(graph: PlanGraph, own: ReadonlyMap<string, Group[]>, zoneId: string): boolean {
+  return (graph.children.get(zoneId)?.zones ?? []).some(
+    (c) => (own.get(c)?.length ?? 0) > 0 || ownBelow(graph, own, c),
+  );
+}
+
 /** Effective groups on the FULL model: own, else the nearest ancestor's own,
- * else Unassigned. Hiding is applied afterwards, so it never re-places a zone. */
+ * else Unassigned — but only when nothing below the zone is placed either.
+ * A zone with placed work inside it is a pure container: its lanes come from
+ * that work, so it has no group of its own (else every project would also
+ * sit in Unassigned). Hiding is applied afterwards, so it never re-places. */
 function effectiveGroups(graph: PlanGraph, own: ReadonlyMap<string, Group[]>, zoneId: string): Group[] {
   const seen = new Set<string>();
   for (let z: string | undefined = zoneId; z !== undefined && !seen.has(z); z = graph.parent.get(z)) {
@@ -72,7 +82,7 @@ function effectiveGroups(graph: PlanGraph, own: ReadonlyMap<string, Group[]>, zo
     const g = own.get(z);
     if (g !== undefined && g.length > 0) return g;
   }
-  return [{ key: PLAN_UNASSIGNED, via: PLAN_UNASSIGNED }];
+  return ownBelow(graph, own, zoneId) ? [] : [{ key: PLAN_UNASSIGNED, via: PLAN_UNASSIGNED }];
 }
 
 /** Lane order: team nodes in model order, then every other (person) node in
@@ -137,17 +147,13 @@ export function planTeams(model: DiagramModel, graph: PlanGraph, hidden: Readonl
 /** The days a zone's copy in `lane` is tinted: the whole bar when the zone's
  * own visible groups include the lane, else the merged spans of the zones
  * below it that do. Overlapping and adjacent spans merge into one stripe. */
-// Five parameters: the signature the layout calls with — model and graph are the
-// two views of the one plan and `teams` the memo; bundling them would only add a
-// wrapper object at every call site.
-// eslint-disable-next-line max-params
-export function planTint(
-  model: DiagramModel,
-  graph: PlanGraph,
-  teams: PlanTeams,
-  zoneId: string,
-  lane: string,
-): PlanSpan[] {
+export interface PlanTintInput {
+  model: DiagramModel;
+  graph: PlanGraph;
+  teams: PlanTeams;
+}
+
+export function planTint({ model, graph, teams }: PlanTintInput, zoneId: string, lane: string): PlanSpan[] {
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
   const inLane = (z: string): boolean => teams.effectiveOf.get(z)?.includes(lane) === true;
   const spanFor = (z: string): PlanSpan | undefined => {

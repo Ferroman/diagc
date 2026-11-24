@@ -67,11 +67,19 @@ describe('planTeams', () => {
 
   it('a project appears in every lane that works anywhere inside it', () => {
     const { m, p, pay, plat } = fixture();
-    const co = p.zone('checkout', { start: '2026-01-05', end: '2026-02-27' }).executor(pay);
+    const co = p.zone('checkout', { start: '2026-01-05', end: '2026-02-27' });
     co.zone('ui', { start: '2026-01-05', end: '2026-01-30' }).executor(plat);
     co.zone('api', { start: '2026-02-02', end: '2026-02-27' }).executor(pay);
     const { teams } = run(m);
     expect(teams.laneKeysOf.get('checkout')).toEqual(['pay', 'plat']);
+  });
+
+  it('a container with no executor anywhere inside it is Unassigned', () => {
+    const { m, p } = fixture();
+    p.zone('c', { start: '2026-01-05', end: '2026-01-30' }).zone('d', { start: '2026-01-05', end: '2026-01-09' });
+    const { teams } = run(m);
+    expect(teams.laneKeysOf.get('c')).toEqual([PLAN_UNASSIGNED]);
+    expect(teams.hasUnassigned).toBe(true);
   });
 
   it('owners and checkers place nothing', () => {
@@ -117,7 +125,7 @@ describe('planTeams', () => {
 
   it('a project disappears once nothing visible is inside it', () => {
     const { m, p, pay } = fixture();
-    const co = p.zone('checkout', { start: '2026-01-05', end: '2026-02-27' }).executor(pay);
+    const co = p.zone('checkout', { start: '2026-01-05', end: '2026-02-27' });
     co.zone('api', { start: '2026-02-02', end: '2026-02-27' }).executor(pay);
     const { teams } = run(m, new Set(['pay']));
     expect(teams.hiddenZones.has('checkout')).toBe(true);
@@ -169,7 +177,7 @@ describe('planTint', () => {
     co.zone('c', { start: '2026-03-02', end: '2026-03-06' }).executor(pay);
     co.zone('d', { start: '2026-02-02', end: '2026-02-06' }).executor(plat);
     const { json, graph, teams } = run(m);
-    expect(planTint(json, graph, teams, 'checkout', 'pay')).toEqual([
+    expect(planTint({ model: json, graph, teams }, 'checkout', 'pay')).toEqual([
       { start: D('2026-01-05'), end: D('2026-01-23') },
       { start: D('2026-03-02'), end: D('2026-03-06') },
     ]);
@@ -179,7 +187,9 @@ describe('planTint', () => {
     z.zone('x', { start: '2026-01-05', end: '2026-01-09' }).executor(adj.pay);
     z.zone('y', { start: '2026-01-10', end: '2026-01-12' }).executor(adj.pay);
     const r = run(adj.m);
-    expect(planTint(r.json, r.graph, r.teams, 'z', 'pay')).toEqual([{ start: D('2026-01-05'), end: D('2026-01-12') }]);
+    expect(planTint({ model: r.json, graph: r.graph, teams: r.teams }, 'z', 'pay')).toEqual([
+      { start: D('2026-01-05'), end: D('2026-01-12') },
+    ]);
   });
 
   it("the whole bar when the zone itself is that lane's", () => {
@@ -187,6 +197,20 @@ describe('planTint', () => {
     const co = p.zone('checkout', { start: '2026-01-05', end: '2026-03-31' }).executor(pay);
     co.zone('a', { start: '2026-01-05', end: '2026-01-16' });
     const { json, graph, teams } = run(m);
-    expect(planTint(json, graph, teams, 'checkout', 'pay')).toEqual([{ start: D('2026-01-05'), end: D('2026-03-31') }]);
+    expect(planTint({ model: json, graph, teams }, 'checkout', 'pay')).toEqual([
+      { start: D('2026-01-05'), end: D('2026-03-31') },
+    ]);
+  });
+});
+
+describe('planTint on a container', () => {
+  it('tints only the days of its lane rows, not the whole bar', () => {
+    const { m, p, pay } = fixture();
+    const co = p.zone('checkout', { start: '2026-01-05', end: '2026-03-31' });
+    co.zone('a', { start: '2026-01-12', end: '2026-01-16' }).executor(pay);
+    const { json, graph, teams } = run(m);
+    expect(planTint({ model: json, graph, teams }, 'checkout', 'pay')).toEqual([
+      { start: D('2026-01-12'), end: D('2026-01-16') },
+    ]);
   });
 });
