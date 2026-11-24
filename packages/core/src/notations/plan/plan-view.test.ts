@@ -80,6 +80,47 @@ describe('planView', () => {
     expect(v.lanes).toBeUndefined();
   });
 
+  it("a folded zone does not bring back a hidden row's arrows", () => {
+    const json = fixture();
+    // `shipped`, an event inside the hidden `ui`, and arrows leaving `checkout`
+    // from both: folded, compileView lifts them onto `checkout` itself.
+    json.nodes.push({
+      id: 'shipped',
+      name: 'Shipped',
+      type: 'plan-event',
+      plane: 'plan',
+      metadata: { at: '2026-01-20' },
+    });
+    json.containment.push({ parent: 'ui', child: 'shipped', plane: 'plan' });
+    json.relations.push(
+      { id: 'ui-launch', from: 'ui', to: 'launch', kind: 'depends' },
+      { id: 'shipped-launch', from: 'shipped', to: 'launch', kind: 'depends' },
+      { id: 'ui-rollout', from: 'ui', to: 'rollout', kind: 'depends' },
+    );
+    const folded = compile(json, { checkout: 'collapsed' });
+    const lifted = folded.edges.filter((e) => e.from === 'checkout');
+    expect(lifted.flatMap((e) => e.constituents.map((r) => r.id))).toEqual(
+      expect.arrayContaining(['ui-launch', 'shipped-launch', 'ui-rollout']),
+    );
+    const hidden = new Set(['plat']);
+    const relationIds = (edges: readonly ViewEdge[]) => edges.flatMap((e) => e.constituents.map((r) => r.id));
+    for (const grouped of [false, true]) {
+      const v = view(folded, json, { grouped, hidden });
+      for (const edges of [v.edges, v.layoutEdges]) {
+        expect(relationIds(edges)).not.toContain('ui-launch');
+        expect(relationIds(edges)).not.toContain('shipped-launch');
+        expect(relationIds(edges)).not.toContain('ui-rollout');
+        expect(edges.every((e) => e.constituents.length > 0)).toBe(true);
+      }
+      // the arrow `checkout` draws of its own survives, without the hidden row's
+      const own = v.edges.filter((e) => e.constituents.some((r) => r.from === 'checkout' && r.to === 'rollout'));
+      expect(own.length).toBeGreaterThan(0);
+    }
+    // nothing is left of checkout -> launch, which only the hidden row drew
+    const v = view(folded, json, { grouped: false, hidden });
+    expect(v.edges.some((e) => e.from === 'checkout' && e.to === 'launch')).toBe(false);
+  });
+
   it("a shared project is drawn once per lane, each copy keeping that lane's rows", () => {
     const json = fixture();
     const v = view(compile(json), json, { grouped: true, hidden: none });

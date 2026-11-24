@@ -1,7 +1,7 @@
 import type { DiagramModel } from '../../types';
 import { defined } from '../../util';
 import type { CompiledView, PlanViewLane, ViewEdge, ViewNode } from '../../view/types';
-import { isPlanEvent, isPlanZone, planGraph, type PlanSpan } from './plan';
+import { isPlanEvent, isPlanZone, planGraph, type PlanGraph, type PlanSpan } from './plan';
 import { planTeams, planTint, type PlanLane, type PlanTintInput } from './teams';
 
 /** A lane header's synthetic node type. Not a plan type a model ever holds:
@@ -51,7 +51,7 @@ export function planView(
   if (!group && opts.hidden.size === 0) return compiled;
   const graph = planGraph(model, plane);
   const teams = planTeams(model, graph, opts.hidden);
-  const visible = withoutHidden(compiled, teams.hiddenZones);
+  const visible = withoutHidden(compiled, teams.hiddenZones, hiddenBelow(graph, teams.hiddenZones));
   return group ? groupedView(visible, { model, graph, teams }) : visible;
 }
 
@@ -61,7 +61,24 @@ function collect(vn: ViewNode, out: Set<string>): void {
   for (const c of vn.children) collect(c, out);
 }
 
-function withoutHidden(view: CompiledView, hiddenZones: ReadonlySet<string>): CompiledView {
+/** The hidden zones and everything inside them on the plan plane — nested
+ * zones, events, free-form children — as model ids. What a fold hides from the
+ * compiled view still travels in its edges' constituents, so this is the set
+ * those are checked against. */
+function hiddenBelow(graph: PlanGraph, hiddenZones: ReadonlySet<string>): Set<string> {
+  const out = new Set<string>();
+  const add = (z: string): void => {
+    if (out.has(z)) return;
+    out.add(z);
+    const c = graph.children.get(z);
+    for (const id of [...(c?.events ?? []), ...(c?.others ?? [])]) out.add(id);
+    for (const child of c?.zones ?? []) add(child);
+  };
+  for (const z of hiddenZones) add(z);
+  return out;
+}
+
+function withoutHidden(view: CompiledView, hiddenZones: ReadonlySet<string>, gone: ReadonlySet<string>): CompiledView {
   if (hiddenZones.size === 0) return view;
   const dropped = new Set<string>();
   // A drill stub standing in for a hidden zone goes too: it would show the
@@ -81,15 +98,24 @@ function withoutHidden(view: CompiledView, hiddenZones: ReadonlySet<string>): Co
         : [{ ...vn, children }];
     });
   const roots = prune(view.roots);
-  const keep = (e: ViewEdge): boolean => !dropped.has(e.from) && !dropped.has(e.to);
-  const anchorOf = new Map([...view.anchorOf].filter(([id, box]) => !hiddenZones.has(id) && !dropped.has(box)));
+  // An arrow goes with a dropped end. Both ends visible is not enough: a folded
+  // zone carries its rows' relations as its own, so a hidden row's relation is
+  // taken out of the edge, and an edge left with none of its own goes too.
+  const prunedEdges = (edges: readonly ViewEdge[]): ViewEdge[] =>
+    edges.flatMap((e) => {
+      if (dropped.has(e.from) || dropped.has(e.to)) return [];
+      const constituents = e.constituents.filter((r) => !gone.has(r.from) && !gone.has(r.to));
+      if (constituents.length === e.constituents.length) return [e];
+      return constituents.length === 0 ? [] : [{ ...e, constituents }];
+    });
+  const anchorOf = new Map([...view.anchorOf].filter(([id, box]) => !gone.has(id) && !dropped.has(box)));
   const externals =
     view.externals === undefined ? undefined : new Map([...view.externals].filter(([stub]) => !dropped.has(stub)));
   return {
     ...view,
     roots,
-    edges: view.edges.filter(keep),
-    layoutEdges: view.layoutEdges.filter(keep),
+    edges: prunedEdges(view.edges),
+    layoutEdges: prunedEdges(view.layoutEdges),
     anchorOf,
     ...defined({ externals }),
   };
