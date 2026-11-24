@@ -78,3 +78,21 @@ describe('fonts.css', () => {
     for (const family of asked) expect(bundledFaces).toContain(family);
   });
 });
+
+describe('styles.css: the canvas switches', () => {
+  const styles = read('styles.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  const body = (selector: string): string =>
+    [...styles.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter((m) => m[1]!.split(',').some((s) => s.trim() === selector))
+      .map((m) => m[2]!)
+      .join(';');
+
+  // CanvasControls marks Group by team off with a class and on with
+  // aria-pressed: off it dims as the dim / loops / drawings switches do, and
+  // on it takes the accent as the laser does — without either, on and off
+  // look the same
+  it('Group by team looks off when off and pressed when on', () => {
+    expect(body('.dg-teams-toggle-off')).toEqual(body('.dg-focus-toggle-off'));
+    expect(body(".dg-teams-toggle[aria-pressed='true']")).toMatch(/color:\s*var\(--dg-accent/);
+  });
+});

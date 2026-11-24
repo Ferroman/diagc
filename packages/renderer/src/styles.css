@@ -1759,6 +1759,19 @@ path.dg-loop-badge-circle {
 .dg-laser-toggle-on {
   color: var(--dg-laser);
 }
+/* Group by team (CanvasControls): off by default, and dimmed while off like
+   the other switches; on, it takes the accent so the pressed state reads. */
+.dg-teams-toggle {
+  font-size: 14px;
+  line-height: 1;
+}
+.dg-teams-toggle-off {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+.dg-teams-toggle[aria-pressed='true'] {
+  color: var(--dg-accent, #3b82f6);
+}
 
 /* Git graph notation. Label box size/inset mirror GIT_LAYOUT.LABEL_W/LABEL_H/MARGIN
    in git-layout.ts — the overlay computes the tail's end from those constants. */
