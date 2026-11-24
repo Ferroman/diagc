@@ -4344,16 +4344,34 @@ describe('a plan grouped by team', () => {
     expect(onResize).toHaveBeenCalledWith('checkout', 400, 40, expect.objectContaining({ x }));
   });
 
-  it('the layout api answers for the zone, not its copies', async () => {
+  it('the layout api answers for the zone, and a lane row has no position to freeze', async () => {
+    // grouping is view state: a row stands at its lane's y, which is no place
+    // of the zone's, so a freeze or a quick-add placed from the snapshot must
+    // find none — what is inside a row keeps its parent-relative place
     const apiRef: { current: LayoutApi | null } = { current: null };
     const { container } = render(
       <DiagramView model={sharedPlan()} plane="plan" notation="plan" grouped layoutApiRef={apiRef} />,
     );
     await settle(container, platCopy);
+    await settle(container, planCopyId('pay', 'api'));
     const snapshot = apiRef.current!.snapshotPositions();
-    expect(Object.keys(snapshot)).toContain('checkout');
+    expect(Object.keys(snapshot)).not.toContain('checkout');
+    expect(Object.keys(snapshot)).not.toContain('other');
     expect(Object.keys(snapshot).some((id) => id.startsWith('__lane__'))).toBe(false);
-    expect(snapshot['checkout']).toEqual(nodeOf(payCopy).position);
+    expect(snapshot['api']).toEqual(nodeOf(planCopyId('pay', 'api')).position);
+    expect(snapshot['alice']).toBeDefined();
     expect(apiRef.current!.nodeBounds('checkout')).toBeDefined();
+  });
+
+  it("a comment badge on a copy opens the zone's note, once", async () => {
+    const json = sharedPlan();
+    json.nodes.find((n) => n.id === 'checkout')!.comments = [{ id: 'c1', text: 'Remark on checkout' }];
+    const { container } = render(<DiagramView model={json} plane="plan" notation="plan" grouped />);
+    const plat = await settle(container, platCopy);
+    expect(box(container, 'note:node:checkout')).toBeNull();
+    fireEvent.click(plat.querySelector('button.dg-comment-badge')!);
+    await waitFor(() => expect(box(container, 'note:node:checkout')?.textContent).toContain('Remark on checkout'));
+    // one note for the zone, hung off its first copy
+    expect(container.querySelectorAll('.react-flow__node[data-id^="note:"]')).toHaveLength(1);
   });
 });

@@ -14,6 +14,7 @@ import {
   type ViewNode,
 } from '@diagc/core/internal';
 import { toRfNoteNode } from '../canvas/adapter';
+import { modelIdOf } from '../canvas/copy-ids';
 import type { EditingApi } from '../canvas/view-types';
 import type { Registry, TypeStyle } from '../registry';
 import type { NoteData } from './NoteNode';
@@ -111,7 +112,7 @@ export function deriveNoteNodes(input: DeriveNotesInput): Node[] {
     if (spot !== undefined) obstacles.push(...lineObstacles(spot.line));
   }
   const requests = [
-    ...elementRequests(input.compiled.roots, abs, input.typeRegistry),
+    ...elementRequests(input.compiled.roots, abs, input.typeRegistry, input.compiled.copies),
     ...flowRequests(input.compiled.edges, abs, input.badgeSpots, input.nameOf),
   ];
   const out: Node[] = [];
@@ -142,11 +143,15 @@ function absoluteBoxes(
   return { abs, obstacles };
 }
 
-/** The boxes' notes, in view-tree order. */
+/** The boxes' notes, in view-tree order. A grouped plan draws a zone as a copy
+ * per lane (`copies`): the note is the zone's — its badge on every copy names
+ * the model id — and hangs off the first copy, the one a host's request lands
+ * on too (copy-ids.ts boxOf), so it is drawn once. */
 function elementRequests(
   roots: readonly ViewNode[],
   abs: ReadonlyMap<string, Rect>,
   typeRegistry: Registry<TypeStyle>,
+  copies?: ReadonlyMap<string, string>,
 ): NoteRequest[] {
   // How the badge sits on this element — the stylesheet's three placements
   // (see badgeCenter): in the header band of an expanded container, tucked
@@ -159,17 +164,20 @@ function elementRequests(
     return shape === 'ellipse' ? 'ellipse' : 'box';
   };
   const out: NoteRequest[] = [];
+  const noted = new Set<string>();
   const walk = (n: ViewNode, parent?: string) => {
     const rect = abs.get(n.id);
     if (rect === undefined) return;
+    const id = modelIdOf(copies, n.id);
     // An external stub stands in for an off-frame node (drill views): its
     // threats/comments/links belong to the view that really draws it, or the
     // same note would appear twice, in two coordinate frames. What counts as
     // content is core's own predicate — the one layout pruning prunes by, so
     // a note drawn here always keeps its saved place (see pruneNotes).
-    if (n.external === undefined && hasNoteContent(n.node))
+    if (n.external === undefined && hasNoteContent(n.node) && !noted.has(id)) {
+      noted.add(id);
       out.push({
-        target: { node: n.id },
+        target: { node: id },
         name: n.node.name,
         threats: n.node.threats ?? [],
         comments: n.node.comments ?? [],
@@ -180,6 +188,7 @@ function elementRequests(
         element: rect,
         parentId: parent,
       });
+    }
     n.children.forEach((c) => walk(c, n.id));
   };
   roots.forEach((r) => walk(r));

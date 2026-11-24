@@ -5,7 +5,7 @@ import { strokesBounds } from '../drawings/drawings';
 import type { NodeGeometry } from '../layout/layout';
 import { isNoteId } from '../notes/derive-note-nodes';
 import { overhangBounds, unionBounds } from './content-bounds';
-import { copiesOf, modelIdOf } from './copy-ids';
+import { copiesOf, laneRows, modelIdOf } from './copy-ids';
 import { captureCanvas, exportFrame } from './export-image';
 import { savedX, toSaved } from './saved-frame';
 import type { LayoutApi } from './view-types';
@@ -81,14 +81,18 @@ export function useLayoutApi(input: LayoutApiInput): void {
       // because a fold above it gave its height back) and a drill frame (an
       // opened zone's child, drawn at the zone's place) are taken back off:
       // what is saved has to hold in the whole view, every fold open. A
-      // grouped plan answers in model ids: a lane header is no node at all,
-      // and a zone drawn in several lanes is its first copy.
+      // grouped plan answers in model ids, and its lanes are view state, never
+      // saved: a lane header is no node at all, and a lane's row stands at the
+      // lane's y, no place of the zone's — left out (as modelMoves leaves its
+      // position out), so a freeze or a quick-add beside it keeps the zone's
+      // saved row as it was. What is inside a row is its first copy's.
       snapshotPositions: () => {
-        const { externals, copies, lanes } = compiledRef.current;
-        const headers = new Set(lanes?.map((l) => l.id));
+        const view = compiledRef.current;
+        const { externals, copies } = view;
+        const skip = new Set([...(view.lanes?.map((l) => l.id) ?? []), ...laneRows(view)]);
         const out: Record<string, Point> = {};
         for (const n of rfNodesRef.current) {
-          if ((externals?.has(n.id) ?? false) || isNoteId(n.id) || headers.has(n.id)) continue;
+          if ((externals?.has(n.id) ?? false) || isNoteId(n.id) || skip.has(n.id)) continue;
           const id = modelIdOf(copies, n.id);
           if (!(id in out)) out[id] = toSaved(frames, n.id, n.position);
         }
