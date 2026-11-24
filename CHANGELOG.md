@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.17.0](https://github.com/Ferroman/diagc/compare/v1.16.0...v1.17.0) (2026-11-24)
+
+
+### Features
+
+* plan dependencies as Gantt arrows over the bars ([#206](https://github.com/Ferroman/diagc/issues/206)) ([0859ab1](https://github.com/Ferroman/diagc/commit/0859ab18e89807e0a6074579d7646959ce813770))
+
+
+### Bug Fixes
+
+* a note opens beside the badge that opened it ([#204](https://github.com/Ferroman/diagc/issues/204)) ([2232bad](https://github.com/Ferroman/diagc/commit/2232bad2516c79220b387a97ed625ad515b5b912))
+
 ## [1.16.0](https://github.com/Ferroman/diagc/compare/v1.15.0...v1.16.0) (2026-11-23)
 
 
