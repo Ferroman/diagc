@@ -3,8 +3,8 @@ import { model } from '../../builder/index';
 import { compileView } from '../../view/compile';
 import type { CompiledView, ViewEdge, ViewNode } from '../../view/types';
 import { planGraph } from './plan';
-import { PLAN_LANE_TYPE, planCopyId, planView, type PlanViewOptions } from './plan-view';
-import { planTeams, planTint } from './teams';
+import { PLAN_LANE_TYPE, PLAN_UNASSIGNED_TYPE, planCopyId, planView, type PlanViewOptions } from './plan-view';
+import { PLAN_UNASSIGNED, planTeams, planTint } from './teams';
 
 const none: ReadonlySet<string> = new Set();
 
@@ -219,5 +219,44 @@ describe('planView', () => {
     expect(ids).not.toContain('api');
     const grouped = view(compile(json), json, { grouped: true, hidden: new Set(['alice']) });
     expect(allIds(grouped.roots)).toContain('alice');
+  });
+});
+
+describe('the Unassigned roster card', () => {
+  function withUnassigned() {
+    const m = model('u');
+    const p = m.plan();
+    const pay = p.team('pay', 'Payments');
+    p.zone('a', { start: '2026-01-05', end: '2026-01-16' }).executor(pay);
+    p.zone('loose', { start: '2026-01-19', end: '2026-01-30' });
+    return m.toJSON();
+  }
+  const card = (c: CompiledView) => c.roots.find((r) => r.id === PLAN_UNASSIGNED);
+
+  it('is a root leaf, grouped or not, while any work is unassigned', () => {
+    const json = withUnassigned();
+    for (const grouped of [false, true]) {
+      const v = view(compileView(json, { plane: 'plan' }), json, { grouped, hidden: none });
+      expect(card(v)).toMatchObject({ state: 'leaf', node: { type: PLAN_UNASSIGNED_TYPE, name: 'Unassigned' } });
+    }
+  });
+
+  it('stays, with its work gone, while hidden', () => {
+    const json = withUnassigned();
+    const v = view(compileView(json, { plane: 'plan' }), json, { grouped: false, hidden: new Set([PLAN_UNASSIGNED]) });
+    expect(card(v)).toBeDefined();
+    expect(allIds(v.roots)).not.toContain('loose');
+  });
+
+  it('is absent when everything is assigned, and from an opened zone', () => {
+    const json = fixture();
+    expect(card(view(compile(json), json, { grouped: true, hidden: none }))).toBeUndefined();
+    const loose = withUnassigned();
+    const opened = view(compileView(loose, { plane: 'plan', root: 'loose' }), loose, {
+      grouped: false,
+      opened: true,
+      hidden: none,
+    });
+    expect(card(opened)).toBeUndefined();
   });
 });

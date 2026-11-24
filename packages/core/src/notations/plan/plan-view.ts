@@ -2,11 +2,15 @@ import type { DiagramModel } from '../../types';
 import { defined } from '../../util';
 import type { CompiledView, PlanViewLane, ViewEdge, ViewNode } from '../../view/types';
 import { isPlanEvent, isPlanZone, planGraph, type PlanGraph, type PlanSpan } from './plan';
-import { planTeams, planTint, type PlanLane, type PlanTintInput } from './teams';
+import { PLAN_UNASSIGNED, planTeams, planTint, type PlanLane, type PlanTintInput } from './teams';
 
 /** A lane header's synthetic node type. Not a plan type a model ever holds:
  * the header exists only in a grouped view, like a drill view's stubs. */
 export const PLAN_LANE_TYPE = 'plan-lane' as const;
+
+/** The Unassigned roster card's synthetic node type: the card stands for work
+ * no actor is placed on. Like a lane header it is the view's, never the model's. */
+export const PLAN_UNASSIGNED_TYPE = 'plan-unassigned' as const;
 
 /** Reserved prefix of every lane copy id (and lane header id). The lane key is
  * URI-encoded, so it carries no `:` and the id cannot be split two ways — but
@@ -48,11 +52,28 @@ export function planView(
   opts: PlanViewOptions,
 ): CompiledView {
   const group = opts.grouped && opts.opened !== true;
-  if (!group && opts.hidden.size === 0) return compiled;
   const graph = planGraph(model, plane);
   const teams = planTeams(model, graph, opts.hidden);
+  // the card is offered whenever there is unassigned work — hidden or not, so
+  // it can be shown again; an opened zone has no use for it unless it is
+  // hiding something (hiding still applies there)
+  const card = teams.hasUnassigned && (opts.opened !== true || opts.hidden.has(PLAN_UNASSIGNED));
+  if (!group && opts.hidden.size === 0 && !card) return compiled;
   const visible = withoutHidden(compiled, teams.hiddenZones, hiddenBelow(graph, teams.hiddenZones));
-  return group ? groupedView(visible, { model, graph, teams }) : visible;
+  const drawn = group ? groupedView(visible, { model, graph, teams }) : visible;
+  return card ? { ...drawn, roots: [...drawn.roots, unassignedCard()] } : drawn;
+}
+
+/** The Unassigned roster card: a leaf root the roster places last. */
+function unassignedCard(): ViewNode {
+  return {
+    id: PLAN_UNASSIGNED,
+    node: { id: PLAN_UNASSIGNED, type: PLAN_UNASSIGNED_TYPE, name: 'Unassigned' },
+    state: 'leaf',
+    children: [],
+    promoted: false,
+    sharedMembers: [],
+  };
 }
 
 /** Every id in a subtree, into `out`. */

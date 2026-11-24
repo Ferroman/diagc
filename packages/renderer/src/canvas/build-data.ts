@@ -57,6 +57,15 @@ import type { RegionSeparator } from '../layout/state-machine-layout';
 import { edgeLabelBox, zoneNoteOf } from '../layout/layout-graph';
 import { modelIdOf } from './copy-ids';
 
+/** The plan's team view as the roster cards read it (see NodeDataContext.actors). */
+export interface ActorControls {
+  hides: (n: DiagramNode) => boolean;
+  hidden: ReadonlySet<string>;
+  toggle: (id: string) => void;
+  /** person id -> the names of their teams after the first */
+  alsoIn: ReadonlyMap<string, string[]>;
+}
+
 /** per-node data inputs the view threads in; kept as one object so the cache
  * can compare it field-by-field with === and skip rebuilds when nothing moved */
 export interface NodeDataContext {
@@ -94,6 +103,10 @@ export interface NodeDataContext {
   /** a grouped plan's team tints per copy id (plan-marks planTintStripes),
    * drawn under the copy's period stripes */
   tints?: ReadonlyMap<string, NodeStripe[]>;
+  /** the plan's roster cards: which nodes carry an eye (profile.node.hidesActors),
+   * what is hidden, the toggle, and each person's other teams' names. One
+   * object per change, since the cache compares it by identity. */
+  actors?: ActorControls;
   /** px per day (a plan's): an x-resized bar is never narrower than one day */
   dayWidth?: number;
   /** a container the notation never folds (useNotation's isAlwaysExpanded):
@@ -264,6 +277,7 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
     ...(n.node.type === SM_ZONE_TYPE && zoneNoteOf(n.node) !== undefined ? { zoneNote: zoneNoteOf(n.node) } : {}),
   };
   if (real !== n.id) data.modelId = real;
+  bindActor(data, n, ctx);
   bindNotationMarks(data, n, ctx);
   // a rename the host asks for names the zone, and opens on its copy
   if (ctx.labelEditingId !== undefined && [n.id, real].includes(ctx.labelEditingId)) bindLabelEdit(data, n, ctx);
@@ -275,6 +289,15 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
   if (n.node.link !== undefined) data.onOpenLink = ctx.onOpenLink;
   if (ctx.editing) bindNodeEdits(data, n, ctx);
   return data;
+}
+
+/** A roster card's eye, and the person's other teams. */
+function bindActor(data: DiagramNodeData, n: ViewNode, ctx: NodeDataContext): void {
+  const actors = ctx.actors;
+  if (actors?.hides(n.node) !== true) return;
+  data.actorEye = { hidden: actors.hidden.has(n.id), toggle: actors.toggle };
+  const also = actors.alsoIn.get(n.id);
+  if (also !== undefined) data.alsoIn = also;
 }
 
 /** What the notation decided about this node's frame: the dashed edge a
@@ -528,6 +551,7 @@ const NODE_CTX_FIELDS = [
   'copies',
   'tints',
   'dayWidth',
+  'actors',
 ] as const;
 const _nodeCtxFields: SameKeys<keyof NodeDataContext, (typeof NODE_CTX_FIELDS)[number]> = true;
 void _nodeCtxFields;

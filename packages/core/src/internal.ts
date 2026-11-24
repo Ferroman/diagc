@@ -268,4 +268,10 @@ export {
   type PlanTeams,
   type PlanTintInput,
 } from './notations/plan/teams';
-export { PLAN_LANE_TYPE, planCopyId, planView, type PlanViewOptions } from './notations/plan/plan-view';
+export {
+  PLAN_LANE_TYPE,
+  PLAN_UNASSIGNED_TYPE,
+  planCopyId,
+  planView,
+  type PlanViewOptions,
+} from './notations/plan/plan-view';

@@ -2829,6 +2829,99 @@ describe('plan notation: stretching time', () => {
       await waitFor(() => expect(container.querySelector('.dg-plan-lane-name')?.textContent).toBe('Payments'));
     });
 
+    /** Payments (alice, bob), Platform (bob too); Payments' zone, bob's zone, a zone nobody holds */
+    function hidingPlan() {
+      const m = model('hp');
+      const p = m.plan();
+      const pay = p.team('pay', 'Payments');
+      const plat = p.team('plat', 'Platform');
+      const alice = p.person('alice', 'Alice');
+      const bob = p.person('bob', 'Bob');
+      pay.member(alice);
+      pay.member(bob);
+      plat.member(bob);
+      p.zone('zp', { name: 'ZP', start: '2026-01-05', end: '2026-01-16' }).executor(pay);
+      p.zone('zb', { name: 'ZB', start: '2026-01-19', end: '2026-01-30' }).executor(bob);
+      p.zone('zu', { name: 'ZU', start: '2026-02-02', end: '2026-02-13' });
+      return m.toJSON();
+    }
+    const rfNode = (c: HTMLElement, id: string) => c.querySelector<HTMLElement>(`.react-flow__node[data-id="${id}"]`);
+    const eyeOf = (c: HTMLElement, id: string) => {
+      const eye = rfNode(c, id)?.querySelector<HTMLElement>('[data-testid="eye-chip"]');
+      if (eye === null || eye === undefined) throw new Error(`no eye on ${id}`);
+      return eye;
+    };
+    const zoneBoxes = (c: HTMLElement, zone: string) =>
+      [...c.querySelectorAll('.react-flow__node')].filter((n) =>
+        (n.getAttribute('data-id') ?? '').endsWith(`:${zone}`),
+      );
+
+    it('the eye on a team card hides its lane and its rows', async () => {
+      const { container } = render(<DiagramView model={hidingPlan()} plane="plan" notation="plan" grouped />);
+      await waitFor(() => expect(eyeOf(container, 'pay')).toBeTruthy());
+      expect([...container.querySelectorAll('.dg-plan-lane-name')].map((n) => n.textContent)).toContain('Payments');
+      expect(zoneBoxes(container, 'zp').length).toBeGreaterThan(0);
+      fireEvent.click(eyeOf(container, 'pay'));
+      await waitFor(() => expect(zoneBoxes(container, 'zp')).toHaveLength(0));
+      expect([...container.querySelectorAll('.dg-plan-lane-name')].map((n) => n.textContent)).not.toContain('Payments');
+      // the card stays, dimmed, with its eye to bring it back
+      expect(rfNode(container, 'pay')?.querySelector('.dg-actor-hidden')).not.toBeNull();
+      fireEvent.click(eyeOf(container, 'pay'));
+      await waitFor(() => expect(zoneBoxes(container, 'zp').length).toBeGreaterThan(0));
+    });
+
+    it("a hidden person's chips go and their card dims", async () => {
+      const { container } = render(<DiagramView model={hidingPlan()} plane="plan" notation="plan" />);
+      await waitFor(() => expect(eyeOf(container, 'bob')).toBeTruthy());
+      const chips = () => rfNode(container, 'zb')?.querySelectorAll('.dg-role-chip').length;
+      expect(chips()).toBe(1);
+      expect(rfNode(container, 'bob')?.querySelector('.dg-actor-hidden')).toBeNull();
+      fireEvent.click(eyeOf(container, 'bob'));
+      await waitFor(() => expect(rfNode(container, 'bob')?.querySelector('.dg-actor-hidden')).not.toBeNull());
+      // bob's own zone is hidden with him
+      expect(rfNode(container, 'zb')).toBeNull();
+    });
+
+    it('the eye does not select the card', async () => {
+      const onSelect = vi.fn();
+      const { container } = render(
+        <DiagramView model={hidingPlan()} plane="plan" notation="plan" onSelect={onSelect} />,
+      );
+      await waitFor(() => expect(eyeOf(container, 'bob')).toBeTruthy());
+      fireEvent.click(eyeOf(container, 'bob'));
+      expect(onSelect).not.toHaveBeenCalled();
+    });
+
+    it('the eye on Unassigned hides unassigned work', async () => {
+      const { container } = render(<DiagramView model={hidingPlan()} plane="plan" notation="plan" />);
+      await waitFor(() => expect(eyeOf(container, '__unassigned__')).toBeTruthy());
+      expect(rfNode(container, 'zu')).not.toBeNull();
+      fireEvent.click(eyeOf(container, '__unassigned__'));
+      await waitFor(() => expect(rfNode(container, 'zu')).toBeNull());
+      expect(rfNode(container, 'zp')).not.toBeNull();
+      expect(rfNode(container, '__unassigned__')?.querySelector('.dg-actor-hidden')).not.toBeNull();
+    });
+
+    it('a person in two teams has one card naming the other team', async () => {
+      const { container } = render(<DiagramView model={hidingPlan()} plane="plan" notation="plan" grouped />);
+      await waitFor(() => expect(rfNode(container, 'bob')).not.toBeNull());
+      expect(container.querySelectorAll('.react-flow__node[data-id="bob"]')).toHaveLength(1);
+      expect(rfNode(container, 'bob')?.querySelector('[data-testid="also-in"]')?.textContent).toBe('also in Platform');
+      expect(rfNode(container, 'alice')?.querySelector('[data-testid="also-in"]')).toBeNull();
+    });
+
+    it('a hidden person, selected, lights nothing', async () => {
+      const { container } = render(
+        <DiagramView model={hidingPlan()} plane="plan" notation="plan" hiddenActors={['bob']} />,
+      );
+      await waitFor(() => expect(rfNode(container, 'bob')).not.toBeNull());
+      fireEvent.click(rfNode(container, 'bob')!);
+      expect(container.querySelector('.dg-focus-node-dim, .dg-loop-node-dim')).toBeNull();
+      // while a shown person lights their zones and dims the rest
+      fireEvent.click(rfNode(container, 'alice')!);
+      await waitFor(() => expect(container.querySelector('.dg-focus-node-dim')).not.toBeNull());
+    });
+
     it('chromeless, there is no switch', () => {
       render(<DiagramView model={teamPlan()} plane="plan" notation="plan" chrome={false} />);
       expect(screen.queryByRole('button', { name: 'Group by team' })).toBeNull();
@@ -3161,6 +3254,29 @@ describe('drop-to-assign', () => {
     expect(onDropInto).toHaveBeenCalledWith('alice', 'q', { x: 10, y: 10 });
     expect(onNodesMoved).not.toHaveBeenCalled();
     expect(nodeOf('alice').position).toEqual(before);
+  });
+
+  it('a person dropped on a team card reports the drop on the team, and snaps back', async () => {
+    const m = model('assign-team');
+    const p = m.plan();
+    p.team('pay', 'Payments');
+    p.person('bob', 'Bob');
+    p.zone('q', { name: 'Q', start: '2026-01-05', end: '2026-01-09' });
+    const onNodesMoved = vi.fn();
+    const onDropInto = vi.fn();
+    const { container } = render(
+      <DiagramView model={m.toJSON()} plane="plan" notation="plan" mode="edit" edit={{ onNodesMoved, onDropInto }} />,
+    );
+    await settle(container, 'pay');
+    await settle(container, 'bob');
+    const before = nodeOf('bob').position;
+    const payAbs = absOf('pay');
+    const dropAt = { x: payAbs.x + 5, y: payAbs.y + 5 };
+    await drag('bob', dropAt, dropAt);
+    expect(onDropInto).toHaveBeenCalledTimes(1);
+    expect(onDropInto).toHaveBeenCalledWith('bob', 'pay', expect.anything());
+    expect(onNodesMoved).not.toHaveBeenCalled();
+    expect(nodeOf('bob').position).toEqual(before);
   });
 
   it('an actor dragged and dropped over empty canvas reports no drop, no move, and snaps back', async () => {
@@ -4264,11 +4380,13 @@ describe('a plan grouped by team', () => {
     await settle(container, payCopy);
     await settle(container, 'bob');
     // the top lane's copy: jsdom measures every box 800x600, so a point inside
-    // a lower lane's copy is inside the copies above it too
-    const at = { x: absOf(payCopy).x + 10, y: absOf(payCopy).y + 10 };
+    // a lower lane's copy is inside the copies above it too — and the same 600
+    // tall card of a team above the chart reaches into the first rows, so the
+    // point is taken below it
+    const at = { x: absOf(payCopy).x + 10, y: absOf(payCopy).y + 450 };
     drag('bob', at, at);
     expect(onDropInto).toHaveBeenCalledTimes(1);
-    expect(onDropInto).toHaveBeenCalledWith('bob', 'checkout', { x: 10, y: 10 });
+    expect(onDropInto).toHaveBeenCalledWith('bob', 'checkout', { x: 10, y: 450 });
     expect(onNodesMoved).not.toHaveBeenCalled();
   });
 

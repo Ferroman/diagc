@@ -137,6 +137,13 @@ export interface DiagramNodeData {
    * Its canvas id is its own, but every callback reports this one, so each
    * copy acts as the zone. Absent everywhere else: the canvas id is the model id. */
   modelId?: string;
+  /** a plan roster card's eye (profile.node.hidesActors): whether the actor is
+   * hidden now, and the toggle, which reports the card's model id. View and
+   * edit alike: hiding is viewing, not editing. */
+  actorEye?: { hidden: boolean; toggle: (id: string) => void };
+  /** a person's other teams' names (their first team is where they are
+   * listed), drawn on their one card */
+  alsoIn?: string[];
   /** this node is the drop target under the pointer during a single-node
    * drag that could land on it (see EditingApi.onDropInto) — draws the
    * notation's drag-over outline. Like `selected`, but on `data`: useNodeDragging
@@ -183,6 +190,7 @@ export function DiagramNode({
   // node has no recipe, so no separate label gate is needed here.
   const quickAdd = data.quickAdd;
   const modelId = data.modelId ?? id;
+  const hiddenClass = data.actorEye?.hidden === true ? ' dg-actor-hidden' : '';
   const onTab = quickAdd !== undefined ? () => quickAdd.run(modelId) : undefined;
   const name =
     data.labelEditing === true ? (
@@ -209,7 +217,7 @@ export function DiagramNode({
       width={width}
       height={height}
       profile={profile}
-      parts={{ style, name, loopClass, highlight, ghost, onTab }}
+      parts={{ style, name, loopClass: loopClass + hiddenClass, highlight, ghost, onTab }}
     />
   );
 }

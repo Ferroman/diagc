@@ -2926,3 +2926,24 @@ button.dg-role-chip {
   width: 60%;
   height: 60%;
 }
+
+/* A plan roster card hidden from the picture: it stays, dimmed, so it can be shown again. */
+.dg-actor-hidden {
+  opacity: 0.45;
+}
+
+.dg-eye {
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.dg-also-in {
+  font-size: 10px;
+  white-space: nowrap;
+}

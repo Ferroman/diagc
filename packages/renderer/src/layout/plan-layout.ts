@@ -6,6 +6,8 @@ import {
   isPlanEvent,
   isPlanZone,
   PLAN_LANE_TYPE,
+  PLAN_UNASSIGNED,
+  PLAN_UNASSIGNED_TYPE,
   PLAN_NOTATION,
   PLAN_ROLES,
   isPlanPeriod,
@@ -28,7 +30,7 @@ import {
 import type { NodeChip } from '../notations';
 import { textWidth, wrapText } from './box-size';
 import type { LayoutResult, NodeGeometry, NotationLayoutInput } from './layout';
-import { placeLanes, viewKids } from './plan-lanes';
+import { placeLanes, rosterOrder, viewKids } from './plan-lanes';
 
 /** The schedule's fixed geometry. `DAY` is the default scale (px per calendar
  * day) and the unit saved positions are kept in; the view can stretch time to
@@ -195,7 +197,7 @@ function planRun(input: NotationLayoutInput): PlanRun {
     byId: new Map([
       ...model.nodes.map((n) => [n.id, n] as const),
       ...view.roots
-        .filter((r) => stubs.has(r.id) || r.node.type === PLAN_LANE_TYPE)
+        .filter((r) => stubs.has(r.id) || r.node.type === PLAN_LANE_TYPE || r.node.type === PLAN_UNASSIGNED_TYPE)
         .map((r) => [r.id, r.node] as const),
     ]),
     realOf: (id) => copies.get(id) ?? id,
@@ -481,12 +483,14 @@ function placeRootEvents(run: PlanRun, roots: readonly string[]): void {
  * then stack UPWARD from the header, so adding a row pushes the strip
  * further from the chart rather than pushing the chart down.
  */
-function placeRoster(run: PlanRun, roots: readonly string[]): void {
+function placeRoster(run: PlanRun, roots: readonly string[], order: (ids: string[]) => string[]): void {
   const { ROW_GAP, HEADER_H, ROSTER_GAP } = PLAN_LAYOUT;
   const rootSet = new Set(roots);
-  const roster = [...run.graph.actors, ...roots.filter((id) => isPlanActor(nodeOf(run, id)))].filter(
+  const actors = [...run.graph.actors, ...roots.filter((id) => isPlanActor(nodeOf(run, id)))].filter(
     (id, i, all) => rootSet.has(id) && all.indexOf(id) === i,
   );
+  // the Unassigned card is no actor: it always closes the roster
+  const roster = [...order(actors), ...(rootSet.has(PLAN_UNASSIGNED) ? [PLAN_UNASSIGNED] : [])];
   const rosterWidth = run.range !== undefined ? (run.range.end + 1 - run.range.start) * run.day : undefined;
   const left = chartLeft(run);
   const rosterRows: { id: string; size: BoxSize }[][] = [];
@@ -619,7 +623,7 @@ export function planLayout(input: NotationLayoutInput): LayoutResult {
       : placeRootZones(run, own);
   if (!opened) placeRootEvents(run, own);
   placePeriods(run, own);
-  placeRoster(run, roots);
+  placeRoster(run, roots, rosterOrder(input.model, input.view.lanes !== undefined));
   placeStubs(run, roots);
   placeStrays(run, roots, y);
   return {

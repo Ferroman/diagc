@@ -49,6 +49,8 @@ export interface FlowNodesInput {
   setLabelEdit: Dispatch<SetStateAction<LabelEdit | null>>;
   enterNode: (id: string) => void;
   noteNodes: Node[];
+  /** the plan's roster cards' eye and notes (useActorControls) */
+  actors: NodeDataContext['actors'];
 }
 
 export interface FlowNodes {
@@ -145,6 +147,7 @@ export function useFlowNodes(input: FlowNodesInput): FlowNodes {
       copies: compiled.copies,
       tints,
       dayWidth,
+      actors: input.actors,
     }),
     [
       input.metaKeys,
@@ -180,6 +183,7 @@ export function useFlowNodes(input: FlowNodesInput): FlowNodes {
       compiled.copies,
       tints,
       dayWidth,
+      input.actors,
     ],
   );
 

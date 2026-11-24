@@ -773,6 +773,7 @@ describe('the data caches compare every context field', () => {
     stylePreset: { stylePreset: stylePreset('sketch') },
     notation: { notation: 'causal-loop' },
     regionSeparators: { regionSeparators: new Map() },
+    actors: { actors: { hides: () => true, hidden: new Set(), toggle: () => {}, alsoIn: new Map() } },
     isAlwaysExpanded: { isAlwaysExpanded: () => false },
     labelSides: { labelSides: new Map() },
     stripes: { stripes: new Map() },

@@ -14,6 +14,8 @@ export interface LoopOverlayInput {
   plane: string | undefined;
   externalHighlight: { nodes: readonly string[]; edges: readonly string[] } | null | undefined;
   onCldEdges: ((edges: LoopEdgeInput[]) => void) | undefined;
+  /** the plan's hidden actors: selecting one lights nothing */
+  hidden?: ReadonlySet<string>;
 }
 
 export interface LoopOverlay {
@@ -75,6 +77,8 @@ export function useLoopOverlay(input: LoopOverlayInput): LoopOverlay {
   const { edges: drawnEdges, copies } = input.compiled;
   const neighborFocus = useMemo(() => {
     if (!focusConnected || selectedNode === null) return null;
+    // a hidden actor is out of the picture: its zones are not its to light
+    if (input.hidden?.has(selectedNode) === true) return null;
     const nodes = new Set<string>([selectedNode]);
     const edges = new Set<string>();
     for (const e of drawnEdges) {
@@ -90,7 +94,7 @@ export function useLoopOverlay(input: LoopOverlayInput): LoopOverlay {
     }
     for (const id of profile.related?.(model, plane, selectedNode) ?? []) nodes.add(id);
     return { nodes: widenToCopies(copies, nodes), edges };
-  }, [focusConnected, selectedNode, drawnEdges, copies, profile, model, plane]);
+  }, [focusConnected, selectedNode, drawnEdges, copies, profile, model, plane, input.hidden]);
   // Precedence: a leverage row (ext) or loop badge glows its set (strong dim of
   // the rest); plain node selection is the gentle fallback (light dim, no glow).
   const loopHighlight = useMemo<LoopHighlight>(() => {

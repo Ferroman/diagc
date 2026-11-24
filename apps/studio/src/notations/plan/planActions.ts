@@ -27,6 +27,7 @@ import {
   type Point,
 } from '@diagc/core/internal';
 import { PLAN_LAYOUT, planX } from '@diagc/renderer';
+import { addMember } from './membership';
 
 const { DAY, TITLE_H } = PLAN_LAYOUT;
 /** a fresh zone spans two weeks */
@@ -417,7 +418,8 @@ function currentParents(model: DiagramModel, plane: string | undefined, id: stri
  * child never keeps a stale second parent after the move. A zone or an event
  * is never assigned: their drag is the date move, and DiagramView never
  * reports them here — refused again HERE so this function's contract does
- * not depend on who called it. Returns undefined when nothing would change.
+ * not depend on who called it. A person dropped on a team joins it
+ * (membership.ts). Returns undefined when nothing would change.
  * `plane` is the studio's own active plane — possibly undefined, when the
  * viewer is on the default one — passed straight through to the
  * remove-containment/add-containment commands below; core resolves it
@@ -429,6 +431,8 @@ export function assign({ model, plane }: PlanPlane, id: string, zoneId: string, 
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
   const node = byId.get(id);
   const zone = byId.get(zoneId);
+  // a team card is a drop target too: a person dropped on it joins the team
+  if (zone?.type === PLAN_TEAM_TYPE) return addMember(model, id, zoneId);
   if (node === undefined || zone === undefined || !isPlanZone(zone) || isPlanZone(node) || isPlanEvent(node))
     return undefined;
   if (isPlanActor(node)) {

@@ -45,6 +45,7 @@ function input({ arrangedGeometry, fixed, regionSeparators, ...over }: Flat = {}
     props: { model: json },
     editing: false,
     edit: undefined,
+    actors: undefined,
     notation: {
       profile,
       typeRegistry,

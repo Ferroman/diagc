@@ -486,6 +486,27 @@ describe('quick-adds', () => {
 });
 
 describe('assign', () => {
+  it('a person dropped on a team joins it', () => {
+    const m = model('t');
+    const p = m.plan();
+    const pay = p.team('pay', 'Payments');
+    p.team('plat', 'Platform');
+    pay.member(p.person('alice', 'Alice'));
+    p.person('bob', 'Bob');
+    p.zone('q', { name: 'Q', start: '2026-01-05', end: '2026-01-30' });
+    const json = m.toJSON();
+    const ctx = { model: json, plane: 'plan' };
+    expect(assign(ctx, 'bob', 'pay', { x: 0, y: 0 })).toEqual({
+      type: 'add-relation',
+      from: 'bob',
+      to: 'pay',
+      opts: { kind: 'member-of' },
+    });
+    // already a member, a team on a team, and a plain node on a team: nothing
+    expect(assign(ctx, 'alice', 'pay', { x: 0, y: 0 })).toBeUndefined();
+    expect(assign(ctx, 'plat', 'pay', { x: 0, y: 0 })).toBeUndefined();
+    expect(assign(ctx, 'q', 'pay', { x: 0, y: 0 })).toBeUndefined();
+  });
   it('an actor dropped on a zone it holds no role on gets executes', () => {
     expect(assign({ model: roadmap(), plane: 'plan' }, 'alice', 'design', { x: 10, y: 20 })).toEqual({
       type: 'add-relation',

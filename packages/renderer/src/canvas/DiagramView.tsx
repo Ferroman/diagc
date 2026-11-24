@@ -44,6 +44,7 @@ import { useNodeResync } from './useNodeResync';
 import { useNoteNodes } from './useNoteNodes';
 import { useNoteSession } from './useNoteSession';
 import { useNotation } from './useNotation';
+import { useActorControls } from './actor-controls';
 import { teamParts, useTeamView } from './useTeamView';
 import { useNudgeAndArrange } from './useNudgeAndArrange';
 import { useRevealOnUnfold } from './useRevealOnUnfold';
@@ -275,6 +276,7 @@ function Inner(props: DiagramViewProps) {
     setLabelEdit,
     enterNode,
     noteNodes: notes.noteNodes,
+    actors: useActorControls(profile, props.model, teams),
   });
   const { derivedNodes, setRfNodes, rfNodesRef } = flow;
   widthIsDatesRef.current = (id) =>
@@ -341,6 +343,7 @@ function Inner(props: DiagramViewProps) {
     plane: props.plane,
     externalHighlight: props.externalHighlight,
     onCldEdges: props.onCldEdges,
+    hidden: teams.hidden,
   });
   const { loopHighlight } = loops;
   const clicks = useCanvasClicks({

@@ -1,8 +1,11 @@
 import {
   LEAF_SIZE,
+  PLAN_TEAM_TYPE,
+  teamsOf,
   isPlanEvent,
   isPlanZone,
   type CompiledView,
+  type DiagramModel,
   type PlanChildren,
   type PlanViewLane,
   type ViewNode,
@@ -88,4 +91,27 @@ export function placeLanes(run: PlanRun, lanes: readonly PlanViewLane[]): number
     }
   }
   return y;
+}
+
+/**
+ * The roster's order. Ungrouped it is the order it arrives in (people and
+ * teams with roles first, as ever). Grouped it follows the lanes: each team in
+ * model order followed by its members, then the people in no team. A person
+ * in several teams has one card, under the first of them in model order, and
+ * the roster's own order holds among a team's members.
+ */
+export function rosterOrder(model: DiagramModel, grouped: boolean): (ids: string[]) => string[] {
+  if (!grouped) return (ids) => ids;
+  return (ids) => {
+    const index = new Map(model.nodes.map((n, i) => [n.id, i] as const));
+    const teamOf = (id: string): string | undefined =>
+      teamsOf(model, id).sort((a, b) => index.get(a)! - index.get(b)!)[0];
+    const isTeam = (id: string): boolean => model.nodes[index.get(id) ?? -1]?.type === PLAN_TEAM_TYPE;
+    const teams = ids.filter(isTeam).sort((a, b) => index.get(a)! - index.get(b)!);
+    const people = ids.filter((id) => !isTeam(id));
+    return [
+      ...teams.flatMap((t) => [t, ...people.filter((p) => teamOf(p) === t)]),
+      ...people.filter((p) => teamOf(p) === undefined || !teams.includes(teamOf(p)!)),
+    ];
+  };
 }

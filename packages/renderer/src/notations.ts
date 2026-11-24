@@ -11,6 +11,8 @@ import {
   PLAN_EVENT_TYPE,
   PLAN_INTERRUPTS,
   PLAN_LANE_TYPE,
+  PLAN_TEAM_TYPE,
+  PLAN_UNASSIGNED_TYPE,
   PLAN_MEMBER_OF,
   PLAN_NOTATION,
   PLAN_ZONE_TYPE,
@@ -199,6 +201,9 @@ export interface NotationProfile {
     /** a node the view draws for itself and nothing can act on (a plan's lane
      * header): never selected, so a click on it reports nothing */
     inert?: (n: DiagramNode) => boolean;
+    /** a roster card that can be hidden from the picture (the plan's people,
+     * teams and Unassigned): it carries an eye toggle */
+    hidesActors?: (n: DiagramNode) => boolean;
   };
   edge?: {
     marks?: boolean;
@@ -477,6 +482,9 @@ function carriedPeriods(
   });
 }
 
+/** a node the plan view draws for itself: a lane header, the Unassigned card */
+const isViewOnly = (n: DiagramNode): boolean => n.type === PLAN_LANE_TYPE || n.type === PLAN_UNASSIGNED_TYPE;
+
 const PLAN: NotationProfile = {
   id: PLAN_NOTATION,
   className: 'dg-notation-plan',
@@ -501,10 +509,12 @@ const PLAN: NotationProfile = {
     // isPlanZone, not a nested-only check: a root zone's Y is free and can
     // overlap a sibling's rect just as readily as a nested one crosses its
     // own parent's.
-    dropTarget: isPlanZone,
+    // A team card receives a person (membership): only an actor may be dropped
+    // on it, which the studio enforces.
+    dropTarget: (n) => isPlanZone(n) || n.type === PLAN_TEAM_TYPE,
     // A zone's or an event's drag is its date move; an actor or a plain box
     // is what a zone receives, so those are what a drag may drop.
-    canDrop: (n) => isPlanActor(n) || (!isPlanZone(n) && !isPlanEvent(n)),
+    canDrop: (n) => isPlanActor(n) || (!isPlanZone(n) && !isPlanEvent(n) && !isViewOnly(n)),
     // An actor is dragged only to be dropped on a zone; it never keeps the
     // position a drag left it at — the roster is a list, not a seating chart.
     snapsBack: isPlanActor,
@@ -512,9 +522,11 @@ const PLAN: NotationProfile = {
     // dropped (drop-to-assign) and always snaps back after (see snapsBack
     // above). A period does not: its days are edited in the source. Nor does a
     // lane header: a lane's place is the teams' order.
-    draggableWhenFixed: (n) => !isPlanPeriod(n) && n.type !== PLAN_LANE_TYPE,
-    // a lane header is the view's, not the model's: there is nothing to select
-    inert: (n) => n.type === PLAN_LANE_TYPE,
+    draggableWhenFixed: (n) => !isPlanPeriod(n) && !isViewOnly(n),
+    // a lane header and the Unassigned card are the view's, not the model's:
+    // there is nothing to select (the card's eye still works)
+    inert: isViewOnly,
+    hidesActors: (n) => isPlanActor(n) || n.type === PLAN_UNASSIGNED_TYPE,
   },
   // A dependency's drops cross every row between its two bars: under them it
   // vanishes behind each one, so plan edges are drawn over the bars.

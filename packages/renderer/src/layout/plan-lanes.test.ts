@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  PLAN_UNASSIGNED,
   PLAN_ZONE_TYPE,
   compileView,
   dayOf,
@@ -119,5 +120,48 @@ describe('plan lanes', () => {
     expect(x(pay('rollout'))).toBe(planX(dayOf('2026-03-02')!, origin, DAY));
     expect(x(plat('rollout'))).toBe(x(pay('rollout')));
     expect(x(pay('freeze'))).toBe(x(plat('freeze')));
+  });
+});
+
+describe('the roster', () => {
+  /** Platform, Payments (alice, bob; bob also in Platform), carol in none, and
+   * a zone nobody holds. Role holders come first in the ungrouped roster. */
+  function roster(): DiagramModel {
+    const m = model('r');
+    const p = m.plan();
+    const pay = p.team('pay', 'Payments');
+    const plat = p.team('plat', 'Platform');
+    const alice = p.person('alice', 'Alice');
+    const bob = p.person('bob', 'Bob');
+    const carol = p.person('carol', 'Carol');
+    pay.member(alice);
+    pay.member(bob);
+    plat.member(bob);
+    p.zone('a', { start: '2026-01-05', end: '2026-01-16' }).executor(carol).executor(plat);
+    p.zone('b', { start: '2026-01-19', end: '2026-01-30' }).executor(alice);
+    p.zone('loose', { start: '2026-02-02', end: '2026-02-13' });
+    return m.toJSON();
+  }
+  const order = (m: DiagramModel, group: boolean): string[] => {
+    const pins = Object.fromEntries(m.nodes.map((n) => [n.id, 'expanded' as const]));
+    const compiled = compileView(m, { plane: 'plan', pins });
+    const v = planView(compiled, m, 'plan', { grouped: group, hidden: new Set() });
+    const r = planLayout({ view: v, model: m, plane: 'plan' });
+    const ids = ['pay', 'plat', 'alice', 'bob', 'carol', PLAN_UNASSIGNED];
+    // rows wrap and stack upward, the first on top: reading order is the order
+    const at = (id: string) => r.geometry.get(id)!;
+    return ids.sort((a, b) => at(a).y - at(b).y || at(a).x - at(b).x);
+  };
+
+  it('grouped, the roster lists each team with its members', () => {
+    // Payments (model order first) and its members, bob under it though he is in
+    // Platform too; Platform then has nobody of its own; carol, then Unassigned
+    expect(order(roster(), true)).toEqual(['pay', 'alice', 'bob', 'plat', 'carol', PLAN_UNASSIGNED]);
+  });
+
+  it('ungrouped, the roster order is unchanged', () => {
+    const m = roster();
+    // role holders in zone order, then the rest in model order — and Unassigned always last
+    expect(order(m, false)).toEqual(['carol', 'plat', 'alice', 'pay', 'bob', PLAN_UNASSIGNED]);
   });
 });

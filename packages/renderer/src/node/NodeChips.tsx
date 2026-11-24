@@ -61,6 +61,12 @@ export function NodeChips({
           </span>
         );
       })}
+      {data.alsoIn !== undefined && data.alsoIn.length > 0 && (
+        <span className="dg-badge dg-also-in" data-testid="also-in" title={`Also in ${data.alsoIn.join(', ')}`}>
+          also in {data.alsoIn.join(', ')}
+        </span>
+      )}
+      {data.actorEye !== undefined && <EyeChip modelId={modelId} label={data.label} eye={data.actorEye} />}
       {isContainer && !isCldGroup && data.onEnterNode !== undefined && (
         <button
           type="button"
@@ -104,6 +110,37 @@ export function FoldChip({ id, data, group = false }: { id: string; data: Diagra
       }}
     >
       {expanded ? '▾' : '▸'}
+    </button>
+  );
+}
+
+/** A roster card's show/hide toggle. It stops the press as well as the click,
+ * so it neither selects the card nor starts a drag of it (the fold chip's rule). */
+function EyeChip({
+  modelId,
+  label,
+  eye,
+}: {
+  modelId: string;
+  label: string;
+  eye: NonNullable<DiagramNodeData['actorEye']>;
+}) {
+  const text = `${eye.hidden ? 'Show' : 'Hide'} ${label}`;
+  return (
+    <button
+      type="button"
+      className="dg-eye nodrag"
+      data-testid="eye-chip"
+      title={text}
+      aria-label={text}
+      aria-pressed={eye.hidden}
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        eye.toggle(modelId);
+      }}
+    >
+      {eye.hidden ? '◌' : '◉'}
     </button>
   );
 }
