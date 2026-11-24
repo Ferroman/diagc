@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import type { DiagramNode, NotationId, ViewEdge, ViewNode } from '@diagc/core/internal';
+import { compileView, isPlanActor, model, planCopyId, planView } from '@diagc/core/internal';
 import { createIconRegistry } from '@diagc/icons';
 import {
   buildEdgeData,
@@ -785,7 +786,8 @@ describe('the data caches compare every context field', () => {
     stylePreset: { stylePreset: stylePreset('sketch') },
     notation: { notation: 'causal-loop' },
     regionSeparators: { regionSeparators: new Map() },
-    actors: { actors: { hides: () => true, hidden: new Set(), toggle: () => {}, alsoIn: new Map() } },
+    actors: { actors: { hides: () => true, hidden: new Set(), toggle: () => {} } },
+    roster: { roster: [] },
     isAlwaysExpanded: { isAlwaysExpanded: () => false },
     labelSides: { labelSides: new Map() },
     stripes: { stripes: new Map() },
@@ -905,5 +907,54 @@ describe('buildNodeData, state-machine fields', () => {
     const ctx = nodeCtx({ regionSeparators: new Map([['r2', 'top' as const]]) });
     expect(buildNodeData(region('r2'), ctx).regionSeparator).toBe('top');
     expect('regionSeparator' in buildNodeData(region('r1'), ctx)).toBe(false);
+  });
+});
+
+describe('buildNodeData, the plan roster', () => {
+  /** Payments {ana, ben}, Platform {ben, cleo}, Mobile {dev}, and Ops with nobody */
+  function roster(hidden: ReadonlySet<string> = new Set()) {
+    const m = model('teams');
+    const p = m.plan();
+    const ana = p.person('ana', 'Ana');
+    const ben = p.person('ben', 'Ben');
+    const cleo = p.person('cleo', 'Cleo');
+    const dev = p.person('dev', 'Dev');
+    p.team('payments', 'Payments').member(ana, ben);
+    p.team('platform', 'Platform').member(ben, cleo);
+    p.team('mobile', 'Mobile').member(dev);
+    p.team('ops', 'Ops');
+    p.zone('z', { name: 'Z', start: '2026-01-05', end: '2026-01-30' });
+    const j = m.toJSON();
+    const view = planView(compileView(j, { plane: 'plan' }), j, 'plan', { grouped: false, hidden });
+    const ctx = nodeCtx({
+      copies: view.copies,
+      roster: view.roster,
+      actors: { hides: (n) => isPlanActor(n), hidden, toggle: () => {} },
+    });
+    const data = (id: string) =>
+      buildNodeData(
+        view.roots.find((r) => r.id === id)!,
+        ctx,
+      );
+    return { data };
+  }
+
+  it('a team with members here is a frame; one with nobody is a plain card', () => {
+    const { data } = roster();
+    expect(data('payments').rosterFrame).toBe(true);
+    expect(data('mobile').rosterFrame).toBe(true);
+    expect('rosterFrame' in data('ops')).toBe(false);
+    expect('rosterFrame' in data('ana')).toBe(false);
+  });
+
+  it("a person's badge in a second team shows the person's eye: hiding ben dims both", () => {
+    const copy = planCopyId('platform', 'ben');
+    expect(roster().data(copy).actorEye?.hidden).toBe(false);
+    const { data } = roster(new Set(['ben']));
+    expect(data('ben').actorEye?.hidden).toBe(true);
+    expect(data(copy).actorEye?.hidden).toBe(true);
+    // and the copy's eye toggles the person (NodeChips reports modelId)
+    expect(data(copy).modelId).toBe('ben');
+    expect(data('cleo').actorEye?.hidden).toBe(false);
   });
 });

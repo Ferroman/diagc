@@ -2962,12 +2962,50 @@ describe('plan notation: stretching time', () => {
       expect(rfNode(container, '__unassigned__')?.querySelector('.dg-actor-hidden')).not.toBeNull();
     });
 
-    it('a person in two teams has one card naming the other team', async () => {
-      const { container } = render(<DiagramView model={hidingPlan()} plane="plan" notation="plan" grouped />);
-      await waitFor(() => expect(rfNode(container, 'bob')).not.toBeNull());
-      expect(container.querySelectorAll('.react-flow__node[data-id="bob"]')).toHaveLength(1);
-      expect(rfNode(container, 'bob')?.querySelector('[data-testid="also-in"]')?.textContent).toBe('also in Platform');
-      expect(rfNode(container, 'alice')?.querySelector('[data-testid="also-in"]')).toBeNull();
+    for (const grouped of [false, true]) {
+      it(`a person in two teams has a badge in each team's frame, and no note${grouped ? ', grouped' : ''}`, async () => {
+        const { container } = render(
+          <DiagramView model={hidingPlan()} plane="plan" notation="plan" grouped={grouped} />,
+        );
+        const copy = planCopyId('plat', 'bob');
+        await waitFor(() => expect(rfNode(container, copy)).not.toBeNull());
+        expect(container.querySelectorAll('.react-flow__node[data-id="bob"]')).toHaveLength(1);
+        expect(container.querySelector('[data-testid="also-in"]')).toBeNull();
+        expect(container.textContent).not.toMatch(/also in/i);
+        // each team is a frame headed by its name, drawn behind the badges
+        const frame = rfNode(container, 'pay')!;
+        expect(frame.querySelector('.dg-roster-frame-header')?.textContent).toContain('Payments');
+        expect(rfNode(container, 'plat')?.querySelector('.dg-roster-frame-header')?.textContent).toContain('Platform');
+        expect(frame.style.zIndex).toBe('-1');
+      });
+    }
+
+    it("the eye on either of a person's badges hides them, and both badges dim", async () => {
+      const { container } = render(<DiagramView model={hidingPlan()} plane="plan" notation="plan" />);
+      const copy = planCopyId('plat', 'bob');
+      await waitFor(() => expect(eyeOf(container, copy)).toBeTruthy());
+      fireEvent.click(eyeOf(container, copy));
+      await waitFor(() => expect(rfNode(container, 'zb')).toBeNull());
+      for (const id of ['bob', copy])
+        expect(rfNode(container, id)?.querySelector('.dg-actor-hidden'), id).not.toBeNull();
+      expect(rfNode(container, 'alice')?.querySelector('.dg-actor-hidden')).toBeNull();
+      fireEvent.click(eyeOf(container, 'bob'));
+      await waitFor(() => expect(rfNode(container, 'zb')).not.toBeNull());
+      expect(rfNode(container, copy)?.querySelector('.dg-actor-hidden')).toBeNull();
+    });
+
+    it('a hidden team dims its frame; its badges keep their own state', async () => {
+      const { container } = render(<DiagramView model={hidingPlan()} plane="plan" notation="plan" />);
+      await waitFor(() => expect(eyeOf(container, 'pay')).toBeTruthy());
+      fireEvent.click(eyeOf(container, 'pay'));
+      await waitFor(() => expect(rfNode(container, 'pay')?.querySelector('.dg-actor-hidden')).not.toBeNull());
+      expect(rfNode(container, 'alice')?.querySelector('.dg-actor-hidden')).toBeNull();
+    });
+
+    it('chromeless, the frames are still drawn, with no eye', async () => {
+      const { container } = render(<DiagramView model={hidingPlan()} plane="plan" notation="plan" chrome={false} />);
+      await waitFor(() => expect(rfNode(container, 'pay')?.querySelector('.dg-roster-frame')).not.toBeNull());
+      expect(container.querySelector('[data-testid="eye-chip"]')).toBeNull();
     });
 
     it('a hidden person, selected, lights nothing', async () => {

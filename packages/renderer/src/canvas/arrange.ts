@@ -76,7 +76,7 @@ export function distributeBoxes(boxes: readonly Box[], axis: 'x' | 'y'): Record<
 }
 
 /**
- * Drop every id whose ancestor is also in the set: moving the ancestor carries
+ * Drop every id whose ancestor is in the set too: moving the ancestor carries
  * the descendant, so arranging both would move it twice.
  */
 export function dropDescendants(ids: readonly string[], parentOf: (id: string) => string | undefined): string[] {

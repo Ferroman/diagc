@@ -137,3 +137,16 @@ describe('nodeFrameProps: size', () => {
     expect(Object.keys(frame)).toEqual(['draggable', 'className', 'expandParent', 'style', 'zIndex']);
   });
 });
+
+describe('nodeFrameProps: a plan roster frame', () => {
+  it('is sized to the frame and drawn behind the badges beside it, as an open container is', () => {
+    const team = { ...viewNode({ type: 'team' }), id: 'pay' };
+    const roster = [{ team: 'pay', members: ['ana'] }];
+    expect(nodeFrameProps(team, geo, undefined, ctx({ profile: owned, roster }))).toMatchObject({
+      style: size,
+      zIndex: -1,
+    });
+    // a team heading no frame keeps a card's sizing
+    expect(nodeFrameProps(team, geo, undefined, ctx({ profile: owned, roster: [] })).zIndex).toBeUndefined();
+  });
+});

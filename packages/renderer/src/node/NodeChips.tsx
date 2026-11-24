@@ -61,11 +61,6 @@ export function NodeChips({
           </span>
         );
       })}
-      {data.alsoIn !== undefined && data.alsoIn.length > 0 && (
-        <span className="dg-badge dg-also-in" data-testid="also-in" title={`Also in ${data.alsoIn.join(', ')}`}>
-          also in {data.alsoIn.join(', ')}
-        </span>
-      )}
       {data.actorEye !== undefined && <EyeChip modelId={modelId} label={data.label} eye={data.actorEye} />}
       {isContainer && !isCldGroup && data.onEnterNode !== undefined && (
         <button

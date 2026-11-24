@@ -52,10 +52,6 @@ export interface NotationLayoutInput {
   /** the plan's hidden actors (PlanViewOptions.hidden): their chips are not
    * drawn, so a title band is measured without them; absent, none */
   hidden?: ReadonlySet<string>;
-  /** the roster's "also in" notes, person id -> their other teams' names
-   * (ActorControls.alsoIn): a card that draws one is that much wider; absent,
-   * none is drawn (a still export) */
-  alsoIn?: ReadonlyMap<string, readonly string[]>;
 }
 
 export interface NodeGeometry {

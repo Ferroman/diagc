@@ -49,7 +49,7 @@ export interface FlowNodesInput {
   setLabelEdit: Dispatch<SetStateAction<LabelEdit | null>>;
   enterNode: (id: string) => void;
   noteNodes: Node[];
-  /** the plan's roster cards' eye and notes (useActorControls) */
+  /** the plan's roster cards' eye (useActorControls) */
   actors: NodeDataContext['actors'];
 }
 
@@ -76,6 +76,8 @@ function boxNodes(
   frameCtx: NodeFrameContext,
 ): Node[] {
   const out: Node[] = [];
+  // a roster frame is sized and stacked as the one its data says it is
+  const frames: NodeFrameContext = { ...frameCtx, roster: nodeDataCtx.roster };
   const walk = (n: ViewNode, parent?: string) => {
     const geo = geometry.get(n.id);
     if (geo === undefined) return;
@@ -85,13 +87,26 @@ function boxNodes(
         position: { x: geo.x, y: geo.y },
         data: buildNodeDataCached(n, nodeDataCtx),
         parentId: parent,
-        ...nodeFrameProps(n, geo, parent, frameCtx),
+        ...nodeFrameProps(n, geo, parent, frames),
       }),
     );
     n.children.forEach((c) => walk(c, n.id));
   };
   roots.forEach((r) => walk(r));
   return out;
+}
+
+/** A grouped plan's team tints, in px at the drawn day width: per view, as
+ * the copies they wash are (CompiledView.tints; none ungrouped). */
+function usePlanTints(
+  compiled: CompiledView,
+  model: DiagramViewProps['model'],
+  dayWidth: number,
+): NodeDataContext['tints'] {
+  return useMemo(
+    () => (compiled.tints === undefined ? undefined : planTintStripes(compiled, model, dayWidth)),
+    [compiled, model, dayWidth],
+  );
 }
 
 /** The nodes React Flow draws: each box's data and frame, the notes after them, and React Flow's copy. */
@@ -106,12 +121,7 @@ export function useFlowNodes(input: FlowNodesInput): FlowNodes {
   // callbacks placed in it are stable: a fresh arrow per memo run would rebuild
   // every node's data whenever an input the builder does not compare changed.
   const endLabelEdit = useCallback(() => setLabelEdit(null), [setLabelEdit]);
-  // A grouped plan's team tints, in px at the drawn day width: per view, as
-  // the copies they wash are (CompiledView.tints; none ungrouped).
-  const tints = useMemo(
-    () => (compiled.tints === undefined ? undefined : planTintStripes(compiled, props.model, dayWidth)),
-    [compiled, props.model, dayWidth],
-  );
+  const tints = usePlanTints(compiled, props.model, dayWidth);
   const nodeDataCtx = useMemo<NodeDataContext>(
     () => ({
       metaKeys: input.metaKeys,
@@ -148,6 +158,7 @@ export function useFlowNodes(input: FlowNodesInput): FlowNodes {
       tints,
       dayWidth,
       actors: input.actors,
+      roster: compiled.roster,
     }),
     [
       input.metaKeys,
@@ -184,6 +195,7 @@ export function useFlowNodes(input: FlowNodesInput): FlowNodes {
       tints,
       dayWidth,
       input.actors,
+      compiled.roster,
     ],
   );
 

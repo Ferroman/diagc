@@ -46,7 +46,7 @@ export interface NotationPanelProps {
 }
 
 /** A panel in the right dock. `edit` panels show only while editing; `both`
- * also in view mode, for a panel that only reads the model. */
+ * in view mode too, for a panel that only reads the model. */
 export interface DockEntry {
   modes: 'edit' | 'both';
   render: (ctx: NotationDockContext) => ReactNode;

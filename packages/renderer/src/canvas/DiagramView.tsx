@@ -193,9 +193,6 @@ function Inner(props: DiagramViewProps) {
   // are derived ahead of the geometry pipeline.
   const hiddenCounts = useMemo(() => countAnchored(compiled), [compiled]);
   const metaKeys = props.onNodeMetaKeys ?? DEFAULT_ON_NODE_META_KEYS;
-  // the hook stays unconditional; a still export carries no eye (chromeless).
-  // Ahead of the layout, which widens a roster card for its "also in" note.
-  const actors = useActorControls(profile, props.model, teams, chromeless);
   // The geometry pipeline (size hints → elk/notation layout → overlay-applied
   // and band-arranged geometry): see useViewLayout.
   const viewLayout = useViewLayout({
@@ -213,7 +210,6 @@ function Inner(props: DiagramViewProps) {
     drillRoot,
     dayWidth: stretches ? days.width : undefined,
     hidden: teams.hidden,
-    actors,
   });
   useCentreDayPan({ days, settledWidth: viewLayout.settledWidth, reactFlow, wrapperRef });
   // the width the boxes on screen are drawn at, once their layout has landed
@@ -266,6 +262,8 @@ function Inner(props: DiagramViewProps) {
     nameOf,
     typeRegistry,
   });
+  // the hook stays unconditional; a still export carries no eye (chromeless)
+  const actors = useActorControls(profile, teams, chromeless);
   const flow = useFlowNodes({
     props: { ...props, ...(onToggleExpand !== undefined ? { onToggleExpand } : {}) },
     editing,

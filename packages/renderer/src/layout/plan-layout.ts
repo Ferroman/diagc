@@ -2,11 +2,9 @@ import {
   LEAF_SIZE,
   atOf,
   dayOf,
-  isPlanActor,
   isPlanEvent,
   isPlanZone,
   PLAN_LANE_TYPE,
-  PLAN_UNASSIGNED,
   PLAN_UNASSIGNED_TYPE,
   PLAN_NOTATION,
   PLAN_ROLES,
@@ -30,7 +28,8 @@ import {
 import type { NodeChip } from '../notations';
 import { textWidth, wrapText } from './box-size';
 import type { LayoutResult, NodeGeometry, NotationLayoutInput } from './layout';
-import { placeLanes, rosterCardSize, rosterOrder, viewKids } from './plan-lanes';
+import { placeLanes, viewKids } from './plan-lanes';
+import { placeRoster, rosterOrder } from './plan-roster';
 
 /** The schedule's fixed geometry. `DAY` is the default scale (px per calendar
  * day) and the unit saved positions are kept in; the view can stretch time to
@@ -39,7 +38,9 @@ import { placeLanes, rosterCardSize, rosterOrder, viewKids } from './plan-lanes'
  * `ROSTER_GAP` is both the roster's horizontal card spacing and the vertical
  * gap between its last row and the header; `ROW_GAP` (shared with a zone's own
  * child rows) spaces the roster's rows from each other. `LANE_H` is a grouped
- * chart's lane header row (plan-lanes.ts). */
+ * chart's lane header row (plan-lanes.ts). A team's roster frame (plan-roster.ts)
+ * pads its badges by `FRAME_PAD` and heads them with a `FRAME_HEADER` row —
+ * the height of a bare card's title row (8px padding about a 16px icon). */
 const MONTH_H = 22;
 const WEEK_H = 22;
 const DAY_H = 30;
@@ -63,6 +64,8 @@ export const PLAN_LAYOUT = {
   HEADER_H: MONTH_H + WEEK_H + DAY_H,
   ROSTER_GAP: 24,
   LANE_H: 24,
+  FRAME_PAD: 10,
+  FRAME_HEADER: 32,
 } as const;
 
 /** What a zone's text is estimated with, read off styles.css: a zone with rows
@@ -89,10 +92,6 @@ export const ZONE_TEXT = {
   /** the room between a bar and a name drawn beside it (styles.css) */
   OUTSIDE_GAP: 6,
 } as const;
-
-/** cards per roster row when the plan has no dated range to measure a width
- * against (nothing to wrap by, so wrap by count instead) */
-const ROSTER_WRAP_COUNT = 6;
 
 // One derivation per (model, plane), shared with core's team view (planView),
 // which runs on every fold and edit: core owns the cache so both read one graph.
@@ -144,8 +143,6 @@ export interface PlanRun {
   kidsOf: (id: string) => PlanChildren;
   /** the role chips per zone, which share a zone's title line */
   chips: ReadonlyMap<string, NodeChip[]>;
-  /** the roster's "also in" notes, which widen their cards */
-  alsoIn: ReadonlyMap<string, readonly string[]> | undefined;
   geometry: Map<string, NodeGeometry>;
   fixed: Set<string>;
   lockedX: Set<string>;
@@ -192,7 +189,6 @@ function planRun(input: NotationLayoutInput): PlanRun {
     realOf: (id) => copies.get(id) ?? id,
     kidsOf: (id) => copyKids.get(id) ?? graph.children.get(id) ?? NO_KIDS,
     chips: planChips(model, plane, input.hidden),
-    alsoIn: input.alsoIn,
     geometry: new Map(),
     fixed: new Set(),
     lockedX: new Set(),
@@ -200,8 +196,8 @@ function planRun(input: NotationLayoutInput): PlanRun {
   };
 }
 
-// a copy is measured like its zone until the canvas has measured it itself
-const hint = (run: PlanRun, id: string): BoxSize =>
+// a copy is measured like its zone (or person) until the canvas has measured it itself
+export const hint = (run: PlanRun, id: string): BoxSize =>
   run.sizeHints?.get(id) ?? run.sizeHints?.get(run.realOf(id)) ?? LEAF_SIZE;
 
 /** short/long labels per role — the chip's `O`/`E`/`C` initial and the role
@@ -463,60 +459,6 @@ function placeRootEvents(run: PlanRun, roots: readonly string[]): void {
 }
 
 /**
- * The roster: actors (people or teams) with roles first, then every other
- * actor root; a strip above the header, not a picture, so neither axis is
- * the overlay's. Cards run left to right from the chart's first day (not
- * the origin, which can be months earlier) and wrap into a
- * further row when the next one would cross the plan's width (an actor's
- * own date range has no bearing here, so the width the CHART draws is the
- * only ruler there is; with nothing dated yet, wrap by count instead). Rows
- * then stack UPWARD from the header, so adding a row pushes the strip
- * further from the chart rather than pushing the chart down.
- */
-function placeRoster(run: PlanRun, roots: readonly string[], order: (ids: string[]) => string[]): void {
-  const { ROW_GAP, HEADER_H, ROSTER_GAP } = PLAN_LAYOUT;
-  const rootSet = new Set(roots);
-  const actors = [...run.graph.actors, ...roots.filter((id) => isPlanActor(nodeOf(run, id)))].filter(
-    (id, i, all) => rootSet.has(id) && all.indexOf(id) === i,
-  );
-  // the Unassigned card is no actor: it always closes the roster
-  const roster = [...order(actors), ...(rootSet.has(PLAN_UNASSIGNED) ? [PLAN_UNASSIGNED] : [])];
-  const rosterWidth = run.range !== undefined ? (run.range.end + 1 - run.range.start) * run.day : undefined;
-  const left = chartLeft(run);
-  const rosterRows: { id: string; size: BoxSize }[][] = [];
-  let rosterRow: { id: string; size: BoxSize }[] = [];
-  let rowRight = 0;
-  for (const id of roster) {
-    const size = rosterCardSize(run.byId.get(id), hint(run, id), run.alsoIn?.get(id));
-    const overflows =
-      rosterWidth !== undefined ? rowRight + size.width > rosterWidth : rosterRow.length >= ROSTER_WRAP_COUNT;
-    if (rosterRow.length > 0 && overflows) {
-      rosterRows.push(rosterRow);
-      rosterRow = [];
-      rowRight = 0;
-    }
-    rosterRow.push({ id, size });
-    rowRight += size.width + ROSTER_GAP;
-  }
-  if (rosterRow.length > 0) rosterRows.push(rosterRow);
-  // laid out from the last row up, so each earlier row's y falls out of the
-  // row already placed below it
-  let rowTop: number | undefined;
-  for (let i = rosterRows.length - 1; i >= 0; i--) {
-    const r = rosterRows[i]!;
-    const rowH = Math.max(...r.map((c) => c.size.height));
-    const rowY = rowTop === undefined ? -HEADER_H - ROSTER_GAP - rowH : rowTop - ROW_GAP - rowH;
-    let rx = left;
-    for (const c of r) {
-      run.geometry.set(c.id, { x: rx, y: rowY, ...c.size });
-      run.fixed.add(c.id);
-      rx += c.size.width + ROSTER_GAP;
-    }
-    rowTop = rowY;
-  }
-}
-
-/**
  * A zone opened on its own: its interior laid out exactly as inside the zone
  * (`layZone` — rows, free-form children at their saved spots, clamps and all),
  * then moved to where the zone starts, its title band left out. Every child of
@@ -613,7 +555,7 @@ export function planLayout(input: NotationLayoutInput): LayoutResult {
       : placeRootZones(run, own);
   if (!opened) placeRootEvents(run, own);
   placePeriods(run, own);
-  placeRoster(run, roots, rosterOrder(input.model, input.view.lanes !== undefined));
+  placeRoster(run, roots, rosterOrder(input.model, input.view.lanes !== undefined, input.view.roster));
   placeStubs(run, roots);
   placeStrays(run, roots, y);
   return {

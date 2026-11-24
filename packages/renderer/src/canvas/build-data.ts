@@ -25,6 +25,7 @@ import type {
   LayoutDirection,
   NotationId,
   PlanRole,
+  PlanRosterFrame,
   Point,
   Side,
   TextRun,
@@ -62,8 +63,6 @@ export interface ActorControls {
   hides: (n: DiagramNode) => boolean;
   hidden: ReadonlySet<string>;
   toggle: (id: string) => void;
-  /** person id -> the names of their teams after the first */
-  alsoIn: ReadonlyMap<string, string[]>;
 }
 
 /** per-node data inputs the view threads in; kept as one object so the cache
@@ -96,17 +95,21 @@ export interface NodeDataContext {
   /** hatched stretches per node id (profile.node.stripes): a plan bar's
    * interrupted days, drawn folded or open alike */
   stripes?: ReadonlyMap<string, NodeStripe[]>;
-  /** a grouped plan's lane copies: canvas id -> the model id it copies
-   * (CompiledView.copies). The notation's chips, sides and stripes are the
-   * model's, keyed by model id, so a copy reads them through this. */
+  /** a plan's copies: canvas id -> the model id it copies (CompiledView.copies)
+   * — a grouped plan's lane copies, and a person's badge in a second team.
+   * The notation's chips, sides and stripes are the model's, keyed by model
+   * id, so a copy reads them through this. */
   copies?: ReadonlyMap<string, string>;
   /** a grouped plan's team tints per copy id (plan-marks planTintStripes),
    * drawn under the copy's period stripes */
   tints?: ReadonlyMap<string, NodeStripe[]>;
   /** the plan's roster cards: which nodes carry an eye (profile.node.hidesActors),
-   * what is hidden, the toggle, and each person's other teams' names. One
-   * object per change, since the cache compares it by identity. */
+   * what is hidden, and the toggle. One object per change, since the cache
+   * compares it by identity. */
   actors?: ActorControls;
+  /** the plan's roster frames (CompiledView.roster): a team listed here is
+   * drawn as a frame around its members' badges, chromeless or not */
+  roster?: readonly PlanRosterFrame[];
   /** px per day (a plan's): an x-resized bar is never narrower than one day */
   dayWidth?: number;
   /** a container the notation never folds (useNotation's isAlwaysExpanded):
@@ -300,13 +303,14 @@ function labelEditsHere(id: string, real: string, ctx: NodeDataContext): boolean
   return id === target || (real === target && copiesOf(ctx.copies, real)[0] === id);
 }
 
-/** A roster card's eye, and the person's other teams. */
+/** A roster card's eye, and whether a team's card is the frame around its
+ * members. A person's badge in a second team is a copy (CompiledView.copies),
+ * so its eye reads and toggles the person: both badges show one state. */
 function bindActor(data: DiagramNodeData, n: ViewNode, ctx: NodeDataContext): void {
+  if (ctx.roster?.some((f) => f.team === n.id) === true) data.rosterFrame = true;
   const actors = ctx.actors;
   if (actors?.hides(n.node) !== true) return;
-  data.actorEye = { hidden: actors.hidden.has(n.id), toggle: actors.toggle };
-  const also = actors.alsoIn.get(n.id);
-  if (also !== undefined) data.alsoIn = also;
+  data.actorEye = { hidden: actors.hidden.has(modelIdOf(ctx.copies, n.id)), toggle: actors.toggle };
 }
 
 /** What the notation decided about this node's frame: the dashed edge a
@@ -561,6 +565,7 @@ const NODE_CTX_FIELDS = [
   'tints',
   'dayWidth',
   'actors',
+  'roster',
 ] as const;
 const _nodeCtxFields: SameKeys<keyof NodeDataContext, (typeof NODE_CTX_FIELDS)[number]> = true;
 void _nodeCtxFields;

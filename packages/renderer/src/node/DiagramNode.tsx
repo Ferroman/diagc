@@ -141,9 +141,9 @@ export interface DiagramNodeData {
    * hidden now, and the toggle, which reports the card's model id. View and
    * edit alike: hiding is viewing, not editing. */
   actorEye?: { hidden: boolean; toggle: (id: string) => void };
-  /** a person's other teams' names (their first team is where they are
-   * listed), drawn on their one card */
-  alsoIn?: string[];
+  /** a plan team with members here (CompiledView.roster): its box is the
+   * frame around their badges, its geometry the frame's, drawn behind them */
+  rosterFrame?: true;
   /** this node is the drop target under the pointer during a single-node
    * drag that could land on it (see EditingApi.onDropInto) — draws the
    * notation's drag-over outline. Like `selected`, but on `data`: useNodeDragging

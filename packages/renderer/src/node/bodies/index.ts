@@ -29,6 +29,7 @@ import { PlanEventBody } from './PlanEventBody';
 import { PlanLaneBody } from './PlanLaneBody';
 import { PlanPeriodBody } from './PlanPeriodBody';
 import { RegionBody } from './RegionBody';
+import { RosterFrameBody } from './RosterFrameBody';
 import { SilhouetteBody } from './SilhouetteBody';
 import { SM_GLYPH_TYPES, SmGlyphBody } from './SmGlyphBody';
 import { StateBody } from './StateBody';
@@ -56,6 +57,7 @@ export const NODE_BODIES: readonly BodyRule[] = [
   { match: (data) => data.typeId === PLAN_EVENT_TYPE && data.state === 'leaf', Body: PlanEventBody },
   { match: (data) => data.typeId === PLAN_PERIOD_TYPE, Body: PlanPeriodBody },
   { match: (data) => data.typeId === PLAN_LANE_TYPE, Body: PlanLaneBody },
+  { match: (data) => data.rosterFrame === true, Body: RosterFrameBody },
   { match: (data) => data.shape !== undefined && data.state === 'leaf', Body: SilhouetteBody },
   // A cornerBadge type's image is container chrome, not the node's body: its
   // leaf keeps the typed-box look (inline thumb) so a group placed before it
