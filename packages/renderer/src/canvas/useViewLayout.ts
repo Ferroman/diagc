@@ -28,6 +28,7 @@ import { overlayPositions } from './placement';
 import { withShownTableRows } from '../node/table-ports';
 import type { Registry, TypeStyle } from '../registry';
 import { PLAN_LAYOUT } from '../layout/plan-layout';
+import type { ActorControls } from './build-data';
 
 export interface ViewLayoutInput {
   model: DiagramModel;
@@ -49,6 +50,8 @@ export interface ViewLayoutInput {
   dayWidth?: number | undefined;
   /** the plan's hidden actors: the layout measures title bands with the chips drawn */
   hidden?: ReadonlySet<string>;
+  /** the roster's controls: their "also in" notes widen the cards (NotationLayoutInput.alsoIn) */
+  actors?: Pick<ActorControls, 'alsoIn'> | undefined;
 }
 
 export interface ViewLayout {
@@ -265,6 +268,7 @@ interface LayoutRunInput {
   drillRoot: string | undefined;
   dayWidth: number | undefined;
   hidden: ReadonlySet<string> | undefined;
+  alsoIn: ReadonlyMap<string, readonly string[]> | undefined;
 }
 
 type LayoutRun = Pick<
@@ -313,6 +317,7 @@ function useLayoutRun(run: LayoutRunInput): LayoutRun {
               ...(run.drillRoot !== undefined ? { root: run.drillRoot } : {}),
               ...(run.dayWidth !== undefined ? { dayWidth: run.dayWidth } : {}),
               ...(run.hidden !== undefined ? { hidden: run.hidden } : {}),
+              ...(run.alsoIn !== undefined ? { alsoIn: run.alsoIn } : {}),
             }),
           )
         : layoutView(
@@ -362,6 +367,7 @@ function useLayoutRun(run: LayoutRunInput): LayoutRun {
     run.drillRoot,
     run.dayWidth,
     run.hidden,
+    run.alsoIn,
   ]);
 
   return { geometry, geometryRef, routes, labelSpots, fixed, lockedX, viewShift, savedFrame, settledFor, settledWidth };
@@ -518,6 +524,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
       drillRoot: input.drillRoot,
       dayWidth: input.dayWidth,
       hidden: input.hidden,
+      alsoIn: input.actors?.alsoIn,
     });
 
   // Overlay-applied geometry: elk output with any layout-overlay positions for

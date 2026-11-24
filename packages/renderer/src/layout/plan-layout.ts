@@ -30,7 +30,7 @@ import {
 import type { NodeChip } from '../notations';
 import { textWidth, wrapText } from './box-size';
 import type { LayoutResult, NodeGeometry, NotationLayoutInput } from './layout';
-import { placeLanes, rosterOrder, viewKids } from './plan-lanes';
+import { placeLanes, rosterCardSize, rosterOrder, viewKids } from './plan-lanes';
 
 /** The schedule's fixed geometry. `DAY` is the default scale (px per calendar
  * day) and the unit saved positions are kept in; the view can stretch time to
@@ -144,6 +144,8 @@ export interface PlanRun {
   kidsOf: (id: string) => PlanChildren;
   /** the role chips per zone, which share a zone's title line */
   chips: ReadonlyMap<string, NodeChip[]>;
+  /** the roster's "also in" notes, which widen their cards */
+  alsoIn: ReadonlyMap<string, readonly string[]> | undefined;
   geometry: Map<string, NodeGeometry>;
   fixed: Set<string>;
   lockedX: Set<string>;
@@ -190,6 +192,7 @@ function planRun(input: NotationLayoutInput): PlanRun {
     realOf: (id) => copies.get(id) ?? id,
     kidsOf: (id) => copyKids.get(id) ?? graph.children.get(id) ?? NO_KIDS,
     chips: planChips(model, plane, input.hidden),
+    alsoIn: input.alsoIn,
     geometry: new Map(),
     fixed: new Set(),
     lockedX: new Set(),
@@ -484,7 +487,7 @@ function placeRoster(run: PlanRun, roots: readonly string[], order: (ids: string
   let rosterRow: { id: string; size: BoxSize }[] = [];
   let rowRight = 0;
   for (const id of roster) {
-    const size = hint(run, id);
+    const size = rosterCardSize(run.byId.get(id), hint(run, id), run.alsoIn?.get(id));
     const overflows =
       rosterWidth !== undefined ? rowRight + size.width > rosterWidth : rosterRow.length >= ROSTER_WRAP_COUNT;
     if (rosterRow.length > 0 && overflows) {

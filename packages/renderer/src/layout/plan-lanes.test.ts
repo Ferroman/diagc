@@ -11,6 +11,7 @@ import {
   type DiagramModel,
   type Point,
 } from '@diagc/core/internal';
+import { textWidth } from './box-size';
 import { PLAN_LAYOUT, planLayout, planX } from './plan-layout';
 
 const { DAY, BAR_H, TITLE_H, PAD, ROW_GAP, LANE_H } = PLAN_LAYOUT;
@@ -157,6 +158,29 @@ describe('the roster', () => {
     // Payments (model order first) and its members, bob under it though he is in
     // Platform too; Platform then has nobody of its own; carol, then Unassigned
     expect(order(roster(), true)).toEqual(['pay', 'alice', 'bob', 'plat', 'carol', PLAN_UNASSIGNED]);
+  });
+
+  it("a card carrying an 'also in' note is placed at its drawn width: no card overlaps the next", () => {
+    // the badge row draws the note beside the name and the card grows to fit
+    // it; placed at a bare card's width, it ran into the card after it
+    const m = roster();
+    const notes = new Map([['bob', ['Platform']]]);
+    for (const group of [true, false]) {
+      const pins = Object.fromEntries(m.nodes.map((n) => [n.id, 'expanded' as const]));
+      const v = planView(compileView(m, { plane: 'plan', pins }), m, 'plan', { grouped: group, hidden: new Set() });
+      const bare = planLayout({ view: v, model: m, plane: 'plan' }).geometry;
+      const r = planLayout({ view: v, model: m, plane: 'plan', alsoIn: notes }).geometry;
+      const note = textWidth('also in Platform', 10);
+      expect(r.get('bob')!.width).toBeGreaterThanOrEqual(bare.get('bob')!.width + note);
+      // a card with no note keeps its width
+      expect(r.get('alice')!.width).toBe(bare.get('alice')!.width);
+      const cards = ['pay', 'plat', 'alice', 'bob', 'carol', PLAN_UNASSIGNED].map((id) => r.get(id)!);
+      for (const a of cards)
+        for (const b of cards) {
+          if (a === b || a.y !== b.y) continue;
+          expect(a.x + a.width <= b.x || b.x + b.width <= a.x).toBe(true);
+        }
+    }
   });
 
   it('ungrouped, the roster order is unchanged', () => {

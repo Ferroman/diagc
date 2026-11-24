@@ -1,5 +1,7 @@
 import {
   LEAF_SIZE,
+  type BoxSize,
+  type DiagramNode,
   PLAN_TEAM_TYPE,
   teamsOf,
   isPlanEvent,
@@ -10,6 +12,7 @@ import {
   type PlanViewLane,
   type ViewNode,
 } from '@diagc/core/internal';
+import { estimateBoxSize, textWidth } from './box-size';
 import { PLAN_LAYOUT, byStart, chartLeft, layZone, placeRootZones, planX, startOf, type PlanRun } from './plan-layout';
 
 // A plan grouped into team lanes (core's planView): each top-level zone is a
@@ -114,4 +117,30 @@ export function rosterOrder(model: DiagramModel, grouped: boolean): (ids: string
       ...people.filter((p) => teamOf(p) === undefined || !teams.includes(teamOf(p)!)),
     ];
   };
+}
+
+// A roster card's badge row (styles.css .dg-badges, .dg-badge, .dg-eye): the
+// note is a 10px pill padded 6px a side, the eye a 12px glyph padded 2px, each
+// 4px from what is before it.
+const NOTE_PX = 10;
+const NOTE_PAD = 12;
+const EYE_W = 16;
+const BADGE_GAP = 4;
+
+/**
+ * A roster card's footprint: `size`, unless it draws an "also in" note. The
+ * note sits in the card's title row beside the name and the eye, and the card
+ * grows to fit it — placed at a bare card's width it would run into the card
+ * after it. Estimated as the title row the box draws (box-size.ts), so a long
+ * name widens it too.
+ */
+export function rosterCardSize(
+  node: DiagramNode | undefined,
+  size: BoxSize,
+  also: readonly string[] | undefined,
+): BoxSize {
+  if (node === undefined || also === undefined || also.length === 0) return size;
+  const card = estimateBoxSize({ name: node.name || node.id, hasIcon: true, shape: 'pill', subtitle: node.type ?? '' });
+  const note = textWidth(`also in ${also.join(', ')}`, NOTE_PX) + NOTE_PAD;
+  return { ...size, width: Math.max(size.width, Math.ceil(card.width + note + EYE_W + 2 * BADGE_GAP)) };
 }
