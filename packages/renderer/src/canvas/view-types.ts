@@ -233,6 +233,13 @@ export interface DiagramViewProps {
   notation?: NotationId;
   /** the host's date (YYYY-MM-DD) for a plan's today line; null = draw none (exports) */
   today?: string | null;
+  /** px per day on a time axis (a plan's): controlled when given — the host
+   * holds it and every change arrives through `onDayWidthChange`; absent, the
+   * view keeps its own, from `PLAN_LAYOUT.DAY`. View state, never saved. */
+  dayWidth?: number;
+  /** the day width changed: a day button, an opened zone stretching to fill the
+   * canvas (and leaving it), or another diagram resetting it */
+  onDayWidthChange?: (width: number) => void;
 }
 
 /** Edit-mode callbacks an editing host (apps/studio) wires to its command

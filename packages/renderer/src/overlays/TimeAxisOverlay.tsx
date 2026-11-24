@@ -25,6 +25,8 @@ export interface TimeAxisOverlayProps {
   /** the zone opened on its own (the drill root): the header shows its dates,
    * and the rules its events, not the whole plan's */
   root?: string;
+  /** px per day, as the view stretches time; absent, `PLAN_LAYOUT.DAY` */
+  dayWidth?: number;
 }
 
 const { MONTH_H, WEEK_H, DAY_H } = PLAN_LAYOUT;
@@ -74,9 +76,9 @@ function PeriodShades({
   holidays,
   rootPauses,
   origin,
+  dayWidth: DAY,
   height,
-}: ReturnType<typeof periodShades> & { origin: number; height: number }) {
-  const { DAY } = PLAN_LAYOUT;
+}: ReturnType<typeof periodShades> & { origin: number; dayWidth: number; height: number }) {
   return (
     <>
       {rootPauses.length > 0 && (
@@ -91,7 +93,7 @@ function PeriodShades({
         <rect
           key={s.start}
           className="dg-time-axis-period"
-          x={planX(s.start, origin)}
+          x={planX(s.start, origin, DAY)}
           y={-DAY_H}
           width={(s.end - s.start + 1) * DAY}
           height={height}
@@ -101,7 +103,7 @@ function PeriodShades({
         <rect
           key={s.id}
           className="dg-time-axis-period dg-time-axis-period-hatched"
-          x={planX(s.start, origin)}
+          x={planX(s.start, origin, DAY)}
           y={-DAY_H}
           width={(s.end - s.start + 1) * DAY}
           height={height}
@@ -119,7 +121,7 @@ function PeriodShades({
  * GitLanesOverlay) so the grid follows a drag; must be mounted inside
  * <ReactFlow>. Dates come from the cached plan graph, never from the DOM.
  */
-export function TimeAxisOverlay({ model, plane, today, root }: TimeAxisOverlayProps) {
+export function TimeAxisOverlay({ model, plane, today, root, dayWidth = PLAN_LAYOUT.DAY }: TimeAxisOverlayProps) {
   const nodes = useNodes();
   const rects = useMemo(() => absoluteRects(nodes), [nodes]);
   const g = planGraphCached(model, plane);
@@ -129,11 +131,12 @@ export function TimeAxisOverlay({ model, plane, today, root }: TimeAxisOverlayPr
     [g, model, root],
   );
   const axis = useMemo(
-    () => (range !== undefined && g.origin !== undefined ? timeAxis(range, g.origin) : undefined),
-    [range, g],
+    () => (range !== undefined && g.origin !== undefined ? timeAxis(range, g.origin, dayWidth) : undefined),
+    [range, g, dayWidth],
   );
   if (axis === undefined || g.origin === undefined || range === undefined) return null;
-  const { DAY, HEADER_H, PAD } = PLAN_LAYOUT;
+  const { HEADER_H, PAD } = PLAN_LAYOUT;
+  const DAY = dayWidth;
   const origin = g.origin;
   let bottom = 0;
   for (const r of rects.values()) bottom = Math.max(bottom, r.y + r.height);
@@ -147,7 +150,7 @@ export function TimeAxisOverlay({ model, plane, today, root }: TimeAxisOverlayPr
   // axis's own margins rather than a second copy of 7 and 8
   const todayX =
     todayDay !== undefined && todayDay >= range.start - MARGIN_BEFORE && todayDay < range.end + MARGIN_AFTER
-      ? planX(todayDay, origin) + DAY / 2
+      ? planX(todayDay, origin, DAY) + DAY / 2
       : undefined;
   const todayBand = todayX === undefined ? undefined : axis.days.find((d) => d.day === todayDay);
   return (
@@ -163,7 +166,13 @@ export function TimeAxisOverlay({ model, plane, today, root }: TimeAxisOverlayPr
         {axis.weekends.map((w) => (
           <rect key={w.x} className="dg-time-axis-weekend" x={w.x} y={-DAY_H} width={w.width} height={DAY_H + bottom} />
         ))}
-        <PeriodShades holidays={holidays} rootPauses={rootPauses} origin={origin} height={DAY_H + bottom} />
+        <PeriodShades
+          holidays={holidays}
+          rootPauses={rootPauses}
+          origin={origin}
+          dayWidth={DAY}
+          height={DAY_H + bottom}
+        />
         {axis.months.map((m) => (
           <g key={m.x}>
             <line className="dg-time-axis-tick" x1={m.x} y1={-HEADER_H} x2={m.x} y2={0} />
@@ -198,7 +207,7 @@ export function TimeAxisOverlay({ model, plane, today, root }: TimeAxisOverlayPr
         {rootEvents.map((id) => {
           const at = atOf(byId.get(id)!);
           if (at === undefined) return null;
-          const x = planX(at, origin) + DAY / 2;
+          const x = planX(at, origin, DAY) + DAY / 2;
           return <line key={id} className="dg-time-axis-event" x1={x} y1={0} x2={x} y2={bottom} />;
         })}
         {/* Today is its own day, filled: a "today" word in the week band sat

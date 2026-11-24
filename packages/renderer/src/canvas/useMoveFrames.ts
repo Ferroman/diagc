@@ -13,6 +13,8 @@ export interface MoveFrames {
   viewShiftRef: MutableRefObject<ViewLayout['viewShift']>;
   /** the layout's drill frames (LayoutResult.savedFrame), taken back off too */
   savedFrameRef: MutableRefObject<ViewLayout['savedFrame']>;
+  /** drawn px per saved px on x (a stretched plan; saved-frame.ts) */
+  scaleRef: MutableRefObject<number>;
 }
 
 const NO_VIEW_SHIFT: ViewLayout['viewShift'] = new Map();
@@ -27,6 +29,7 @@ export function useMoveFrames(
   compiled: CompiledView,
   layout: Pick<ViewLayout, 'arrangedGeometry' | 'containerShifts'> &
     Partial<Pick<ViewLayout, 'viewShift' | 'savedFrame'>>,
+  scaleRef: MutableRefObject<number> = { current: 1 },
 ): MoveFrames {
   const { arrangedGeometry, containerShifts, viewShift = NO_VIEW_SHIFT, savedFrame = NO_FRAMES } = layout;
   const arrangedRef = useRef(arrangedGeometry);
@@ -61,5 +64,5 @@ export function useMoveFrames(
   viewShiftRef.current = viewShift;
   const savedFrameRef = useRef(savedFrame);
   savedFrameRef.current = savedFrame;
-  return { arrangedRef, containerBasesRef, containerShiftsRef, viewShiftRef, savedFrameRef };
+  return { arrangedRef, containerBasesRef, containerShiftsRef, viewShiftRef, savedFrameRef, scaleRef };
 }

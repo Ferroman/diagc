@@ -86,6 +86,8 @@ export interface NodeDataContext {
   /** hatched stretches per node id (profile.node.stripes): a plan bar's
    * interrupted days, drawn folded or open alike */
   stripes?: ReadonlyMap<string, NodeStripe[]>;
+  /** px per day (a plan's): an x-resized bar is never narrower than one day */
+  dayWidth?: number;
   /** a container the notation never folds (useNotation's isAlwaysExpanded):
    * it gets no fold or enter chip, since the view would refuse either */
   isAlwaysExpanded?: (id: string) => boolean;
@@ -311,6 +313,7 @@ function bindNodeEdits(data: DiagramNodeData, n: ViewNode, ctx: NodeDataContext)
     if (ctx.resizable?.(n.node) === 'x') {
       data.resizeAxis = 'x';
       data.onResize = ctx.onResize;
+      if (ctx.dayWidth !== undefined) data.resizeMin = ctx.dayWidth;
     }
   }
 }
@@ -504,6 +507,7 @@ const NODE_CTX_FIELDS = [
   'isAlwaysExpanded',
   'labelSides',
   'stripes',
+  'dayWidth',
 ] as const;
 const _nodeCtxFields: SameKeys<keyof NodeDataContext, (typeof NODE_CTX_FIELDS)[number]> = true;
 void _nodeCtxFields;

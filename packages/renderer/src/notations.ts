@@ -139,11 +139,11 @@ export interface NotationProfile {
      * box whose width means something (a plan bar's is its dates) and is too
      * narrow for its name. Keyed by node id, one derivation per model like
      * chips; absent = the name sits inside, as on every other box. */
-    labelSides?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, LabelSide>;
+    labelSides?: (model: DiagramModel, plane: string | undefined, dayWidth: number) => ReadonlyMap<string, LabelSide>;
     /** stretches drawn hatched over a box (a plan bar's interrupted days),
      * keyed by node id, one derivation per model like chips; part of the box,
      * so they move and resize with it */
-    stripes?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, NodeStripe[]>;
+    stripes?: (model: DiagramModel, plane: string | undefined, dayWidth: number) => ReadonlyMap<string, NodeStripe[]>;
     /** a role chip opens a menu that changes or removes the role, in edit mode */
     roleChips?: boolean;
     /** types outlined in their own colour when the selection's neighbourhood
@@ -192,6 +192,9 @@ export interface NotationProfile {
   };
   /** what the notation draws above the diagram */
   canvasOverlay?: 'loop-labels' | 'git-lanes' | 'order-bands' | 'time-axis';
+  /** x is time, and the view may stretch it: day buttons by the zoom ones, and
+   * an opened zone widened to fill the canvas (DiagramViewProps.dayWidth) */
+  stretchesTime?: true;
 }
 
 const CLD: NotationProfile = {
@@ -479,6 +482,7 @@ const PLAN: NotationProfile = {
   // A period's `interrupts` is drawn as the stripe on the bar, never a line.
   edge: { hidden: (k) => isPlanRole(k) || k === PLAN_INTERRUPTS, endToStart: planArrow, zIndex: ABOVE_BOXES_Z },
   canvasOverlay: 'time-axis',
+  stretchesTime: true,
 };
 
 /** A UML state machine: states, pseudo-states and transitions. The type vocabulary

@@ -6,7 +6,7 @@ import type { NodeGeometry } from '../layout/layout';
 import { isNoteId } from '../notes/derive-note-nodes';
 import { overhangBounds, unionBounds } from './content-bounds';
 import { captureCanvas, exportFrame } from './export-image';
-import { toSaved } from './saved-frame';
+import { savedX, toSaved } from './saved-frame';
 import type { LayoutApi } from './view-types';
 
 // Zoom limits, shared by DiagramView's <ReactFlow> element and the
@@ -36,6 +36,9 @@ export interface LayoutApiInput {
   viewShiftRef: MutableRefObject<ReadonlyMap<string, number>>;
   /** the layout's drill frames (LayoutResult.savedFrame), taken back off a snapshot */
   savedFrameRef: MutableRefObject<ReadonlyMap<string, Point>>;
+  /** drawn px per saved px on x (a stretched plan's day width): every position
+   * and bound the host may save from comes out in saved units (saved-frame.ts) */
+  scaleRef?: MutableRefObject<number>;
   legendReserveRef: MutableRefObject<{ side: 'top' | 'right' | 'bottom' | 'left'; px: number } | null>;
 }
 
@@ -53,10 +56,18 @@ export function useLayoutApi(input: LayoutApiInput): void {
     legendReserveRef,
     viewShiftRef,
     savedFrameRef,
+    scaleRef,
   } = input;
   useEffect(() => {
     const ref = layoutApiRef;
     if (ref === undefined) return;
+    const frames = { savedFrameRef, viewShiftRef, ...(scaleRef !== undefined ? { scaleRef } : {}) };
+    const sx = (x: number): number => savedX(frames, x);
+    const drawnBounds = (id: string) => {
+      const n = reactFlow.getInternalNode(id);
+      if (n === undefined) return undefined;
+      return { ...n.internals.positionAbsolute, width: n.measured.width ?? 0, height: n.measured.height ?? 0 };
+    };
     ref.current = {
       // External stubs (compiled.externals) are placeholders for an off-frame
       // node while drilled — not real nodes in the model — so writing their
@@ -72,22 +83,23 @@ export function useLayoutApi(input: LayoutApiInput): void {
         Object.fromEntries(
           rfNodesRef.current
             .filter((n) => !(compiledRef.current.externals?.has(n.id) ?? false) && !isNoteId(n.id))
-            .map((n) => [n.id, toSaved({ savedFrameRef, viewShiftRef }, n.id, n.position)]),
+            .map((n) => [n.id, toSaved(frames, n.id, n.position)]),
         ),
       autoPositions: () =>
         geometryRef.current === null
           ? {}
-          : Object.fromEntries([...geometryRef.current].map(([id, g]) => [id, { x: g.x, y: g.y }])),
+          : Object.fromEntries([...geometryRef.current].map(([id, g]) => [id, { x: sx(g.x), y: g.y }])),
       viewportCenter: () => {
         const rect = wrapperRef.current?.getBoundingClientRect();
-        return rect === undefined
-          ? undefined
-          : reactFlow.screenToFlowPosition({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+        if (rect === undefined) return undefined;
+        const c = reactFlow.screenToFlowPosition({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+        return { x: sx(c.x), y: c.y };
       },
+      // saved units, for a host placing something against the box; the
+      // camera (focusNodes) frames the drawn box instead
       nodeBounds: (id) => {
-        const n = reactFlow.getInternalNode(id);
-        if (n === undefined) return undefined;
-        return { ...n.internals.positionAbsolute, width: n.measured.width ?? 0, height: n.measured.height ?? 0 };
+        const b = drawnBounds(id);
+        return b === undefined ? undefined : { ...b, x: sx(b.x), width: sx(b.width) };
       },
       contentBounds: () => {
         const nodes = reactFlow.getNodes();
@@ -120,7 +132,7 @@ export function useLayoutApi(input: LayoutApiInput): void {
         void reactFlow.fitView({ padding: pad });
       },
       focusNodes: (ids) => {
-        const boxes = ids.map((id) => ref.current?.nodeBounds(id));
+        const boxes = ids.map(drawnBounds);
         const rect = wrapperRef.current?.getBoundingClientRect();
         if (boxes.length === 0 || boxes.includes(undefined) || rect === undefined || rect.width <= 0) return false;
         const bounds = unionBounds(boxes);

@@ -64,7 +64,7 @@ describe('planMoves', () => {
     expect(commands(c)).toContainEqual({
       type: 'set-position',
       nodeId: 'q1',
-      x: planX(d('2026-01-05') + 7, origin),
+      x: planX(d('2026-01-05') + 7, origin, PLAN_LAYOUT.DAY),
       y: 0,
       plane: 'plan',
     });
@@ -73,7 +73,7 @@ describe('planMoves', () => {
     const c = planMoves(roadmap(), 'plan', { q1: { x: 0, y: 120 } }, { q1: { dx: 3, dy: 120 } });
     expect(dates(c)).toEqual([]);
     expect(commands(c)).toEqual([
-      { type: 'set-position', nodeId: 'q1', x: planX(d('2026-01-05'), origin), y: 120, plane: 'plan' },
+      { type: 'set-position', nodeId: 'q1', x: planX(d('2026-01-05'), origin, PLAN_LAYOUT.DAY), y: 120, plane: 'plan' },
     ]);
   });
   it('clamps a nested zone inside its parent and saves no position for it', () => {
@@ -177,7 +177,12 @@ describe('planMoves', () => {
     const m = roadmap();
     m.nodes.push({ id: 'fresh', name: 'Fresh', type: 'plan-zone', plane: 'plan' });
     const n = 10;
-    const c = planMoves(m, 'plan', { fresh: { x: planX(origin + n, origin), y: 200 } }, { fresh: { dx: 0, dy: 0 } });
+    const c = planMoves(
+      m,
+      'plan',
+      { fresh: { x: planX(origin + n, origin, PLAN_LAYOUT.DAY), y: 200 } },
+      { fresh: { dx: 0, dy: 0 } },
+    );
     expect(dates(c)).toEqual([
       {
         type: 'set-plan-dates',
@@ -188,7 +193,7 @@ describe('planMoves', () => {
     expect(commands(c)).toContainEqual({
       type: 'set-position',
       nodeId: 'fresh',
-      x: planX(origin + n, origin),
+      x: planX(origin + n, origin, PLAN_LAYOUT.DAY),
       y: 200,
       plane: 'plan',
     });
@@ -242,7 +247,9 @@ describe('planResize', () => {
       id: 'build',
       dates: { start: shift('2026-01-05', 21) },
     });
-    expect(planResize({ model: roadmap(), plane: 'plan' }, 'solo', planX(d('2026-04-03'), origin), 100)).toEqual({
+    expect(
+      planResize({ model: roadmap(), plane: 'plan' }, 'solo', planX(d('2026-04-03'), origin, PLAN_LAYOUT.DAY), 100),
+    ).toEqual({
       type: 'set-plan-dates',
       id: 'solo',
       dates: { start: '2026-04-03' },
@@ -267,9 +274,11 @@ describe('planResize', () => {
       dates: { start: '2026-01-05' },
     });
     // q1's left edge is held by design's start (Jan 5) and its right edge by build's end (Mar 27): both already at the clamp
-    expect(planResize({ model: roadmap(), plane: 'plan' }, 'q1', planX(d('2026-01-12'), origin), 100)).toBeUndefined();
     expect(
-      planResize({ model: roadmap(), plane: 'plan' }, 'q1', planX(d('2026-01-05'), origin), 10 * DAY),
+      planResize({ model: roadmap(), plane: 'plan' }, 'q1', planX(d('2026-01-12'), origin, PLAN_LAYOUT.DAY), 100),
+    ).toBeUndefined();
+    expect(
+      planResize({ model: roadmap(), plane: 'plan' }, 'q1', planX(d('2026-01-05'), origin, PLAN_LAYOUT.DAY), 10 * DAY),
     ).toBeUndefined();
     // build already ends at q1's end: stretching it further changes nothing
     expect(planResize({ model: roadmap(), plane: 'plan' }, 'build', 28 * DAY, 200 * DAY)).toBeUndefined();
@@ -377,7 +386,7 @@ describe('quick-adds', () => {
     const m = roadmap();
     expect(
       seedDates({ model: m, plane: 'plan', today: '2026-05-04' }, 'plan-zone', {
-        x: planX(d('2026-02-10'), origin) + 3,
+        x: planX(d('2026-02-10'), origin, PLAN_LAYOUT.DAY) + 3,
       }),
     ).toEqual({
       start: '2026-02-10',
@@ -385,7 +394,7 @@ describe('quick-adds', () => {
     });
     expect(
       seedDates({ model: m, plane: 'plan', today: '2026-05-04' }, 'plan-event', {
-        x: planX(d('2026-02-10'), origin) + DAY - 1,
+        x: planX(d('2026-02-10'), origin, PLAN_LAYOUT.DAY) + DAY - 1,
       }),
     ).toEqual({
       at: '2026-02-10',

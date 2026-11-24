@@ -30,58 +30,66 @@ describe('timeAxis', () => {
   const range = { start: d('2026-01-20'), end: d('2026-02-10') };
   it('leaves a month too narrow for its name unlabelled', () => {
     // 7 Dec – 14 Jan: the extent opens on Mon 30 Nov, one day of November
-    const a = timeAxis({ start: d('2026-12-07'), end: d('2027-01-14') }, origin);
+    const a = timeAxis({ start: d('2026-12-07'), end: d('2027-01-14') }, origin, DAY);
     expect(a.months[0]).toMatchObject({ width: DAY, label: '' });
     expect(a.months[1]!.label).toBe('Dec 2026');
     // three days hold the name: 5 Jan opens the extent on Mon 29 Dec
-    const b = timeAxis({ start: d('2026-01-05'), end: d('2026-01-30') }, origin);
+    const b = timeAxis({ start: d('2026-01-05'), end: d('2026-01-30') }, origin, DAY);
     expect(b.months[0]).toMatchObject({ width: 3 * DAY, label: 'Dec 2025' });
   });
 
   it('draws a week of margin either side, in plan x', () => {
-    const a = timeAxis(range, origin);
-    expect(a.x0).toBe(planX(d('2026-01-13'), origin));
-    expect(a.x1).toBe(planX(d('2026-02-18'), origin));
+    const a = timeAxis(range, origin, DAY);
+    expect(a.x0).toBe(planX(d('2026-01-13'), origin, DAY));
+    expect(a.x1).toBe(planX(d('2026-02-18'), origin, DAY));
   });
   it('bands every month the drawn range touches, clipped to the range, labelled with month and year', () => {
-    const a = timeAxis(range, origin);
+    const a = timeAxis(range, origin, DAY);
     expect(a.months.map((m) => m.label)).toEqual(['Jan 2026', 'Feb 2026']);
-    expect(a.months[0]).toMatchObject({ x: a.x0, width: planX(d('2026-02-01'), origin) - a.x0 });
+    expect(a.months[0]).toMatchObject({ x: a.x0, width: planX(d('2026-02-01'), origin, DAY) - a.x0 });
     expect(a.months[1]).toMatchObject({
-      x: planX(d('2026-02-01'), origin),
-      width: a.x1 - planX(d('2026-02-01'), origin),
+      x: planX(d('2026-02-01'), origin, DAY),
+      width: a.x1 - planX(d('2026-02-01'), origin, DAY),
     });
   });
   it('bands every day of the drawn extent with its date and weekday letter', () => {
-    const a = timeAxis(range, origin);
+    const a = timeAxis(range, origin, DAY);
     expect(a.days).toHaveLength(d('2026-02-18') - d('2026-01-13'));
     expect(a.days[0]).toEqual({ x: a.x0, width: DAY, day: d('2026-01-13'), date: '13', weekday: 'T' }); // a Tuesday
     expect(a.days.find((b) => b.day === d('2026-01-19'))).toMatchObject({ date: '19', weekday: 'M' });
   });
   it('numbers days across a year boundary', () => {
-    const a = timeAxis({ start: d('2026-12-28'), end: d('2027-01-05') }, origin);
+    const a = timeAxis({ start: d('2026-12-28'), end: d('2027-01-05') }, origin, DAY);
     const i = a.days.findIndex((b) => b.day === d('2027-01-01'));
     expect(a.days[i]).toMatchObject({ date: '1', weekday: 'F' });
     expect(a.days[i - 1]).toMatchObject({ date: '31', weekday: 'T' });
   });
   it('shades each weekend as one run', () => {
-    const a = timeAxis(range, origin);
-    expect(a.weekends[0]).toEqual({ x: planX(d('2026-01-17'), origin), width: 2 * DAY, label: '' }); // Sat 17, Sun 18
+    const a = timeAxis(range, origin, DAY);
+    expect(a.weekends[0]).toEqual({ x: planX(d('2026-01-17'), origin, DAY), width: 2 * DAY, label: '' }); // Sat 17, Sun 18
     expect(a.weekends.every((w) => w.width === 2 * DAY)).toBe(true); // extent Tue 13 Jan – Tue 17 Feb: no clipped run
     expect(a.weekends).toHaveLength(5);
   });
   it('clips a weekend run to the drawn extent', () => {
     // range starting Sun 25 Jan: the extent starts a week earlier, on Sun 18 Jan
-    const a = timeAxis({ start: d('2026-01-25'), end: d('2026-02-10') }, origin);
-    expect(a.x0).toBe(planX(d('2026-01-18'), origin));
+    const a = timeAxis({ start: d('2026-01-25'), end: d('2026-02-10') }, origin, DAY);
+    expect(a.x0).toBe(planX(d('2026-01-18'), origin, DAY));
     expect(a.weekends[0]).toEqual({ x: a.x0, width: DAY, label: '' });
   });
   it('bands weeks from each Monday, labelling only those at least three days wide', () => {
-    const a = timeAxis(range, origin);
+    const a = timeAxis(range, origin, DAY);
     // drawn from Tue 13 Jan: a 6-day stub week, then full weeks from Mon 19 Jan
     expect(a.weeks[0]).toMatchObject({ x: a.x0, width: 6 * DAY, label: 'W03' });
-    expect(a.weeks[1]).toMatchObject({ x: planX(d('2026-01-19'), origin), width: 7 * DAY, label: 'W04' });
+    expect(a.weeks[1]).toMatchObject({ x: planX(d('2026-01-19'), origin, DAY), width: 7 * DAY, label: 'W04' });
     const last = a.weeks[a.weeks.length - 1]!;
-    expect(last).toMatchObject({ x: planX(d('2026-02-16'), origin), width: 2 * DAY, label: '' }); // Mon 16 – Tue 17: too narrow
+    expect(last).toMatchObject({ x: planX(d('2026-02-16'), origin, DAY), width: 2 * DAY, label: '' }); // Mon 16 – Tue 17: too narrow
+  });
+
+  it('at 40 px per day each day band is 40 wide and a weekend 80', () => {
+    const a = timeAxis(range, origin, 2 * DAY);
+    expect(a.days.every((b) => b.width === 2 * DAY)).toBe(true);
+    expect(a.days[1]!.x - a.days[0]!.x).toBe(2 * DAY);
+    expect(a.weekends.filter((w) => w.width === 4 * DAY).length).toBeGreaterThan(0);
+    expect(a.x0).toBe(planX(range.start - 7, origin, 2 * DAY));
   });
 });

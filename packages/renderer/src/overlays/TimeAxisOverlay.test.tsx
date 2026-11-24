@@ -37,10 +37,14 @@ function plan() {
 function seed() {
   rfNodes.length = 0;
   rfNodes.push(
-    { id: 'z', position: { x: planX(dayOf('2026-01-20')!, origin), y: 0 }, measured: { width: 22 * DAY, height: 40 } },
+    {
+      id: 'z',
+      position: { x: planX(dayOf('2026-01-20')!, origin, DAY), y: 0 },
+      measured: { width: 22 * DAY, height: 40 },
+    },
     {
       id: 'e',
-      position: { x: planX(dayOf('2026-02-02')!, origin) + DAY / 2 - EVENT / 2, y: -(DAY_H + WEEK_H) - EVENT / 2 },
+      position: { x: planX(dayOf('2026-02-02')!, origin, DAY) + DAY / 2 - EVENT / 2, y: -(DAY_H + WEEK_H) - EVENT / 2 },
       measured: { width: EVENT, height: EVENT },
     },
   );
@@ -77,7 +81,7 @@ describe('TimeAxisOverlay', () => {
     expect(grid.length).toBeGreaterThan(3);
     expect(grid[0]!.getAttribute('y2')).toBe(String(bottom));
     const rule = container.querySelector('.dg-time-axis-event')!;
-    expect(rule.getAttribute('x1')).toBe(String(planX(dayOf('2026-02-02')!, origin) + DAY / 2));
+    expect(rule.getAttribute('x1')).toBe(String(planX(dayOf('2026-02-02')!, origin, DAY) + DAY / 2));
     expect(container.querySelector('.dg-time-axis-today')).toBeNull();
   });
   it('shades weekends from the day band down to the content bottom, under the grid', () => {
@@ -85,7 +89,7 @@ describe('TimeAxisOverlay', () => {
     const { container } = render(<TimeAxisOverlay model={plan()} plane="plan" />);
     const shades = [...container.querySelectorAll('.dg-time-axis-weekend')];
     expect(shades).toHaveLength(5); // Tue 13 Jan – Tue 17 Feb holds five weekends
-    expect(shades[0]!.getAttribute('x')).toBe(String(planX(dayOf('2026-01-17')!, origin)));
+    expect(shades[0]!.getAttribute('x')).toBe(String(planX(dayOf('2026-01-17')!, origin, DAY)));
     expect(shades[0]!.getAttribute('width')).toBe(String(2 * DAY));
     expect(shades[0]!.getAttribute('y')).toBe(String(-DAY_H));
     expect(shades[0]!.getAttribute('height')).toBe(String(DAY_H + bottom));
@@ -106,11 +110,11 @@ describe('TimeAxisOverlay', () => {
     seed();
     const inside = render(<TimeAxisOverlay model={plan()} plane="plan" today="2026-01-28" />);
     const cell = inside.container.querySelector('.dg-time-axis-today-day')!;
-    expect(cell.getAttribute('x')).toBe(String(planX(dayOf('2026-01-28')!, origin)));
+    expect(cell.getAttribute('x')).toBe(String(planX(dayOf('2026-01-28')!, origin, DAY)));
     expect(cell.getAttribute('width')).toBe(String(DAY));
     expect(cell.getAttribute('y')).toBe(String(-DAY_H));
     const line = inside.container.querySelector('.dg-time-axis-today')!;
-    expect(line.getAttribute('x1')).toBe(String(planX(dayOf('2026-01-28')!, origin) + DAY / 2));
+    expect(line.getAttribute('x1')).toBe(String(planX(dayOf('2026-01-28')!, origin, DAY) + DAY / 2));
     expect(line.getAttribute('y1')).toBe(String(-DAY_H));
     expect(inside.container.querySelector('.dg-time-axis-today-label')).toBeNull();
     inside.unmount();
@@ -161,7 +165,7 @@ describe('TimeAxisOverlay', () => {
     const firstDay = container.querySelector('.dg-time-axis-day')!;
     expect(firstDay.textContent).toBe(String(26 - MARGIN_BEFORE));
     const rules = [...container.querySelectorAll('.dg-time-axis-event')].map((l) => Number(l.getAttribute('x1')));
-    expect(rules).toEqual([planX(dayOf('2026-01-28')!, origin) + DAY / 2]); // r's own event, not the plan's
+    expect(rules).toEqual([planX(dayOf('2026-01-28')!, origin, DAY) + DAY / 2]); // r's own event, not the plan's
     expect(container.querySelector('.dg-time-axis-today')).toBeNull();
   });
 
@@ -176,7 +180,7 @@ describe('TimeAxisOverlay', () => {
     const shades = container.querySelectorAll('.dg-time-axis-period');
     expect(shades).toHaveLength(1);
     const shade = shades[0]!;
-    expect(shade.getAttribute('x')).toBe(String(planX(dayOf('2026-01-26')!, origin)));
+    expect(shade.getAttribute('x')).toBe(String(planX(dayOf('2026-01-26')!, origin, DAY)));
     expect(shade.getAttribute('width')).toBe(String(3 * DAY));
     expect(shade.getAttribute('y')).toBe(String(-DAY_H));
     expect(shade.getAttribute('height')).toBe(String(DAY_H + bottom));
@@ -200,12 +204,21 @@ describe('TimeAxisOverlay', () => {
     const hatches = container.querySelectorAll('.dg-time-axis-period.dg-time-axis-period-hatched');
     expect(hatches).toHaveLength(1);
     const h = hatches[0]!;
-    expect(h.getAttribute('x')).toBe(String(planX(dayOf('2026-02-01')!, origin)));
+    expect(h.getAttribute('x')).toBe(String(planX(dayOf('2026-02-01')!, origin, DAY)));
     expect(h.getAttribute('width')).toBe(String(10 * DAY)); // 1 – 10 Feb, z's last day
     expect(h.getAttribute('height')).toBe(String(DAY_H + bottom));
     // the whole plan's view hatches nothing across the chart: z's own bar carries it
     const whole = render(<TimeAxisOverlay model={m.toJSON()} plane="plan" />);
     expect(whole.container.querySelector('.dg-time-axis-period-hatched')).toBeNull();
+  });
+
+  it('draws the today line mid-day, and the days, at 40 px per day', () => {
+    seed();
+    const { container } = render(<TimeAxisOverlay model={plan()} plane="plan" today="2026-02-02" dayWidth={2 * DAY} />);
+    const line = container.querySelector('.dg-time-axis-today')!;
+    expect(Number(line.getAttribute('x1'))).toBe(planX(dayOf('2026-02-02')!, origin, 2 * DAY) + DAY);
+    const rule = container.querySelector('.dg-time-axis-event')!;
+    expect(Number(rule.getAttribute('x1'))).toBe(planX(dayOf('2026-02-02')!, origin, 2 * DAY) + DAY);
   });
 
   it('renders nothing for a plan with no dates', () => {

@@ -2744,6 +2744,122 @@ describe('plan notation', () => {
   });
 });
 
+describe('plan notation: stretching time', () => {
+  function plan(id = 'p') {
+    const m = model(id);
+    const p = m.plan();
+    p.zone('q', { name: 'Q1', start: '2026-01-05', end: '2026-01-30' });
+    p.zone('dep', { name: 'Dep', start: '2026-02-02', end: '2026-02-06' });
+    return m.toJSON();
+  }
+  const widthOf = (container: HTMLElement, id: string, px: number) =>
+    waitFor(() => {
+      const el = container.querySelector<HTMLElement>(`.react-flow__node[data-id="${id}"]`);
+      expect(el?.style.width).toBe(`${px}px`);
+    });
+
+  it('a plan offers Narrower and Wider days; Wider re-lays a zone at 30 px per day', async () => {
+    const { container } = render(<DiagramView model={plan()} plane="plan" notation="plan" />);
+    await widthOf(container, 'dep', 5 * 20);
+    expect(screen.getByRole('button', { name: 'Narrower days' })).toHaveProperty('disabled', true);
+    fireEvent.click(screen.getByRole('button', { name: 'Wider days' }));
+    await widthOf(container, 'dep', 5 * 30);
+    expect(screen.getByRole('button', { name: 'Narrower days' })).toHaveProperty('disabled', false);
+  });
+
+  it('a non-plan diagram and a chromeless plan offer no day control', () => {
+    const { unmount } = render(<DiagramView model={model('c').toJSON()} />);
+    expect(screen.queryByRole('button', { name: 'Wider days' })).toBeNull();
+    unmount();
+    render(<DiagramView model={plan()} plane="plan" notation="plan" chrome={false} />);
+    expect(screen.queryByRole('button', { name: 'Wider days' })).toBeNull();
+  });
+
+  it('controlled: the dayWidth prop drives the layout and a click reports the next step', async () => {
+    const onDayWidthChange = vi.fn();
+    const { container } = render(
+      <DiagramView model={plan()} plane="plan" notation="plan" dayWidth={40} onDayWidthChange={onDayWidthChange} />,
+    );
+    await widthOf(container, 'dep', 5 * 40);
+    fireEvent.click(screen.getByRole('button', { name: 'Wider days' }));
+    expect(onDayWidthChange).toHaveBeenLastCalledWith(60);
+    // the host owns it: nothing moves until the prop does
+    await widthOf(container, 'dep', 5 * 40);
+  });
+
+  it('at 80 px a day a saved loose box keeps its day: drawn four times out, and snapshotted back as saved', async () => {
+    // a stray (a box on the plan plane no zone holds) saved at x 1000 — what
+    // Freeze layout and Re-layout write must be that same 1000, or it moves by days
+    const m = plan();
+    m.nodes.push({ id: 'loose', name: 'Loose', type: 'service', plane: 'plan' });
+    const layout = { version: 1 as const, planes: { plan: { loose: { x: 1000, y: 700 } } } };
+    const apiRef: { current: LayoutApi | null } = { current: null };
+    const { container } = render(
+      <DiagramView model={m} plane="plan" notation="plan" layout={layout} dayWidth={80} layoutApiRef={apiRef} />,
+    );
+    await waitFor(() => {
+      const el = container.querySelector<HTMLElement>('.react-flow__node[data-id="loose"]');
+      expect(el?.style.transform).toContain('translate(4000px,700px)');
+    });
+    await waitFor(() => expect(apiRef.current?.snapshotPositions()['loose']).toEqual({ x: 1000, y: 700 }));
+  });
+
+  it('a view mounted inside a zone (a reload, a shared link) stretches it to the canvas', async () => {
+    // the wrapper has no width in the render the view mounts in: the stretch
+    // must wait for it rather than settle for 20 px a day
+    const width = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1000);
+    try {
+      const m = model('deep');
+      const z = m.plan().zone('z', { name: 'Z', start: '2026-01-01', end: '2026-01-20' }); // 20 days
+      z.zone('in', { name: 'In', start: '2026-01-02', end: '2026-01-05' });
+      const onDayWidthChange = vi.fn();
+      render(
+        <DiagramView
+          model={m.toJSON()}
+          plane="plan"
+          notation="plan"
+          enteredPath={['z']}
+          onDayWidthChange={onDayWidthChange}
+        />,
+      );
+      await waitFor(() => expect(onDayWidthChange).toHaveBeenCalledWith(45));
+    } finally {
+      width.mockRestore();
+    }
+  });
+
+  it('a diagram that arrives already inside a zone (the studio loading a link) stretches it too', async () => {
+    const width = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1000);
+    try {
+      const m = model('arrives');
+      const z = m.plan().zone('z', { name: 'Z', start: '2026-01-01', end: '2026-01-20' });
+      z.zone('in', { name: 'In', start: '2026-01-02', end: '2026-01-05' });
+      const onDayWidthChange = vi.fn();
+      const { rerender } = render(<DiagramView model={model('first').toJSON()} onDayWidthChange={onDayWidthChange} />);
+      rerender(
+        <DiagramView
+          model={m.toJSON()}
+          plane="plan"
+          notation="plan"
+          enteredPath={['z']}
+          onDayWidthChange={onDayWidthChange}
+        />,
+      );
+      await waitFor(() => expect(onDayWidthChange).toHaveBeenLastCalledWith(45));
+    } finally {
+      width.mockRestore();
+    }
+  });
+
+  it('opening another diagram resets the width to 20', async () => {
+    const { container, rerender } = render(<DiagramView model={plan('a')} plane="plan" notation="plan" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Wider days' }));
+    await widthOf(container, 'dep', 5 * 30);
+    rerender(<DiagramView model={plan('b')} plane="plan" notation="plan" />);
+    await widthOf(container, 'dep', 5 * 20);
+  });
+});
+
 describe('plan notation: selecting an actor lights up its zones, and a zone its actors', () => {
   // alice owns `owned` only; bob executes `other` only — no relation of any
   // kind joins the two zones, so the only thing that could connect them

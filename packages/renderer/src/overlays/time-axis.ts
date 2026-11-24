@@ -1,5 +1,5 @@
 import { isoOf, type PlanSpan } from '@diagc/core/internal';
-import { PLAN_LAYOUT, planX } from '../layout/plan-layout';
+import { planX } from '../layout/plan-layout';
 
 export interface AxisBand {
   x: number;
@@ -71,10 +71,10 @@ const firstOfNextMonth = (day: number): number => {
   return dayOfIso(m === 11 ? `${String(y + 1)}-01-01` : `${String(y)}-${String(m + 2).padStart(2, '0')}-01`);
 };
 
-export function timeAxis(range: PlanSpan, origin: number): TimeAxis {
+export function timeAxis(range: PlanSpan, origin: number, dayWidth: number): TimeAxis {
   const from = range.start - MARGIN_BEFORE;
   const to = range.end + MARGIN_AFTER; // exclusive
-  const x = (day: number): number => planX(day, origin);
+  const x = (day: number): number => planX(day, origin, dayWidth);
   const months: AxisBand[] = [];
   for (let d = from; d < to; d = firstOfNextMonth(d)) {
     const end = Math.min(firstOfNextMonth(d), to);
@@ -88,7 +88,7 @@ export function timeAxis(range: PlanSpan, origin: number): TimeAxis {
     const width = end - d;
     weeks.push({
       x: x(d),
-      width: width * PLAN_LAYOUT.DAY,
+      width: width * dayWidth,
       label: width >= MIN_LABELLED_WEEK ? `W${String(isoWeek(d)).padStart(2, '0')}` : '',
     });
     d = end;
@@ -99,7 +99,7 @@ export function timeAxis(range: PlanSpan, origin: number): TimeAxis {
     const wd = weekday(d);
     days.push({
       x: x(d),
-      width: PLAN_LAYOUT.DAY,
+      width: dayWidth,
       day: d,
       date: String(Number(isoOf(d).slice(8))),
       weekday: WEEKDAYS[wd]!,
@@ -107,8 +107,8 @@ export function timeAxis(range: PlanSpan, origin: number): TimeAxis {
     if (wd !== 0 && wd !== 6) continue;
     // a Sunday extends the Saturday run just before it, unless the extent starts on it
     const last = weekends[weekends.length - 1];
-    if (wd === 0 && last !== undefined && last.x + last.width === x(d)) last.width += PLAN_LAYOUT.DAY;
-    else weekends.push({ x: x(d), width: PLAN_LAYOUT.DAY, label: '' });
+    if (wd === 0 && last !== undefined && last.x + last.width === x(d)) last.width += dayWidth;
+    else weekends.push({ x: x(d), width: dayWidth, label: '' });
   }
   return { x0: x(from), x1: x(to), months, weeks, days, weekends };
 }

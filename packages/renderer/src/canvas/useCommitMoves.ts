@@ -4,7 +4,7 @@ import { isActivityBand, type Point } from '@diagc/core/internal';
 import { savedPositions, type Shift } from '../layout/fit-containers';
 import type { NodeGeometry } from '../layout/layout';
 import type { Positions } from './useNudge';
-import { toSaved } from './saved-frame';
+import { savedX, toSaved } from './saved-frame';
 import type { EditingApi } from './view-types';
 
 export interface CommitMovesInput {
@@ -20,6 +20,8 @@ export interface CommitMovesInput {
   viewShiftRef: MutableRefObject<ReadonlyMap<string, number>>;
   /** the layout's drill frames (LayoutResult.savedFrame): on screen, not saved */
   savedFrameRef: MutableRefObject<ReadonlyMap<string, Point>>;
+  /** drawn px per saved px on x (a stretched plan's day width; see saved-frame.ts) */
+  scaleRef?: MutableRefObject<number>;
   setViewPositions: Dispatch<SetStateAction<Record<string, Point>>>;
 }
 
@@ -45,6 +47,7 @@ export function useCommitMoves(input: CommitMovesInput): (onScreen: Positions) =
     arrangedRef,
     viewShiftRef,
     savedFrameRef,
+    scaleRef,
     setViewPositions,
   } = input;
   return useCallback(
@@ -66,11 +69,13 @@ export function useCommitMoves(input: CommitMovesInput): (onScreen: Positions) =
       const deltas = Object.fromEntries(
         Object.entries(drawn).map(([id, pos]) => {
           const g = arranged?.get(id);
-          return [id, g === undefined ? { dx: 0, dy: 0 } : { dx: pos.x - g.x, dy: pos.y - g.y }];
+          return [id, g === undefined ? { dx: 0, dy: 0 } : { dx: savedX({ scaleRef }, pos.x - g.x), dy: pos.y - g.y }];
         }),
       );
-      // what is saved: without the fold shift and the drill frame (saved-frame.ts)
-      const frames = { savedFrameRef, viewShiftRef };
+      // what is saved: without the fold shift and the drill frame, at 20 px a
+      // day (saved-frame.ts) — the displacement too, so a plan reads its days
+      // off it at the width it saves in
+      const frames = { savedFrameRef, viewShiftRef, ...(scaleRef !== undefined ? { scaleRef } : {}) };
       const positions = Object.fromEntries(Object.entries(drawn).map(([id, p]) => [id, toSaved(frames, id, p)]));
       if (editing) {
         if (edit?.onNodesMoved !== undefined) edit.onNodesMoved(positions, deltas);

@@ -53,6 +53,7 @@ function input({ arrangedGeometry, fixed, regionSeparators, ...over }: Flat = {}
       isAlwaysExpanded: () => false,
       labelSides: undefined,
       stripes: undefined,
+      dayWidth: 20,
     },
     icons,
     preset,

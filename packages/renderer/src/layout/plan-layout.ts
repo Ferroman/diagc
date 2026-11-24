@@ -27,7 +27,9 @@ import type { NodeChip } from '../notations';
 import { textWidth, wrapText } from './box-size';
 import type { LayoutResult, NodeGeometry, NotationLayoutInput } from './layout';
 
-/** The schedule's fixed geometry. `DAY` is the scale (px per calendar day);
+/** The schedule's fixed geometry. `DAY` is the default scale (px per calendar
+ * day) and the unit saved positions are kept in; the view can stretch time to
+ * any width from `DAY_MIN` to `DAY_MAX`, stepping through `DAY_STEPS`;
  * the rest are the strip, row and column sizes every expectation derives from.
  * `ROSTER_GAP` is both the roster's horizontal card spacing and the vertical
  * gap between its last row and the header; `ROW_GAP` (shared with a zone's own
@@ -38,6 +40,9 @@ const DAY_H = 30;
 
 export const PLAN_LAYOUT = {
   DAY: 20,
+  DAY_MIN: 20,
+  DAY_MAX: 80,
+  DAY_STEPS: [20, 30, 40, 60, 80],
   BAR_H: 40,
   TITLE_H: 40,
   PAD: 12,
@@ -101,19 +106,26 @@ export function planGraphCached(model: DiagramModel, plane: string | undefined):
 
 /** x of a day's left edge, relative to the origin day (1 January of the
  * earliest year): coordinates stay put while editing and jump only when the
- * plan grows into an earlier year. */
-export const planX = (day: number, origin: number): number => (day - origin) * PLAN_LAYOUT.DAY;
+ * plan grows into an earlier year. `dayWidth` is the view's px per day: no
+ * default, so no caller can draw at 20 while the view stretches. */
+export const planX = (day: number, origin: number, dayWidth: number): number => (day - origin) * dayWidth;
+
+/** A saved x (kept in `PLAN_LAYOUT.DAY` units, so a box keeps its day at any
+ * width) as drawn at `dayWidth`. */
+const scaledX = (x: number, dayWidth: number): number => (x * dayWidth) / PLAN_LAYOUT.DAY;
 
 /** x of the chart's first day: where the roster and the strays line up. The
  * origin is 1 January, so a plan opening in November would otherwise leave
  * them most of a year's canvas to the left of the bars. 0 with nothing dated. */
-const chartLeft = (run: PlanRun): number => (run.range !== undefined ? planX(run.range.start, run.origin) : 0);
+const chartLeft = (run: PlanRun): number => (run.range !== undefined ? planX(run.range.start, run.origin, run.day) : 0);
 
 /** One plan arrangement under way: what it reads, and the maps every step fills. */
 interface PlanRun {
   graph: PlanGraph;
   /** the origin day: 1 January of the earliest year */
   origin: number;
+  /** px per day, as the view draws it */
+  day: number;
   /** the dates drawn: the whole plan's, or those of the zone opened on its own */
   range: PlanSpan | undefined;
   /** a drilled view's stubs: stub id → the real node outside the opened zone */
@@ -138,7 +150,7 @@ interface PlanRun {
   viewShift: Map<string, number>;
 }
 
-function planRun({ view, model, plane, sizeHints, positions, root }: NotationLayoutInput): PlanRun {
+function planRun({ view, model, plane, sizeHints, positions, root, dayWidth }: NotationLayoutInput): PlanRun {
   const graph = planGraphCached(model, plane);
   const stubs = view.externals ?? new Map<string, string>();
   const shown = new Set<string>();
@@ -152,6 +164,7 @@ function planRun({ view, model, plane, sizeHints, positions, root }: NotationLay
   return {
     graph,
     origin: graph.origin ?? 0,
+    day: dayWidth ?? PLAN_LAYOUT.DAY,
     range: root === undefined ? graph.range : (planSubtreeRange(graph, model, root) ?? graph.range),
     stubs,
     root,
@@ -260,8 +273,8 @@ const byStart = (run: PlanRun, ids: readonly string[]): string[] =>
 
 /** lays out a zone's interior (children parent-relative) and returns its size */
 function layZone(run: PlanRun, id: string): BoxSize {
-  const { DAY, BAR_H, TITLE_H, PAD, ROW_GAP, EVENT } = PLAN_LAYOUT;
-  const { geometry, fixed } = run;
+  const { BAR_H, TITLE_H, PAD, ROW_GAP, EVENT } = PLAN_LAYOUT;
+  const { geometry, fixed, day: DAY } = run;
   const span = spanOf(nodeOf(run, id));
   const start = anchorOf(run, nodeOf(run, id));
   const width = span === undefined ? DAY : (span.end - span.start + 1) * DAY;
@@ -293,7 +306,7 @@ function layZone(run: PlanRun, id: string): BoxSize {
       continue;
     }
     const size = hint(run, c);
-    const cx = Math.min(Math.max(pos.x, 0), Math.max(0, width - size.width));
+    const cx = Math.min(Math.max(scaledX(pos.x, DAY), 0), Math.max(0, width - size.width));
     const cy = Math.max(pos.y, band);
     geometry.set(c, { x: cx, y: cy, ...size });
     fixed.add(c);
@@ -372,7 +385,7 @@ function placeRootZones(run: PlanRun, roots: readonly string[]): number {
   for (const id of rootZones) {
     const size = layZone(run, id);
     const gave = foldedAway(run, id, size.height);
-    run.geometry.set(id, { x: planX(startOf(run, id), run.origin), y, ...size });
+    run.geometry.set(id, { x: planX(startOf(run, id), run.origin, run.day), y, ...size });
     run.lockedX.add(id);
     const top = run.positions?.[id]?.y ?? y;
     rows.push({ id, y: top, openBottom: top + size.height + gave, away: gave });
@@ -390,13 +403,14 @@ function placeRootZones(run: PlanRun, roots: readonly string[]): number {
 /** A period is a bracket in the header over its days, on the line the root
  * events sit on: it is a stretch of the calendar, not a row of work. */
 function placePeriods(run: PlanRun, roots: readonly string[]): void {
-  const { DAY, EVENT, WEEK_H, DAY_H } = PLAN_LAYOUT;
+  const { EVENT, WEEK_H, DAY_H } = PLAN_LAYOUT;
+  const DAY = run.day;
   for (const id of roots) {
     if (!isPlanPeriod(nodeOf(run, id))) continue;
     const span = periodSpanOf(nodeOf(run, id));
     const start = span?.start ?? run.origin;
     run.geometry.set(id, {
-      x: planX(start, run.origin),
+      x: planX(start, run.origin, DAY),
       y: -(DAY_H + WEEK_H) - EVENT / 2,
       width: span === undefined ? DAY : (span.end - span.start + 1) * DAY,
       height: EVENT,
@@ -407,12 +421,13 @@ function placePeriods(run: PlanRun, roots: readonly string[]): void {
 
 /** A top-level event sits in the time-axis header, on its day. */
 function placeRootEvents(run: PlanRun, roots: readonly string[]): void {
-  const { DAY, EVENT, WEEK_H, DAY_H } = PLAN_LAYOUT;
+  const { EVENT, WEEK_H, DAY_H } = PLAN_LAYOUT;
+  const DAY = run.day;
   for (const id of roots) {
     if (!isPlanEvent(nodeOf(run, id))) continue;
     const at = atOf(nodeOf(run, id)) ?? run.origin;
     run.geometry.set(id, {
-      x: planX(at, run.origin) + DAY / 2 - EVENT / 2,
+      x: planX(at, run.origin, DAY) + DAY / 2 - EVENT / 2,
       // on the line between the month and week bands: in the day band it
       // would sit on the day numbers, and in the week band's middle the
       // diamond and its name cover the W## label of every week they cross
@@ -441,7 +456,7 @@ function placeRoster(run: PlanRun, roots: readonly string[]): void {
   const roster = [...run.graph.actors, ...roots.filter((id) => isPlanActor(nodeOf(run, id)))].filter(
     (id, i, all) => rootSet.has(id) && all.indexOf(id) === i,
   );
-  const rosterWidth = run.range !== undefined ? (run.range.end + 1 - run.range.start) * PLAN_LAYOUT.DAY : undefined;
+  const rosterWidth = run.range !== undefined ? (run.range.end + 1 - run.range.start) * run.day : undefined;
   const left = chartLeft(run);
   const rosterRows: { id: string; size: BoxSize }[][] = [];
   let rosterRow: { id: string; size: BoxSize }[] = [];
@@ -488,9 +503,12 @@ function placeRoster(run: PlanRun, roots: readonly string[]): void {
 function placeOpenedZone(run: PlanRun, root: string, roots: readonly string[]): number {
   const node = nodeOf(run, root);
   const span = spanOf(node);
-  const width = span === undefined ? PLAN_LAYOUT.DAY : (span.end - span.start + 1) * PLAN_LAYOUT.DAY;
+  const width = span === undefined ? run.day : (span.end - span.start + 1) * run.day;
   const size = layZone(run, root);
-  const frame = { x: planX(startOf(run, root), run.origin), y: -titleBand(node.name, run.chips.get(root), width) };
+  const frame = {
+    x: planX(startOf(run, root), run.origin, run.day),
+    y: -titleBand(node.name, run.chips.get(root), width),
+  };
   for (const id of roots) {
     const g = run.geometry.get(id);
     if (g === undefined || run.graph.parent.get(id) !== root) continue;
@@ -523,8 +541,8 @@ function placeStubs(run: PlanRun, roots: readonly string[]): void {
     const size = hint(run, id);
     const before = ends !== undefined && ends < range.start;
     const x = before
-      ? planX(range.start, run.origin) - ROSTER_GAP - size.width
-      : planX(range.end + 1, run.origin) + ROSTER_GAP;
+      ? planX(range.start, run.origin, run.day) - ROSTER_GAP - size.width
+      : planX(range.end + 1, run.origin, run.day) + ROSTER_GAP;
     run.geometry.set(id, { x, y: before ? left : right, ...size });
     run.fixed.add(id);
     if (before) left += size.height + ROW_GAP;
@@ -533,7 +551,9 @@ function placeStubs(run: PlanRun, roots: readonly string[]): void {
 }
 
 /** Strays (a shared node with no zone) park under the zones at `y`, from the
- * chart's first day, as git-graph's spare row. */
+ * chart's first day, as git-graph's spare row. One dropped somewhere is moved
+ * there by the overlay pass, which scales its saved x to the day width
+ * (useViewLayout's drawnAt), so it keeps its day. */
 function placeStrays(run: PlanRun, roots: readonly string[], y: number): void {
   let sx = chartLeft(run);
   for (const id of roots) {
