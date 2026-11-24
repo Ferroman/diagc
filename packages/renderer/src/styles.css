@@ -2339,6 +2339,11 @@ path.dg-loop-badge-circle {
 .dg-notation-plan .dg-node[data-type='plan-zone'][data-label-side='left'] .dg-node-row {
   right: calc(100% + 6px);
 }
+/* past the turn of the dependency arrow leaving the bar's end: 18px is
+   PLAN_LAYOUT.ARROW_OUT, then the usual 6px */
+.dg-notation-plan .dg-node[data-type='plan-zone'][data-label-side='right-past-arrow'] .dg-node-row {
+  left: calc(100% + 24px);
+}
 /* A zone with rows: a name too long for the bar wraps onto 14px lines and the
    chips take a line of their own, 4px below; the layout deepens the title band
    to match (titleBand in plan-layout.ts), so the first row starts below them

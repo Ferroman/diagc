@@ -54,7 +54,9 @@ export interface NodeChip {
 }
 
 /** the side of its box a name drawn outside the box hangs on */
-export type LabelSide = 'left' | 'right';
+/** where a name too long for its box is drawn: beside it, left or right, or
+ * on the right past where a dependency arrow leaving the box's end turns */
+export type LabelSide = 'left' | 'right' | 'right-past-arrow';
 
 /** A visual language: default look plus registry/chrome overrides for a plane's notation. */
 export interface NotationProfile {

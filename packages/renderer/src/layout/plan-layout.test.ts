@@ -353,6 +353,33 @@ describe('planLayout', () => {
     expect(sides.has('parent')).toBe(false); // fits its dates
   });
 
+  it('hangs the name of a bar an arrow leaves past where the arrow turns, so the line never crosses it', () => {
+    const m = model('leads');
+    const p = m.plan();
+    const gw = p.zone('gw', { name: 'API gateway upgrade', start: '2026-11-30', end: '2026-12-02' });
+    const stage = gw.zone('stage', { name: 'Staging and QA', start: '2026-11-30', end: '2026-11-30' });
+    gw.zone('quiet', { name: 'Nothing after', start: '2026-12-01', end: '2026-12-01' });
+    const db = p.zone('db', { name: 'Database', start: '2026-12-07', end: '2026-12-08' });
+    const eu = db.zone('eu', { name: 'EU go-live', start: '2026-12-07', end: '2026-12-07' });
+    m.relate(stage, eu, { kind: 'depends' });
+    const sides = planLabelSides(m.toJSON(), 'plan');
+    expect(sides.get('stage')).toBe('right-past-arrow');
+    // folded, gw stands in for stage at the arrow's start
+    expect(sides.get('gw')).toBe('right-past-arrow');
+    expect(sides.get('quiet')).toBe('right');
+    // the arrow enters db and eu from the left: their names stay where they were
+    expect(sides.get('db')).toBe('right');
+    expect(sides.get('eu')).toBe('right');
+  });
+
+  it('a role is no arrow: an owner leaves the name beside the bar', () => {
+    const m = model('roles');
+    const p = m.plan();
+    const z = p.zone('z', { name: 'Staging and QA', start: '2026-11-30', end: '2026-11-30' });
+    z.owner(p.person('ana', 'Ana'));
+    expect(planLabelSides(m.toJSON(), 'plan').get('z')).toBe('right');
+  });
+
   it('gives a zone with rows a side too, for when it is folded into a bar', () => {
     const m = model('folds');
     const p = m.plan();
