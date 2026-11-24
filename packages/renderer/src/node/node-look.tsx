@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactElement } from 'react';
 import { NodeResizeControl } from '@xyflow/react';
+import { PLAN_UNASSIGNED_TYPE } from '@diagc/core/internal';
 import { PLAN_LAYOUT } from '../layout/plan-layout';
 import type { LoopHighlight } from '../loops/loop-highlight';
 import type { NotationProfile } from '../notations';
@@ -166,8 +167,11 @@ export const dropTargetAttrs = (data: DiagramNodeData): { 'data-drop-target'?: t
 
 /** The type's subtitle under the name (C4's `[Software System]`, a type id
  * plus the technology). An explicit empty registry label (UML glyphs)
- * suppresses it entirely. */
+ * suppresses it entirely. So does a node the view draws for itself (the
+ * plan's Unassigned card): its type is the view's marker, no type of the
+ * model's, and the registry — the model's vocabulary — has no entry to say so. */
 export function TypeSubtitle({ data, style }: { data: DiagramNodeData; style: TypeStyle }): ReactElement | null {
-  const typeLabel = data.typeId !== undefined ? typeSubtitle(style.label ?? data.typeId, data.technology) : undefined;
+  const typeId = data.typeId === PLAN_UNASSIGNED_TYPE ? undefined : data.typeId;
+  const typeLabel = typeId !== undefined ? typeSubtitle(style.label ?? typeId, data.technology) : undefined;
   return typeLabel !== undefined && typeLabel !== '' ? <span className="dg-type">{typeLabel}</span> : null;
 }

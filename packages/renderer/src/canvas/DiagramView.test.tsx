@@ -2858,6 +2858,22 @@ describe('plan notation: stretching time', () => {
       expect(container.querySelectorAll(`.react-flow__node[data-id="${planCopyId('plat', 'co')}"]`)).toHaveLength(1);
     });
 
+    it('the Unassigned card names itself, with no type line', async () => {
+      const m = model('loose');
+      const p = m.plan();
+      p.team('pay', 'Payments');
+      p.zone('q', { name: 'Q1', start: '2026-01-05', end: '2026-01-30' });
+      const { container } = render(<DiagramView model={m.toJSON()} plane="plan" notation="plan" />);
+      await waitFor(() =>
+        expect(container.querySelector('.react-flow__node[data-id="__unassigned__"]')?.textContent).toContain(
+          'Unassigned',
+        ),
+      );
+      const card = container.querySelector('.react-flow__node[data-id="__unassigned__"]')!;
+      expect(card.textContent).not.toContain('plan-unassigned');
+      expect(card.querySelector('.dg-type')).toBeNull();
+    });
+
     it('turning it on draws a lane per team', async () => {
       const { container } = render(<DiagramView model={teamPlan()} plane="plan" notation="plan" />);
       expect(container.querySelector('.dg-plan-lane')).toBeNull();
