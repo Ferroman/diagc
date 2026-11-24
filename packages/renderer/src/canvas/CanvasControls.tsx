@@ -12,6 +12,8 @@ export interface CanvasControlsProps {
   onToggleTheme: DiagramViewProps['onToggleTheme'];
   /** a notation that stretches time: px per day now, and a step wider or narrower */
   days?: { width: number; step: (dir: 1 | -1) => void };
+  /** a notation that groups by team: whether it is on, and the switch */
+  teams?: { grouped: boolean; toggle: () => void };
 }
 
 /** The corner cluster: React Flow's zoom buttons, then a button per offered switch, then the host's theme switch. */
@@ -47,6 +49,17 @@ export function CanvasControls(props: CanvasControlsProps): ReactElement {
             ⇤⇥
           </ControlButton>
         </>
+      )}
+      {props.teams !== undefined && (
+        <ControlButton
+          className={`dg-teams-toggle${props.teams.grouped ? '' : ' dg-teams-toggle-off'}`}
+          title={props.teams.grouped ? 'Ungroup the plan' : 'Group the plan by team'}
+          aria-label="Group by team"
+          aria-pressed={props.teams.grouped}
+          onClick={props.teams.toggle}
+        >
+          ⛶
+        </ControlButton>
       )}
       {props.toggles
         .filter((t) => t.offered)

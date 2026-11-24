@@ -2804,6 +2804,36 @@ describe('plan notation: stretching time', () => {
     await waitFor(() => expect(apiRef.current?.snapshotPositions()['loose']).toEqual({ x: 1000, y: 700 }));
   });
 
+  it('a plan offers Group by team; other notations do not', () => {
+    const { unmount } = render(<DiagramView model={plan()} plane="plan" notation="plan" />);
+    expect(screen.getByRole('button', { name: 'Group by team' })).toBeTruthy();
+    unmount();
+    render(<DiagramView model={model('c').toJSON()} />);
+    expect(screen.queryByRole('button', { name: 'Group by team' })).toBeNull();
+  });
+
+  describe('teams', () => {
+    function teamPlan() {
+      const m = model('tp');
+      const p = m.plan();
+      const pay = p.team('pay', 'Payments');
+      p.zone('q', { name: 'Q1', start: '2026-01-05', end: '2026-01-30' }).executor(pay);
+      return m.toJSON();
+    }
+
+    it('turning it on draws a lane per team', async () => {
+      const { container } = render(<DiagramView model={teamPlan()} plane="plan" notation="plan" />);
+      expect(container.querySelector('.dg-plan-lane')).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: 'Group by team' }));
+      await waitFor(() => expect(container.querySelector('.dg-plan-lane-name')?.textContent).toBe('Payments'));
+    });
+
+    it('chromeless, there is no switch', () => {
+      render(<DiagramView model={teamPlan()} plane="plan" notation="plan" chrome={false} />);
+      expect(screen.queryByRole('button', { name: 'Group by team' })).toBeNull();
+    });
+  });
+
   it('a view mounted inside a zone (a reload, a shared link) stretches it to the canvas', async () => {
     // the wrapper has no width in the render the view mounts in: the stretch
     // must wait for it rather than settle for 20 px a day

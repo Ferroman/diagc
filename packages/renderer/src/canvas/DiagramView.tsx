@@ -43,6 +43,7 @@ import { useNodeResync } from './useNodeResync';
 import { useNoteNodes } from './useNoteNodes';
 import { useNoteSession } from './useNoteSession';
 import { useNotation } from './useNotation';
+import { teamParts, useTeamView } from './useTeamView';
 import { useNudgeAndArrange } from './useNudgeAndArrange';
 import { useRevealOnUnfold } from './useRevealOnUnfold';
 import { useRootFit } from './useRootFit';
@@ -76,9 +77,11 @@ function Inner(props: DiagramViewProps) {
   const preset = useMemo(() => stylePreset(props.styleId), [props.styleId]);
   const icons = useMemo(() => props.icons ?? createIconRegistry(), [props.icons]);
   const days = useDayWidth(props);
-  const notation = useNotation(props, days.width);
+  const teams = useTeamView(props);
+  const notation = useNotation(props, days.width, teams.hidden);
   const { profile, typeRegistry } = notation;
   const stretches = profile.stretchesTime === true;
+  const teamSwitch = teamParts(profile.groupsByTeam === true, teams);
   // A palette preset's colour for each node type, over the whole model (type-hues.ts)
   const hues = useMemo(() => typeHuesOf(preset, props.model, typeRegistry), [preset, props.model, typeRegistry]);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -163,6 +166,7 @@ function Inner(props: DiagramViewProps) {
     focus: nav.focus,
     drillRoot,
     visibleRef,
+    grouping: teamSwitch.grouping,
   });
   const legend = useLegendState({
     model: props.model,
@@ -201,6 +205,7 @@ function Inner(props: DiagramViewProps) {
     viewPositions: moves.viewPositions,
     drillRoot,
     dayWidth: stretches ? days.width : undefined,
+    hidden: teams.hidden,
   });
   useCentreDayPan({ days, settledWidth: viewLayout.settledWidth, reactFlow, wrapperRef });
   // the width the boxes on screen are drawn at, once their layout has landed
@@ -456,6 +461,7 @@ function Inner(props: DiagramViewProps) {
                 builtinKeys={props.builtinKeys}
                 colorMode={props.colorMode}
                 {...(stretches ? { days: { width: days.width, step: days.step } } : {})}
+                teams={teamSwitch.switch}
                 onToggleTheme={props.onToggleTheme}
               />
             )}

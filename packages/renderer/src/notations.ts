@@ -223,6 +223,9 @@ export interface NotationProfile {
   /** x is time, and the view may stretch it: day buttons by the zoom ones, and
    * an opened zone widened to fill the canvas (DiagramViewProps.dayWidth) */
   stretchesTime?: true;
+  /** the view may be drawn in team lanes: a Group by team switch by the zoom
+   * buttons, and the view state it holds (DiagramViewProps.grouped) */
+  groupsByTeam?: true;
 }
 
 const CLD: NotationProfile = {
@@ -519,6 +522,7 @@ const PLAN: NotationProfile = {
   },
   canvasOverlay: 'time-axis',
   stretchesTime: true,
+  groupsByTeam: true,
 };
 
 /** A UML state machine: states, pseudo-states and transitions. The type vocabulary

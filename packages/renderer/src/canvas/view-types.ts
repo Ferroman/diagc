@@ -240,6 +240,17 @@ export interface DiagramViewProps {
   /** the day width changed: a day button, an opened zone stretching to fill the
    * canvas (and leaving it), or another diagram resetting it */
   onDayWidthChange?: (width: number) => void;
+  /** a plan drawn in team lanes: controlled when given, as `dayWidth` is;
+   * absent, the view keeps its own (off). View state, never saved. */
+  grouped?: boolean;
+  /** the switch was pressed, or another diagram reset it */
+  onGroupedChange?: (grouped: boolean) => void;
+  /** the actors (team ids, person ids, PLAN_UNASSIGNED) hidden from a plan:
+   * controlled when given; absent, the view keeps its own (none). View state,
+   * never saved. */
+  hiddenActors?: readonly string[];
+  /** an actor was hidden or shown, or another diagram reset them */
+  onHiddenActorsChange?: (ids: readonly string[]) => void;
 }
 
 /** Edit-mode callbacks an editing host (apps/studio) wires to its command
