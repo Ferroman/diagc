@@ -103,6 +103,18 @@ export interface CompiledView {
    * zone (hiding closes the gaps hidden rows leave). Such a row moves by its
    * days only, and nothing saves its y. Absent: every row is where it is saved. */
   pinnedRows?: readonly string[];
+  /** Plan view only: the teams drawn as a frame around their members, in the
+   * teams' model order — grouped or not, chromeless or not, since membership
+   * is part of the plan and not a control. Absent: no team has a member here. */
+  roster?: readonly PlanRosterFrame[];
+}
+
+/** One team's frame in a plan view's roster. */
+export interface PlanRosterFrame {
+  /** the team's model id, which is also its canvas id */
+  team: string;
+  /** canvas ids: a person's real id (in their first team) or their copy id */
+  members: readonly string[];
 }
 
 /** One lane of a grouped plan view. */

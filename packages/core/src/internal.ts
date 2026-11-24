@@ -125,6 +125,7 @@ export type {
   CompiledView,
   LodState,
   NodeViewState,
+  PlanRosterFrame,
   PlanViewLane,
   ViewEdge,
   ViewNode,

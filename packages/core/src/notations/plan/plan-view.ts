@@ -1,6 +1,7 @@
 import type { DiagramModel } from '../../types';
 import { defined } from '../../util';
 import type { CompiledView, PlanViewLane, ViewEdge, ViewNode } from '../../view/types';
+import { planRoster } from './plan-roster';
 import { isPlanActor, isPlanEvent, isPlanZone, planGraphCached, type PlanGraph, type PlanSpan } from './plan';
 import { PLAN_UNASSIGNED, planTeams, planTint, type PlanLane, type PlanTintInput } from './teams';
 
@@ -67,7 +68,7 @@ export function planView(
     teams.hasUnassigned &&
     (opts.opened !== true || opts.hidden.has(PLAN_UNASSIGNED)) &&
     model.nodes.some(isPlanActor);
-  if (!group && opts.hidden.size === 0 && !card) return compiled;
+  if (!group && opts.hidden.size === 0 && !card) return planRoster(compiled, model);
   const visible = withoutHidden(compiled, teams.hiddenZones, hiddenBelow(graph, teams.hiddenZones));
   const drawn = group ? groupedView(visible, { model, graph, teams }) : visible;
   const pinnedRows = group
@@ -75,11 +76,15 @@ export function planView(
     : opts.hidden.size > 0 && opts.opened !== true
       ? drawn.roots.filter((r) => isPlanZone(r.node) && !graph.parent.has(r.id)).map((r) => r.id)
       : undefined;
-  return {
-    ...drawn,
-    ...(card ? { roots: [...drawn.roots, unassignedCard()] } : {}),
-    ...defined({ pinnedRows }),
-  };
+  // last: frames wrap whatever roots the rewrite above left, grouped or not
+  return planRoster(
+    {
+      ...drawn,
+      ...(card ? { roots: [...drawn.roots, unassignedCard()] } : {}),
+      ...defined({ pinnedRows }),
+    },
+    model,
+  );
 }
 
 /** The Unassigned roster card: a leaf root the roster places last. */

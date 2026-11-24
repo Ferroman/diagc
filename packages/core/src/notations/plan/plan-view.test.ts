@@ -56,10 +56,23 @@ const edgeId = (c: CompiledView, from: string, to: string): string =>
   c.edges.find((e) => e.from === from && e.to === to)!.id;
 
 describe('planView', () => {
-  it('ungrouped with nothing hidden, the view comes back untouched', () => {
+  it('ungrouped with nothing hidden, only the roster frames are added', () => {
     const json = fixture();
     const compiled = compile(json);
-    expect(view(compiled, json, { grouped: false, hidden: none })).toBe(compiled);
+    const v = view(compiled, json, { grouped: false, hidden: none });
+    expect(v.roster).toEqual([{ team: 'pay', members: ['alice'] }]);
+    expect(v.edges).toBe(compiled.edges);
+    expect(v.lanes).toBeUndefined();
+  });
+
+  it('a plan with people but no teams and nothing unassigned keeps the identity', () => {
+    const m = model('t');
+    const p = m.plan();
+    const bo = p.person('bo', 'Bo');
+    p.zone('z', { start: '2026-01-05', end: '2026-01-16' }).executor(bo);
+    const json = m.toJSON();
+    const compiled = compileView(json, { plane: 'plan', pins: {} });
+    expect(planView(compiled, json, 'plan', { grouped: false, hidden: new Set() })).toBe(compiled);
   });
 
   it('hiding drops the hidden rows and their arrows', () => {
@@ -76,7 +89,7 @@ describe('planView', () => {
     expect(folded.anchorOf.get('ui')).toBe('checkout');
     expect(view(folded, json, { grouped: false, hidden: new Set(['plat']) }).anchorOf.has('ui')).toBe(false);
     expect(v.edges.some((e) => e.to === 'ui')).toBe(false);
-    expect(v.copies).toBeUndefined();
+    expect(v.copies?.size ?? 0).toBe(0);
     expect(v.lanes).toBeUndefined();
   });
 
@@ -208,7 +221,7 @@ describe('planView', () => {
     expect(v.externals?.has('__ext__:search')).toBe(false);
     expect(ends(v.edges)).toEqual([]);
     expect(v.lanes).toBeUndefined();
-    expect(v.copies).toBeUndefined();
+    expect(v.copies?.size ?? 0).toBe(0);
   });
 
   it('pins the rows it stacks for itself: lane copies grouped, every top-level zone while anything is hidden', () => {
