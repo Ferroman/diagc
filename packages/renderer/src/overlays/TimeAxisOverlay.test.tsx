@@ -182,6 +182,32 @@ describe('TimeAxisOverlay', () => {
     expect(shade.getAttribute('height')).toBe(String(DAY_H + bottom));
   });
 
+  it('hatches, over the whole opened view, a period that interrupts the zone opened on its own', () => {
+    // the opened zone is not drawn in its own view, so its stripe has no bar to
+    // sit on: the pause is drawn across the chart instead, clipped to its days
+    seed();
+    const m = model('p');
+    const p = m.plan();
+    const z = p.zone('z', { start: '2026-01-20', end: '2026-02-10' });
+    z.zone('in', { start: '2026-01-22', end: '2026-02-05' });
+    p.period('freeze', { start: '2026-02-01', end: '2026-02-20', interrupts: [z] });
+    p.period('other', {
+      start: '2026-01-24',
+      end: '2026-01-25',
+      interrupts: [p.zone('y', { start: '2026-01-20', end: '2026-01-30' })],
+    });
+    const { container } = render(<TimeAxisOverlay model={m.toJSON()} plane="plan" root="z" />);
+    const hatches = container.querySelectorAll('.dg-time-axis-period.dg-time-axis-period-hatched');
+    expect(hatches).toHaveLength(1);
+    const h = hatches[0]!;
+    expect(h.getAttribute('x')).toBe(String(planX(dayOf('2026-02-01')!, origin)));
+    expect(h.getAttribute('width')).toBe(String(10 * DAY)); // 1 – 10 Feb, z's last day
+    expect(h.getAttribute('height')).toBe(String(DAY_H + bottom));
+    // the whole plan's view hatches nothing across the chart: z's own bar carries it
+    const whole = render(<TimeAxisOverlay model={m.toJSON()} plane="plan" />);
+    expect(whole.container.querySelector('.dg-time-axis-period-hatched')).toBeNull();
+  });
+
   it('renders nothing for a plan with no dates', () => {
     rfNodes.length = 0;
     const m = model('empty');

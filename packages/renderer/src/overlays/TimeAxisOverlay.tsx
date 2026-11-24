@@ -6,8 +6,11 @@ import {
   dayOf,
   isPlanEvent,
   periodSpanOf,
+  planPeriodsOf,
   planSubtreeRange,
+  spanOf,
   type DiagramModel,
+  type PlanSpan,
 } from '@diagc/core/internal';
 import { absoluteRects } from '../loops/loops';
 import { PLAN_LAYOUT, planGraphCached, planX } from '../layout/plan-layout';
@@ -29,6 +32,84 @@ const { MONTH_H, WEEK_H, DAY_H } = PLAN_LAYOUT;
  * the day of the month (both fit a 20px day stacked, neither fits beside) */
 const WEEKDAY_Y = -DAY_H + 10;
 const DATE_Y = -9;
+/** the hatch pattern's id; every plan header on a page defines the same one */
+const HATCH_ID = 'dg-time-axis-hatch';
+
+/** A period's days, shaded across the chart. One pausing no row in particular
+ * pauses everyone: shaded under every bar, like a weekend (`holidays`); one
+ * pausing rows is hatched on those bars instead. The zone opened on its own is
+ * not drawn in its own view, so a period pausing it has no bar to hatch: that
+ * pause spans the whole opened chart, hatched as the bar would be and clipped to
+ * the zone's days (`rootPauses`). */
+function periodShades(
+  model: DiagramModel,
+  periods: readonly string[],
+  range: PlanSpan,
+  root: string | undefined,
+): { holidays: PlanSpan[]; rootPauses: (PlanSpan & { id: string })[] } {
+  const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
+  const interrupting = new Set(model.relations.filter((r) => r.kind === PLAN_INTERRUPTS).map((r) => r.from));
+  const holidays = periods
+    .filter((id) => !interrupting.has(id))
+    .map((id) => periodSpanOf(byId.get(id)!))
+    .filter((s): s is PlanSpan => s !== undefined && s.start <= range.end && s.end >= range.start);
+  const rootSpan = root === undefined ? undefined : spanOf(byId.get(root)!);
+  const rootPauses =
+    root === undefined || rootSpan === undefined
+      ? []
+      : planPeriodsOf(model, root).flatMap((id) => {
+          const s = periodSpanOf(byId.get(id)!);
+          if (s === undefined) return [];
+          const start = Math.max(s.start, rootSpan.start);
+          const end = Math.min(s.end, rootSpan.end);
+          return start <= end ? [{ id, start, end }] : [];
+        });
+  return { holidays, rootPauses };
+}
+
+/** The periods' days down the chart (`periodShades`): a wash for everyone's
+ * holiday, the bar's hatch for the opened zone's own pause. Drawn under the
+ * grid, the rules and today. */
+function PeriodShades({
+  holidays,
+  rootPauses,
+  origin,
+  height,
+}: ReturnType<typeof periodShades> & { origin: number; height: number }) {
+  const { DAY } = PLAN_LAYOUT;
+  return (
+    <>
+      {rootPauses.length > 0 && (
+        <defs>
+          {/* the bar stripe's hatch (.dg-stripe): a 2px line every 7px, at 135° */}
+          <pattern id={HATCH_ID} width={7} height={7} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect className="dg-time-axis-hatch" x={0} y={0} width={2} height={7} />
+          </pattern>
+        </defs>
+      )}
+      {holidays.map((s) => (
+        <rect
+          key={s.start}
+          className="dg-time-axis-period"
+          x={planX(s.start, origin)}
+          y={-DAY_H}
+          width={(s.end - s.start + 1) * DAY}
+          height={height}
+        />
+      ))}
+      {rootPauses.map((s) => (
+        <rect
+          key={s.id}
+          className="dg-time-axis-period dg-time-axis-period-hatched"
+          x={planX(s.start, origin)}
+          y={-DAY_H}
+          width={(s.end - s.start + 1) * DAY}
+          height={height}
+        />
+      ))}
+    </>
+  );
+}
 
 /**
  * The calendar header of a plan: month, week and day bands above y = 0,
@@ -60,13 +141,7 @@ export function TimeAxisOverlay({ model, plane, today, root }: TimeAxisOverlayPr
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
   // the view's top-level events: the plan's, or the opened zone's own
   const rootEvents = g.events.filter((id) => g.parent.get(id) === root && isPlanEvent(byId.get(id)!));
-  // a period pausing no row in particular pauses the whole chart: shaded under
-  // every bar, like a weekend; one pausing rows is hatched on those bars instead
-  const interrupting = new Set(model.relations.filter((r) => r.kind === PLAN_INTERRUPTS).map((r) => r.from));
-  const holidays = g.periods
-    .filter((id) => !interrupting.has(id))
-    .map((id) => periodSpanOf(byId.get(id)!))
-    .filter((s) => s !== undefined && s.start <= range.end && s.end >= range.start);
+  const { holidays, rootPauses } = periodShades(model, g.periods, range, root);
   const todayDay = today === undefined || today === null ? undefined : dayOf(today);
   // "inside the drawn extent" is the axis's own question, so it reads the
   // axis's own margins rather than a second copy of 7 and 8
@@ -88,16 +163,7 @@ export function TimeAxisOverlay({ model, plane, today, root }: TimeAxisOverlayPr
         {axis.weekends.map((w) => (
           <rect key={w.x} className="dg-time-axis-weekend" x={w.x} y={-DAY_H} width={w.width} height={DAY_H + bottom} />
         ))}
-        {holidays.map((s) => (
-          <rect
-            key={s!.start}
-            className="dg-time-axis-period"
-            x={planX(s!.start, origin)}
-            y={-DAY_H}
-            width={(s!.end - s!.start + 1) * DAY}
-            height={DAY_H + bottom}
-          />
-        ))}
+        <PeriodShades holidays={holidays} rootPauses={rootPauses} origin={origin} height={DAY_H + bottom} />
         {axis.months.map((m) => (
           <g key={m.x}>
             <line className="dg-time-axis-tick" x1={m.x} y1={-HEADER_H} x2={m.x} y2={0} />
