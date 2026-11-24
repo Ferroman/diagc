@@ -11,9 +11,11 @@ A schedule: work as bars on a calendar, with milestones, nesting and the people 
 - `zone.zone(id, { … })` nests a zone inside another; the nested dates must lie inside the parent's.
 - `plan.event(id, { name, at })` and `zone.event(id, { name, at })` are single dates, drawn as diamonds. A nested event must fall inside its zone.
 - `plan.period(id, { name, start, end, interrupts?: [zone, …] })` is a stretch of days in which work pauses — a holiday freeze, an offsite — not work itself: it takes no row and moves no date. Each zone it interrupts (`interrupts` in the options, or `.interrupts(zone)` after) is hatched over those days; with none, it pauses everyone and the whole chart is shaded. Use it instead of a zone for a freeze. Top-level only.
-- `plan.person(id, name?, opts?)` and `plan.team(id, name?, opts?)` are the actors. `zone.owner(handle)`, `zone.executor(handle)` and `zone.checker(handle)` give one a role on a zone, and chain. A role shows as a chip on the bar, not as an arrow. `team.member(person, …)` lists the people on a team (a `member-of` relation, person to team); it is never drawn.
+- `plan.person(id, name?, opts?)` and `plan.team(id, name?, opts?)` are the actors. `zone.owner(handle)`, `zone.executor(handle)` and `zone.checker(handle)` give one a role on a zone, and chain. A role shows as a chip on the bar, not as an arrow. `team.member(person, …)` lists the people on a team (a `member-of` relation, person to team); it is not an arrow. The roster draws the team as a frame around its members' badges, a person in two teams has a badge in each, and a reader can press Group by team to see the chart in one lane per team.
+- A dependency is `m.relate(first, second, { kind: 'sync' })` between two zones or events. It is drawn as a finish-to-start arrow from the end of `first` to the start of `second`. Do not use `owns`, `executes`, `checks`, `interrupts` or `member-of` for it: those kinds are chips, hatches and frames, not arrows.
 - `zone.comment(text, opts?)` and `zone.link(label, url)` chain on a zone. `opts` takes `by`, `at` and `id`.
 - The bars are placed from their dates: x is always the date, and rows inside a zone are automatic. Do not place them.
+- A reader can fold zones, open one on its own, stretch the days and press Group by team. None of that is in the model or needs code.
 
 ## Node types
 

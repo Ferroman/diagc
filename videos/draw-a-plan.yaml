@@ -31,3 +31,7 @@ steps:
       - fill: {role: textbox, name: Edit text, within: {role: application}, value: Rollout}
       - press: Control+Enter
     pause: 1.5
+  - note: Group by team draws one lane per team
+    do:
+      - click: {role: button, name: Group by team}
+    pause: 1.5

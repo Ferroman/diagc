@@ -203,7 +203,7 @@ Three phases, one nested twice, a code freeze and a launch, three people with al
 
 [![Q4 roadmap](../../.diagrams/static/examples/plan/q4-roadmap.png)](https://ferroman.github.io/diagc/html/examples/plan/q4-roadmap.html)
 
-A C4 container view and a plan plane that schedules those containers inside zones — switch planes on the page.
+A quarter with two projects and their work streams, a dependency into Rollout, Thanksgiving pausing Checkout v2, and a team offsite that pauses everyone.
 [Live](https://ferroman.github.io/diagc/html/examples/plan/q4-roadmap.html) · [Source](../../.diagrams/src/examples/plan/q4-roadmap.diagram.ts) · [Guide](../how-to/draw-a-plan.md)
 
 #### Teams

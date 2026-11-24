@@ -32,7 +32,7 @@ Get something done.
 | [Draw a state machine](how-to/draw-a-state-machine.md) | States, transitions with trigger, guard and effect, regions, choices and history. |
 | [Draw a threat model](how-to/draw-a-threat-model.md) | A STRIDE data-flow diagram whose elements and flows carry their own threat register. |
 | [Draw a deployment diagram](how-to/draw-a-deployment-diagram.md) | Environments, regions, zones, networks and subnets, and what runs inside them. |
-| [Draw a plan](how-to/draw-a-plan.md) | A schedule: zones as date bars that nest, events, people as owner / executor / checker, and comments on any of them. |
+| [Draw a plan](how-to/draw-a-plan.md) | A schedule: zones as date bars that nest, events, periods that pause work, dependencies, people and teams as owner / executor / checker, a view by team, and comments. |
 | [Draw an ER diagram](how-to/draw-an-er-diagram.md) | Tables with typed columns and keys, and foreign keys pinned row to row. |
 | [Draw a causal-loop diagram](how-to/draw-a-causal-loop-diagram.md) | Variables, signed links and delays — the reinforcing and balancing loops are found for you. |
 | [Compose diagrams](how-to/compose-diagrams.md) | `include` and `key`: umbrella views over several diagrams. |

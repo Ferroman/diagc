@@ -1,0 +1,217 @@
+{
+  "version": 1,
+  "id": "fixtures/plan-teams-demo",
+  "name": "Plan by team",
+  "nodes": [
+    {
+      "id": "ana",
+      "name": "Ana Silva",
+      "type": "person",
+      "plane": "plan",
+      "color": "#2f6fed"
+    },
+    {
+      "id": "ben",
+      "name": "Ben Okafor",
+      "type": "person",
+      "plane": "plan",
+      "color": "#b08ad9"
+    },
+    {
+      "id": "cleo",
+      "name": "Cleo Brandt",
+      "type": "person",
+      "plane": "plan",
+      "color": "#3a9d5d"
+    },
+    {
+      "id": "dev",
+      "name": "Dev Rao",
+      "type": "person",
+      "plane": "plan",
+      "color": "#d9822b"
+    },
+    {
+      "id": "payments",
+      "name": "Payments",
+      "type": "team",
+      "plane": "plan",
+      "color": "#2f6fed"
+    },
+    {
+      "id": "platform",
+      "name": "Platform",
+      "type": "team",
+      "plane": "plan",
+      "color": "#3a9d5d"
+    },
+    {
+      "id": "mobile",
+      "name": "Mobile",
+      "type": "team",
+      "plane": "plan",
+      "color": "#b08ad9"
+    },
+    {
+      "id": "checkout",
+      "name": "Checkout v2",
+      "type": "plan-zone",
+      "plane": "plan",
+      "metadata": {
+        "start": "2026-01-05",
+        "end": "2026-03-13"
+      },
+      "color": "#607d8b"
+    },
+    {
+      "id": "cards",
+      "name": "Card payments",
+      "type": "plan-zone",
+      "plane": "plan",
+      "metadata": {
+        "start": "2026-01-05",
+        "end": "2026-02-13"
+      }
+    },
+    {
+      "id": "gateway",
+      "name": "Gateway migration",
+      "type": "plan-zone",
+      "plane": "plan",
+      "metadata": {
+        "start": "2026-01-19",
+        "end": "2026-03-13"
+      }
+    },
+    {
+      "id": "go-live",
+      "name": "Go live",
+      "type": "plan-event",
+      "plane": "plan",
+      "metadata": {
+        "at": "2026-03-13"
+      }
+    },
+    {
+      "id": "app",
+      "name": "App redesign",
+      "type": "plan-zone",
+      "plane": "plan",
+      "metadata": {
+        "start": "2026-01-12",
+        "end": "2026-02-27"
+      },
+      "color": "#b08ad9"
+    },
+    {
+      "id": "audit",
+      "name": "Security audit",
+      "type": "plan-zone",
+      "plane": "plan",
+      "metadata": {
+        "start": "2026-02-16",
+        "end": "2026-03-06"
+      },
+      "color": "#d9822b"
+    }
+  ],
+  "containment": [
+    {
+      "parent": "checkout",
+      "child": "cards",
+      "plane": "plan"
+    },
+    {
+      "parent": "checkout",
+      "child": "gateway",
+      "plane": "plan"
+    },
+    {
+      "parent": "checkout",
+      "child": "go-live",
+      "plane": "plan"
+    }
+  ],
+  "relations": [
+    {
+      "id": "ana->payments#0",
+      "from": "ana",
+      "to": "payments",
+      "kind": "member-of"
+    },
+    {
+      "id": "ben->payments#0",
+      "from": "ben",
+      "to": "payments",
+      "kind": "member-of"
+    },
+    {
+      "id": "ben->platform#0",
+      "from": "ben",
+      "to": "platform",
+      "kind": "member-of"
+    },
+    {
+      "id": "cleo->platform#0",
+      "from": "cleo",
+      "to": "platform",
+      "kind": "member-of"
+    },
+    {
+      "id": "dev->mobile#0",
+      "from": "dev",
+      "to": "mobile",
+      "kind": "member-of"
+    },
+    {
+      "id": "ana->checkout#0",
+      "from": "ana",
+      "to": "checkout",
+      "kind": "owns"
+    },
+    {
+      "id": "payments->cards#0",
+      "from": "payments",
+      "to": "cards",
+      "kind": "executes"
+    },
+    {
+      "id": "cleo->cards#0",
+      "from": "cleo",
+      "to": "cards",
+      "kind": "checks"
+    },
+    {
+      "id": "platform->gateway#0",
+      "from": "platform",
+      "to": "gateway",
+      "kind": "executes"
+    },
+    {
+      "id": "dev->app#0",
+      "from": "dev",
+      "to": "app",
+      "kind": "owns"
+    },
+    {
+      "id": "mobile->app#0",
+      "from": "mobile",
+      "to": "app",
+      "kind": "executes"
+    },
+    {
+      "id": "cleo->audit#0",
+      "from": "cleo",
+      "to": "audit",
+      "kind": "owns"
+    }
+  ],
+  "layers": [],
+  "planes": [
+    {
+      "id": "plan",
+      "name": "Plan",
+      "notation": "plan"
+    }
+  ]
+}
