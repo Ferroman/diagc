@@ -250,4 +250,17 @@ describe('useDeepLink', () => {
     expect(dl!.hidden).toEqual(['t1', '__unassigned__']);
     expect(window.location.hash).toBe('#/two?group=1&hide=t1,__unassigned__');
   });
+
+  // The writer's first run sees the raw, unclamped path: a view-only rewrite
+  // (non-canonical suffix order) must not settle the stale-link flag early, or
+  // the prune that follows would push a history entry Back then loops on.
+  it('prunes a stale path replace-style even when the view part needed rewriting', () => {
+    window.location.hash = '#/sketch/sys/gone?hide=a&group=1';
+    const before = window.history.length;
+    render(<Harness names={NAMES} booted />);
+    expect(window.location.hash).toBe('#/sketch/sys/gone?group=1&hide=a');
+    act(() => screen.getByText('report-sys').click());
+    expect(window.location.hash).toBe('#/sketch/sys?group=1&hide=a');
+    expect(window.history.length).toBe(before);
+  });
 });

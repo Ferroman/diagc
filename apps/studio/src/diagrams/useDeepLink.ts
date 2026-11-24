@@ -143,13 +143,17 @@ export function useDeepLink({ names, booted, leaveEditRef, resetViewRef }: UseDe
     }
     const cur = parseHash(getHost().urlState.get());
     const applied = appliedUrlRef.current;
+    // Only the view differs (an eye toggle, or a link whose view part is not
+    // canonical): Back walks drill steps, not those.
+    const viewOnly = cur !== null && cur.diagram === selected && contentsEqual(cur.path, enteredPath);
     const correction =
       cur === null ||
       !names.includes(cur.diagram) ||
       (applied !== null && applied.diagram === selected && isStrictPrefix(enteredPath, applied.path)) ||
-      // Only the view differs (an eye toggle): Back walks drill steps, not those.
-      (cur.diagram === selected && contentsEqual(cur.path, enteredPath));
-    appliedUrlRef.current = null;
+      viewOnly;
+    // A view-only write says nothing about the drill path, so it must not
+    // settle the applied URL: handleEnteredPathChange stays the sole authority.
+    if (!viewOnly) appliedUrlRef.current = null;
     getHost().urlState.set(target, correction); // history push: one entry per navigation step
   }, [booted, selected, enteredPath, names, grouped, hidden]);
 
