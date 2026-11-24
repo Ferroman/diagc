@@ -120,7 +120,16 @@ export { attachesDirectly, soleRelation } from './view/edges';
 export { relationLayer } from './view/layers';
 export { scopeToRoot, type ScopedModel } from './view/scope';
 export { LEAF_SIZE } from './view/size';
-export type { BoxSize, CompiledView, LodState, NodeViewState, ViewEdge, ViewNode, ViewportState } from './view/types';
+export type {
+  BoxSize,
+  CompiledView,
+  LodState,
+  NodeViewState,
+  PlanViewLane,
+  ViewEdge,
+  ViewNode,
+  ViewportState,
+} from './view/types';
 export type { Point, Size } from './geometry';
 export {
   applyCommand,
@@ -250,4 +259,13 @@ export {
   type PlanGraph,
   type PlanChildren,
 } from './notations/plan/plan';
-export { PLAN_UNASSIGNED, teamsOf, planTeams, planTint, type PlanLane, type PlanTeams } from './notations/plan/teams';
+export {
+  PLAN_UNASSIGNED,
+  teamsOf,
+  planTeams,
+  planTint,
+  type PlanLane,
+  type PlanTeams,
+  type PlanTintInput,
+} from './notations/plan/teams';
+export { PLAN_LANE_TYPE, planCopyId, planView, type PlanViewOptions } from './notations/plan/plan-view';

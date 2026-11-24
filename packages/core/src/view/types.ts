@@ -1,3 +1,5 @@
+import type { PlanSpan } from '../notations/plan/plan';
+import type { PlanLane } from '../notations/plan/teams';
 import type { Column, DiagramNode, DiagramRelation, EdgeLabel, Polarity, RelationStyle } from '../types';
 
 export type NodeViewState = 'leaf' | 'expanded' | 'collapsed';
@@ -83,4 +85,25 @@ export interface CompiledView {
   anchorOf: ReadonlyMap<string, string>;
   /** drill view only: stub node id -> the real off-frame node it represents. */
   externals?: Map<string, string>;
+  /** Grouped plan view only (`planView`): canvas id -> model id for every lane
+   * copy — zones, the events and free-form children inside them, and the
+   * per-lane arrows (mapped to the arrow they copy). An id absent here is its
+   * own model id. Look ids up here; never parse a copy id. */
+  copies?: ReadonlyMap<string, string>;
+  /** Grouped plan view only: the lanes in order — the header node's id, the
+   * lane, and its top-level zone copies in their ungrouped order. */
+  lanes?: readonly PlanViewLane[];
+  /** Grouped plan view only: zone copy id -> the days tinted in its lane. */
+  tints?: ReadonlyMap<string, readonly PlanSpan[]>;
+  /** Grouped plan view only: top-level events, the band above the lanes. */
+  topEvents?: readonly string[];
+}
+
+/** One lane of a grouped plan view. */
+export interface PlanViewLane {
+  /** the lane header's ViewNode id */
+  id: string;
+  lane: PlanLane;
+  /** the lane's top-level zone copy ids, in order */
+  zones: readonly string[];
 }

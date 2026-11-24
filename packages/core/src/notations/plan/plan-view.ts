@@ -1,0 +1,179 @@
+import type { DiagramModel } from '../../types';
+import { defined } from '../../util';
+import type { CompiledView, PlanViewLane, ViewEdge, ViewNode } from '../../view/types';
+import { isPlanEvent, isPlanZone, planGraph, type PlanSpan } from './plan';
+import { planTeams, planTint, type PlanLane, type PlanTintInput } from './teams';
+
+/** A lane header's synthetic node type. Not a plan type a model ever holds:
+ * the header exists only in a grouped view, like a drill view's stubs. */
+export const PLAN_LANE_TYPE = 'plan-lane' as const;
+
+/** Reserved prefix of every lane copy id (and lane header id). The lane key is
+ * URI-encoded, so it carries no `:` and the id cannot be split two ways — but
+ * nothing should split it: the view's `copies` maps a copy back. */
+const COPY_PREFIX = '__lane__:';
+
+/** The canvas id of `id`'s copy in `lane` (a lane key); `id` '' is the lane's
+ * header. The one place a copy id is spelled. */
+export function planCopyId(lane: string, id: string): string {
+  return `${COPY_PREFIX}${encodeURIComponent(lane)}:${id}`;
+}
+
+export interface PlanViewOptions {
+  /** group the chart into team lanes */
+  grouped: boolean;
+  /** hidden team ids, person ids and PLAN_UNASSIGNED */
+  hidden: ReadonlySet<string>;
+  /** the view is drilled into a zone: there are no lanes inside an opened
+   * zone (it keeps the whole plan's coordinates), so grouping is ignored and
+   * only hiding applies. Said by the caller — a scoped view does not say
+   * reliably on its own which zone it was opened on. */
+  opened?: boolean;
+}
+
+/**
+ * Rewrite a compiled plan view for team lanes and hiding. Pure; grouping and
+ * hiding are view state, so this runs after `compileView`, never in the model.
+ *
+ * Hiding drops every zone `planTeams` hides, with its subtree, and every arrow
+ * touching what was dropped — from `edges` and `layoutEdges` alike, since a
+ * hidden row takes no room either. Grouped, each top-level zone becomes one
+ * copy per lane it appears in (its own canvas id, the real node and fold
+ * state), with a header node per lane, and arrows are copied per lane.
+ */
+export function planView(
+  compiled: CompiledView,
+  model: DiagramModel,
+  plane: string | undefined,
+  opts: PlanViewOptions,
+): CompiledView {
+  const group = opts.grouped && opts.opened !== true;
+  if (!group && opts.hidden.size === 0) return compiled;
+  const graph = planGraph(model, plane);
+  const teams = planTeams(model, graph, opts.hidden);
+  const visible = withoutHidden(compiled, teams.hiddenZones);
+  return group ? groupedView(visible, { model, graph, teams }) : visible;
+}
+
+/** Every id in a subtree, into `out`. */
+function collect(vn: ViewNode, out: Set<string>): void {
+  out.add(vn.id);
+  for (const c of vn.children) collect(c, out);
+}
+
+function withoutHidden(view: CompiledView, hiddenZones: ReadonlySet<string>): CompiledView {
+  if (hiddenZones.size === 0) return view;
+  const dropped = new Set<string>();
+  // A drill stub standing in for a hidden zone goes too: it would show the
+  // zone, just off-frame. Only zones are ever hidden — never an actor.
+  const hides = (vn: ViewNode): boolean =>
+    hiddenZones.has(vn.id) || (vn.external !== undefined && hiddenZones.has(vn.external));
+  const prune = (nodes: readonly ViewNode[]): ViewNode[] =>
+    nodes.flatMap((vn) => {
+      if (hides(vn)) {
+        collect(vn, dropped);
+        return [];
+      }
+      const children = prune(vn.children);
+      // Untouched subtrees keep their identity, as the compiled view's own do.
+      return children.length === vn.children.length && children.every((c, i) => c === vn.children[i])
+        ? [vn]
+        : [{ ...vn, children }];
+    });
+  const roots = prune(view.roots);
+  const keep = (e: ViewEdge): boolean => !dropped.has(e.from) && !dropped.has(e.to);
+  const anchorOf = new Map([...view.anchorOf].filter(([id, box]) => !hiddenZones.has(id) && !dropped.has(box)));
+  const externals =
+    view.externals === undefined ? undefined : new Map([...view.externals].filter(([stub]) => !dropped.has(stub)));
+  return {
+    ...view,
+    roots,
+    edges: view.edges.filter(keep),
+    layoutEdges: view.layoutEdges.filter(keep),
+    anchorOf,
+    ...defined({ externals }),
+  };
+}
+
+/** A copy's id, and the lane it is in; `lane` is absent for a node drawn once
+ * (an actor, a top-level event), which stands for itself in every lane. */
+interface Placed {
+  lane?: string;
+  id: string;
+}
+
+function laneHeader(lane: PlanLane): ViewNode {
+  const id = planCopyId(lane.key, '');
+  return {
+    id,
+    node: { id, type: PLAN_LANE_TYPE, name: lane.name, ...defined({ color: lane.color }) },
+    state: 'leaf',
+    children: [],
+    promoted: false,
+    sharedMembers: [],
+  };
+}
+
+function groupedView(view: CompiledView, input: PlanTintInput): CompiledView {
+  const { laneKeysOf, lanes } = input.teams;
+  const inLane = (id: string, lane: string): boolean => laneKeysOf.get(id)?.includes(lane) === true;
+  const copies = new Map<string, string>();
+  const tints = new Map<string, readonly PlanSpan[]>();
+  /** view id -> its copies, in lane order (lanes are walked in order) */
+  const placed = new Map<string, Placed[]>();
+
+  // In lane L a copy keeps the nested zones that appear in L themselves, and
+  // every event and free-form child (they follow their parent). The real node
+  // and the fold state are shared, so a fold keyed by zone id folds every copy.
+  const copy = (vn: ViewNode, lane: string): ViewNode => {
+    const id = planCopyId(lane, vn.id);
+    copies.set(id, vn.id);
+    placed.set(vn.id, [...(placed.get(vn.id) ?? []), { lane, id }]);
+    if (isPlanZone(vn.node)) tints.set(id, planTint(input, vn.id, lane));
+    const children = vn.children.filter((c) => !isPlanZone(c.node) || inLane(c.id, lane)).map((c) => copy(c, lane));
+    return { ...vn, id, children };
+  };
+
+  const tops = view.roots.filter((r) => isPlanZone(r.node));
+  const rest = view.roots.filter((r) => !isPlanZone(r.node));
+  const laneRoots: ViewNode[] = [];
+  const laneList: PlanViewLane[] = [];
+  for (const lane of lanes) {
+    const zones = tops.filter((z) => inLane(z.id, lane.key)).map((z) => copy(z, lane.key));
+    if (zones.length === 0) continue; // an empty lane is not drawn
+    const header = laneHeader(lane);
+    laneRoots.push(header, ...zones);
+    laneList.push({ id: header.id, lane, zones: zones.map((z) => z.id) });
+  }
+
+  // An arrow is drawn in every lane holding a copy of both ends; when none
+  // does, once, between the ends' first copies (across lanes).
+  const rewrite = (edges: readonly ViewEdge[]): ViewEdge[] =>
+    edges.flatMap((e) => {
+      const from = placed.get(e.from);
+      const to = placed.get(e.to);
+      if (from === undefined && to === undefined) return [e];
+      const ends = { from: from ?? [{ id: e.from }], to: to ?? [{ id: e.to }] };
+      const shared = ends.from.flatMap((f) => {
+        const t = f.lane === undefined ? undefined : ends.to.find((c) => c.lane === f.lane);
+        return t === undefined ? [] : [{ lane: f.lane!, from: f.id, to: t.id }];
+      });
+      if (shared.length === 0) return [{ ...e, from: ends.from[0]!.id, to: ends.to[0]!.id }];
+      return shared.map((s) => {
+        const id = planCopyId(s.lane, e.id);
+        copies.set(id, e.id);
+        return { ...e, id, from: s.from, to: s.to };
+      });
+    });
+
+  return {
+    ...view,
+    roots: [...rest, ...laneRoots],
+    edges: rewrite(view.edges),
+    layoutEdges: rewrite(view.layoutEdges),
+    copies,
+    lanes: laneList,
+    tints,
+    topEvents: rest.filter((r) => isPlanEvent(r.node)).map((r) => r.id),
+  };
+}
