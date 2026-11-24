@@ -235,4 +235,19 @@ describe('useDeepLink', () => {
     expect(dl!.grouped).toBe(true);
     expect(dl!.hidden).toEqual(['a']);
   });
+
+  // A link's own view must win over the view's reset for the model it lands on.
+  it("an external hashchange to another diagram opens with that link's view", () => {
+    let dl: DeepLink | undefined;
+    window.location.hash = '#/sketch?group=1&hide=a';
+    render(<Harness names={NAMES} booted onDeepLink={(d) => (dl = d)} />);
+    act(() => {
+      window.location.hash = '#/two?group=1&hide=t1,__unassigned__';
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+    expect(dl!.selected).toBe('two');
+    expect(dl!.grouped).toBe(true);
+    expect(dl!.hidden).toEqual(['t1', '__unassigned__']);
+    expect(window.location.hash).toBe('#/two?group=1&hide=t1,__unassigned__');
+  });
 });

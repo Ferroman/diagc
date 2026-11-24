@@ -230,4 +230,11 @@ describe('useReaderView — the team view', () => {
     expect(result.current.props).not.toHaveProperty('hiddenActors');
     expect(result.current.props).not.toHaveProperty('onGroupedChange');
   });
+
+  it('another model opens ungrouped with nothing hidden', () => {
+    const { result, rerender } = reader({ model: planed(), opening: { grouped: true, hidden: ['t1'] } });
+    rerender({ model: { ...planed(), id: 'other' }, opening: { grouped: true, hidden: ['t1'] } });
+    expect(result.current.props?.grouped).toBe(false);
+    expect(result.current.props?.hiddenActors).toEqual([]);
+  });
 });

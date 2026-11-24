@@ -57,9 +57,14 @@ export function useTeamView(
   useEffect(() => {
     if (seenModel.current === modelId) return;
     seenModel.current = modelId;
-    setGrouped(false);
-    setHidden(NONE);
-    /* eslint-disable-next-line react-hooks/exhaustive-deps -- only another diagram resets it; the setters change with the host's callbacks */
+    // A controlled prop belongs to the host, which owns its reset: a link to
+    // this diagram may carry its own view, and a report from here would
+    // overwrite it. Only the state held here resets, and says so.
+    setOwnGrouped(false);
+    setOwnHidden(NONE);
+    if (props.grouped === undefined) onGroupedChange?.(false);
+    if (props.hiddenActors === undefined) onHiddenActorsChange?.(NONE);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps -- only another diagram resets it; the callbacks change with the host */
   }, [modelId]);
   return { grouped, setGrouped, hidden, toggleHidden };
 }

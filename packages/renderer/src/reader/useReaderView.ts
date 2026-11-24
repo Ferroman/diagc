@@ -93,9 +93,20 @@ function openingState(model: DiagramModel, options: ReaderViewOptions): { pins: 
  * page's address) hears every change through the callbacks. An export is the
  * PNG, always ungrouped with nothing hidden: it passes none of the four props
  * and the view keeps its own defaults. */
-function useReaderTeamView(opening: ReaderOpening | undefined, exportMode: boolean) {
+function useReaderTeamView(opening: ReaderOpening | undefined, exportMode: boolean, modelId: string | undefined) {
   const [grouped, setGrouped] = useState(opening?.grouped ?? false);
   const [hidden, setHidden] = useState<readonly string[]>(opening?.hidden ?? []);
+  // The view passes its props as controlled, so it no longer resets them: the
+  // ids of one diagram name nothing in the next. A model arriving after mount
+  // (id undefined before) is the opening, not another diagram.
+  const [seenId, setSeenId] = useState(modelId);
+  if (modelId !== seenId) {
+    setSeenId(modelId);
+    if (seenId !== undefined && modelId !== undefined) {
+      setGrouped(false);
+      setHidden([]);
+    }
+  }
   return exportMode
     ? {}
     : { grouped, onGroupedChange: setGrouped, hiddenActors: hidden, onHiddenActorsChange: setHidden };
@@ -116,7 +127,7 @@ export function useReaderView(options: ReaderViewOptions): ReaderView {
   const [layers, setLayers] = useState<string[]>(() =>
     model !== undefined ? openingState(model, options).layers : [],
   );
-  const teamProps = useReaderTeamView(opening, exportMode);
+  const teamProps = useReaderTeamView(opening, exportMode, model?.id);
   const [enteredPath, setEnteredPath] = useState<string[]>(opening?.root !== undefined ? [opening.root] : []);
   // A host that loads its model after mounting (the embed fetches it) is seeded
   // in the render the model arrives in, so the canvas never draws it unseeded.

@@ -62,4 +62,19 @@ describe('useTeamView', () => {
     expect(onGroupedChange).toHaveBeenLastCalledWith(false);
     expect(onHiddenActorsChange).toHaveBeenLastCalledWith([]);
   });
+
+  it('controlled, a new diagram reports nothing: the host owns the reset', () => {
+    const onGroupedChange = vi.fn();
+    const onHiddenActorsChange = vi.fn();
+    const { result, rerender } = renderHook(
+      (p: { m: typeof a }) =>
+        useTeamView({ model: p.m, grouped: true, hiddenActors: ['x'], onGroupedChange, onHiddenActorsChange }),
+      { initialProps: { m: a } },
+    );
+    rerender({ m: b });
+    expect(onGroupedChange).not.toHaveBeenCalled();
+    expect(onHiddenActorsChange).not.toHaveBeenCalled();
+    expect(result.current.grouped).toBe(true);
+    expect([...result.current.hidden]).toEqual(['x']);
+  });
 });
