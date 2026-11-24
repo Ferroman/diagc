@@ -11,7 +11,7 @@ A schedule: zones as date bars that nest, events as milestones, people or teams 
 5. Drop an **Event** for a milestone.
 6. Add people or teams with **Add person** / **Add team** in the Plan panel, then pick them as Owner / Executor / Checker on a zone — the chips `O·`, `E·`, `C·` appear on the bar, one letter per role, hover for the full name. Or drag a person or team from the roster onto a zone to make them its executor in one gesture (a no-op if they already hold a role there); drag any other node onto a zone and it moves into it. Click a chip to change the role or remove the actor.
 
-   To put a person in a team, drag the person's roster card onto the team's card. A person can be in several teams. Properties → Plan lists a person's teams, each with a remove button.
+   To put a person in a team, drag the person's roster card onto the team's card. A person can be in several teams, and shows as a badge in each team's frame. Properties → Plan lists a person's teams, each with a remove button.
 
 7. Schedule a node that lives on another plane (a C4 container, an ER table…) by selecting it and, in Properties → Memberships, adding the zone as a container on the plan plane. It drops into the zone's flow at first; drag it anywhere inside the bar afterwards and it stays exactly there (the bar grows to fit) instead of snapping back into the flow.
 8. Comment on a bar in Properties → Comments and attach resources in Properties → Links — the badge at the bar's corner opens both on the published page.
@@ -36,13 +36,15 @@ Folds and the day width are a way of looking, in edit mode too: they are not edi
 
 Put people in teams and a plan can show who works on what, team by team. A person belongs to a team through a `member-of` relation; see [From TypeScript](#from-typescript) for the code, or drag the person onto the team in the studio.
 
+In the roster, a team that has members is a frame around their badges, in the team's colour. The frames come first, in the order the teams are declared. People in no team follow, then **Unassigned**. A person in two teams has a badge in each frame. Clicking either badge lights the person and their zones. A team with no members is a plain card. Frames show whether or not the plan is grouped, and in the exported PNG.
+
 Press **Group by team** (the button beside the zoom buttons) and the plan is drawn in one lane per team, each with a header in the team's name and colour. Lanes run in the order the teams are declared, then one lane for each person who is in no team, then **Unassigned**. A lane with nothing in it is not drawn. Top-level events belong to no team: they stay in a band above the lanes.
 
 A bar goes in the lane of every team that executes it. That is a team holding the Executor role, or the teams of a person holding it. A person in no team is a lane of their own. Owners and checkers do not place a bar; their chips still show wherever the bar is drawn. A zone with no executor of its own takes the teams of the zone it sits in. Work that no one executes is **Unassigned**.
 
 A project with no executor of its own appears in each lane that works inside it. Each copy shows only the zones that lane works on, and the days that lane covers are tinted in the team's colour. A bar a team executes itself is tinted over its whole length. The tint is there folded or open. Selecting, folding and opening work on the one real zone, so a change shows in every copy.
 
-To take something out of the picture, press the eye on a roster card: a team, a person, or the **Unassigned** card, which appears when some work has no executor. Their work disappears, and so do their chips. A hidden card stays in the roster, dimmed, so you can show it again. Hiding works without grouping too. A hidden zone is never moved to another lane: a zone only the hidden people execute is gone, not Unassigned. A person in two teams still shows in the visible one.
+To take something out of the picture, press the eye on a roster card: a team, a person, or the **Unassigned** card, which appears when some work has no executor. Their work disappears, and so do their chips. A hidden card stays in the roster, dimmed, so you can show it again. Hiding works without grouping too. A hidden zone is never moved to another lane: a zone only the hidden people execute is gone, not Unassigned. A person in two teams still shows in the visible one. The eye on either of that person's badges hides them in both.
 
 Inside a zone you opened with **⤢** there are no lanes, and the zone is drawn as usual. Hiding still applies there.
 

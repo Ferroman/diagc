@@ -10,7 +10,7 @@ const ben = plan.person('ben', 'Ben Okafor', { color: '#b08ad9' });
 const cleo = plan.person('cleo', 'Cleo Brandt', { color: '#3a9d5d' });
 const dev = plan.person('dev', 'Dev Rao', { color: '#d9822b' });
 
-// Ben is in two teams, so his work shows in both lanes.
+// Ben is in two teams, so he has a badge in both team frames and his work shows in both lanes.
 const payments = plan.team('payments', 'Payments', { color: '#2f6fed' });
 const platform = plan.team('platform', 'Platform', { color: '#3a9d5d' });
 const mobile = plan.team('mobile', 'Mobile', { color: '#b08ad9' });
