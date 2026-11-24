@@ -1,7 +1,7 @@
 import type { DiagramModel } from '../../types';
 import { defined } from '../../util';
 import type { CompiledView, PlanViewLane, ViewEdge, ViewNode } from '../../view/types';
-import { isPlanEvent, isPlanZone, planGraphCached, type PlanGraph, type PlanSpan } from './plan';
+import { isPlanActor, isPlanEvent, isPlanZone, planGraphCached, type PlanGraph, type PlanSpan } from './plan';
 import { PLAN_UNASSIGNED, planTeams, planTint, type PlanLane, type PlanTintInput } from './teams';
 
 /** A lane header's synthetic node type. Not a plan type a model ever holds:
@@ -60,9 +60,13 @@ export function planView(
   const teams = planTeams(model, graph, opts.hidden);
   // the card is offered whenever there is unassigned work — hidden or not, so
   // it can be shown again; an opened zone has no use for it unless it is
-  // hiding something (hiding still applies there)
+  // hiding something (hiding still applies there). A plan with no person or
+  // team has nothing to group or hide, so it has no card either.
   const card =
-    opts.controls !== false && teams.hasUnassigned && (opts.opened !== true || opts.hidden.has(PLAN_UNASSIGNED));
+    opts.controls !== false &&
+    teams.hasUnassigned &&
+    (opts.opened !== true || opts.hidden.has(PLAN_UNASSIGNED)) &&
+    model.nodes.some(isPlanActor);
   if (!group && opts.hidden.size === 0 && !card) return compiled;
   const visible = withoutHidden(compiled, teams.hiddenZones, hiddenBelow(graph, teams.hiddenZones));
   const drawn = group ? groupedView(visible, { model, graph, teams }) : visible;

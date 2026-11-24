@@ -261,6 +261,13 @@ describe('the Unassigned roster card', () => {
     expect(allIds(v.roots)).not.toContain('loose');
   });
 
+  it('is absent from a plan with no person or team: nothing could be grouped or hidden', () => {
+    const m = model('n');
+    m.plan().zone('loose', { start: '2026-01-19', end: '2026-01-30' });
+    const json = m.toJSON();
+    expect(card(view(compileView(json, { plane: 'plan' }), json, { grouped: false, hidden: none }))).toBeUndefined();
+  });
+
   it('is absent from a still export (controls: false)', () => {
     const json = withUnassigned();
     const v = view(compileView(json, { plane: 'plan' }), json, { grouped: false, hidden: none, controls: false });

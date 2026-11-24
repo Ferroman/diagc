@@ -284,6 +284,21 @@ describe('legendRows', () => {
     expect(r.length).toBeGreaterThan(0);
   });
 
+  it('lists no row for the Unassigned roster card: it is a control of the view, no type of the model', () => {
+    const m = model('loose');
+    const p = m.plan();
+    p.team('pay', 'Payments');
+    p.zone('z', { start: '2026-01-05', end: '2026-01-09' });
+    const json = m.toJSON();
+    for (const grouped of [false, true]) {
+      const compiled = planView(compileView(json, { plane: 'plan' }), json, 'plan', { grouped, hidden: new Set() });
+      expect(compiled.roots.some((r) => r.node.type === 'plan-unassigned')).toBe(true);
+      const r = rows(json, { config: { show: ['types'] }, compiled });
+      expect(r.map((x) => x.label)).not.toContain('plan-unassigned');
+      expect(r.map((x) => x.label)).not.toContain('Unassigned');
+    }
+  });
+
   it('renames a derived row in place instead of appending', () => {
     const r = rows(fixture(), { config: { items: [{ label: 'Fire-and-forget', kind: 'writes' }] } });
     const kinds = r.filter((x) => x.section === 'kinds');

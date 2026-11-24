@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { isPlanActor, type DiagramModel } from '@diagc/core/internal';
+import type { NotationProfile } from '../notations';
 import type { DiagramViewProps } from './view-types';
 
 export interface TeamView {
@@ -67,6 +69,14 @@ export function useTeamView(
     /* eslint-disable-next-line react-hooks/exhaustive-deps -- only another diagram resets it; the callbacks change with the host */
   }, [modelId]);
   return { grouped, setGrouped, hidden, toggleHidden };
+}
+
+/** Whether the canvas offers grouping by team: a notation that groups by team,
+ * on a model with at least one person or team — with neither there is nothing
+ * to group by or hide, so neither the switch nor the Unassigned card shows. */
+export function useOffersTeams(profile: NotationProfile, model: DiagramModel): boolean {
+  const groups = profile.groupsByTeam === true;
+  return useMemo(() => groups && model.nodes.some(isPlanActor), [groups, model]);
 }
 
 /** What the canvas takes from the team view, for a notation that groups by

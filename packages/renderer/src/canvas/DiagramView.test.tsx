@@ -2806,11 +2806,22 @@ describe('plan notation: stretching time', () => {
   });
 
   it('a plan offers Group by team; other notations do not', () => {
-    const { unmount } = render(<DiagramView model={plan()} plane="plan" notation="plan" />);
+    const m = model('staffed');
+    const p = m.plan();
+    p.zone('q', { name: 'Q1', start: '2026-01-05', end: '2026-01-30' }).executor(p.team('pay', 'Pay'));
+    const { unmount } = render(<DiagramView model={m.toJSON()} plane="plan" notation="plan" />);
     expect(screen.getByRole('button', { name: 'Group by team' })).toBeTruthy();
     unmount();
     render(<DiagramView model={model('c').toJSON()} />);
     expect(screen.queryByRole('button', { name: 'Group by team' })).toBeNull();
+  });
+
+  it('a plan with no person or team offers no Group by team: there is nothing to group by', () => {
+    const m = model('bare');
+    m.plan().zone('q', { name: 'Q1', start: '2026-01-05', end: '2026-01-30' });
+    render(<DiagramView model={m.toJSON()} plane="plan" notation="plan" grouped />);
+    expect(screen.queryByRole('button', { name: 'Group by team' })).toBeNull();
+    expect(document.querySelector('.dg-plan-lane')).toBeNull();
   });
 
   describe('teams', () => {

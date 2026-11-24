@@ -45,7 +45,7 @@ import { useNoteNodes } from './useNoteNodes';
 import { useNoteSession } from './useNoteSession';
 import { useNotation } from './useNotation';
 import { useActorControls } from './actor-controls';
-import { teamParts, useTeamView } from './useTeamView';
+import { teamParts, useOffersTeams, useTeamView } from './useTeamView';
 import { useNudgeAndArrange } from './useNudgeAndArrange';
 import { useRevealOnUnfold } from './useRevealOnUnfold';
 import { useRootFit } from './useRootFit';
@@ -85,7 +85,7 @@ function Inner(props: DiagramViewProps) {
   // the nodes the view draws for itself, which a drop and a save may not name
   const inertRef = useInertRef(profile);
   const stretches = profile.stretchesTime === true;
-  const teamSwitch = teamParts(profile.groupsByTeam === true, teams, chromeless);
+  const teamSwitch = teamParts(useOffersTeams(profile, props.model), teams, chromeless);
   // A palette preset's colour for each node type, over the whole model (type-hues.ts)
   const hues = useMemo(() => typeHuesOf(preset, props.model, typeRegistry), [preset, props.model, typeRegistry]);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
