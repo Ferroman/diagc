@@ -1,6 +1,6 @@
 import type { DiagramModel, DiagramNode } from '../../types';
 import { defined } from '../../util';
-import { PLAN_MEMBER_OF, PLAN_TEAM_TYPE, rolesOf, spanOf, type PlanGraph, type PlanSpan } from './plan';
+import { PLAN_MEMBER_OF, PLAN_TEAM_TYPE, spanOf, type PlanGraph, type PlanRole, type PlanSpan } from './plan';
 
 /** The Unassigned group's key, in lanes and in hidden sets. Not a node id: a
  * double-underscore key cannot collide with an authored one. */
@@ -35,29 +35,57 @@ interface Group {
   via: string;
 }
 
+/** What the team rules look up over and over, built once per model: a big
+ * plan asks a person's teams per executor per zone, per roster card and per
+ * lane copy, and each ask would otherwise scan every node and relation. */
+export interface PlanIndex {
+  byId: ReadonlyMap<string, DiagramNode>;
+  /** person id -> the team-typed targets of their `member-of` relations, in
+   * relation order, once each; absent = in no team */
+  teamsOf: ReadonlyMap<string, readonly string[]>;
+  /** zone id -> its executors, in relation order (rolesOf's `executes`) */
+  executes: ReadonlyMap<string, readonly string[]>;
+}
+
+const indexCache = new WeakMap<DiagramModel, PlanIndex>();
+
+export function planIndex(model: DiagramModel): PlanIndex {
+  const hit = indexCache.get(model);
+  if (hit !== undefined) return hit;
+  const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
+  const teamsOf = new Map<string, string[]>();
+  const executes = new Map<string, string[]>();
+  for (const r of model.relations) {
+    if (r.kind === PLAN_MEMBER_OF && byId.get(r.to)?.type === PLAN_TEAM_TYPE) {
+      const teams = teamsOf.get(r.from) ?? [];
+      if (!teams.includes(r.to)) teamsOf.set(r.from, [...teams, r.to]);
+    } else if (r.kind === ('executes' satisfies PlanRole)) {
+      executes.set(r.to, [...(executes.get(r.to) ?? []), r.from]);
+    }
+  }
+  const index: PlanIndex = { byId, teamsOf, executes };
+  indexCache.set(model, index);
+  return index;
+}
+
 /** The teams a person belongs to: the team-typed targets of their `member-of`
  * relations, in relation order, once each. */
 export function teamsOf(model: DiagramModel, personId: string): string[] {
-  const teams = new Set(model.nodes.filter((n) => n.type === PLAN_TEAM_TYPE).map((n) => n.id));
-  const out: string[] = [];
-  for (const r of model.relations) {
-    if (r.from === personId && r.kind === PLAN_MEMBER_OF && teams.has(r.to) && !out.includes(r.to)) out.push(r.to);
-  }
-  return out;
+  return [...(planIndex(model).teamsOf.get(personId) ?? [])];
 }
 
 /** A zone's own groups, from its executors only: a team gives itself; a person
  * gives each of their teams, or themself when they are in none. */
-function ownGroups(model: DiagramModel, byId: ReadonlyMap<string, DiagramNode>, zoneId: string): Group[] {
+function ownGroups(index: PlanIndex, zoneId: string): Group[] {
   const out: Group[] = [];
-  for (const id of rolesOf(model, zoneId).executes) {
-    const node = byId.get(id);
+  for (const id of index.executes.get(zoneId) ?? []) {
+    const node = index.byId.get(id);
     if (node === undefined) continue;
     if (node.type === PLAN_TEAM_TYPE) {
       out.push({ key: id, via: id });
       continue;
     }
-    const teams = teamsOf(model, id);
+    const teams = index.teamsOf.get(id) ?? [];
     for (const key of teams.length > 0 ? teams : [id]) out.push({ key, via: id });
   }
   return out;
@@ -109,11 +137,12 @@ function laneOf(byId: ReadonlyMap<string, DiagramNode>, key: string): PlanLane {
 /** Everything the layout needs to place zones in team lanes. Pure; memoise per
  * (model, plane, hidden set) at the call site. */
 export function planTeams(model: DiagramModel, graph: PlanGraph, hidden: ReadonlySet<string>): PlanTeams {
-  const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
+  const index = planIndex(model);
+  const byId = index.byId;
   const order = laneOrder(model);
   const rank = (k: string): number => order.get(k) ?? Number.MAX_SAFE_INTEGER;
   const own = new Map<string, Group[]>();
-  for (const z of graph.zones) own.set(z, ownGroups(model, byId, z));
+  for (const z of graph.zones) own.set(z, ownGroups(index, z));
 
   let hasUnassigned = false;
   const effectiveOf = new Map<string, string[]>();
@@ -154,7 +183,8 @@ export interface PlanTintInput {
 }
 
 export function planTint({ model, graph, teams }: PlanTintInput, zoneId: string, lane: string): PlanSpan[] {
-  const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
+  // the model's one index: a grouped view asks this once per copy
+  const { byId } = planIndex(model);
   const inLane = (z: string): boolean => teams.effectiveOf.get(z)?.includes(lane) === true;
   const spanFor = (z: string): PlanSpan | undefined => {
     const node = byId.get(z);

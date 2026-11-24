@@ -12,7 +12,7 @@ import {
   PLAN_ROLES,
   isPlanPeriod,
   periodSpanOf,
-  planGraph,
+  planGraphCached,
   planSubtree,
   planSubtreeRange,
   rolesOf,
@@ -94,22 +94,9 @@ export const ZONE_TEXT = {
  * against (nothing to wrap by, so wrap by count instead) */
 const ROSTER_WRAP_COUNT = 6;
 
-// Per (model, plane), as gitGraphCached: the layout, the time-axis header and
-// the chips all read the graph, and each model identity is one derivation.
-const graphCache = new WeakMap<DiagramModel, Map<string | undefined, PlanGraph>>();
-export function planGraphCached(model: DiagramModel, plane: string | undefined): PlanGraph {
-  let byPlane = graphCache.get(model);
-  if (byPlane === undefined) {
-    byPlane = new Map();
-    graphCache.set(model, byPlane);
-  }
-  let g = byPlane.get(plane);
-  if (g === undefined) {
-    g = planGraph(model, plane);
-    byPlane.set(plane, g);
-  }
-  return g;
-}
+// One derivation per (model, plane), shared with core's team view (planView),
+// which runs on every fold and edit: core owns the cache so both read one graph.
+export { planGraphCached };
 
 /** x of a day's left edge, relative to the origin day (1 January of the
  * earliest year): coordinates stay put while editing and jump only when the

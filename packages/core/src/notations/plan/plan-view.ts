@@ -1,7 +1,7 @@
 import type { DiagramModel } from '../../types';
 import { defined } from '../../util';
 import type { CompiledView, PlanViewLane, ViewEdge, ViewNode } from '../../view/types';
-import { isPlanEvent, isPlanZone, planGraph, type PlanGraph, type PlanSpan } from './plan';
+import { isPlanEvent, isPlanZone, planGraphCached, type PlanGraph, type PlanSpan } from './plan';
 import { PLAN_UNASSIGNED, planTeams, planTint, type PlanLane, type PlanTintInput } from './teams';
 
 /** A lane header's synthetic node type. Not a plan type a model ever holds:
@@ -56,7 +56,7 @@ export function planView(
   opts: PlanViewOptions,
 ): CompiledView {
   const group = opts.grouped && opts.opened !== true;
-  const graph = planGraph(model, plane);
+  const graph = planGraphCached(model, plane);
   const teams = planTeams(model, graph, opts.hidden);
   // the card is offered whenever there is unassigned work — hidden or not, so
   // it can be shown again; an opened zone has no use for it unless it is

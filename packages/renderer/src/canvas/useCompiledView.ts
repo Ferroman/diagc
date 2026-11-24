@@ -101,7 +101,7 @@ export function useCompiledView(input: CompiledViewInput): CompiledViewState {
     return { ...raw, edges: raw.edges.filter((e) => !hidden(e.kind)) };
   }, [props.model, props.plane, focus, drillRoot, carry, effectivePins, props.activeLayers, profile]);
   // Lanes and hiding run on the compiled view, in a memo of their own: a
-  // toggle re-runs only this (planTint rebuilds a node map per call), and an
+  // toggle re-runs only this (a lane copy per zone per team, with its tint), and an
   // unchanged input hands the same view on, which every per-node cache keys
   // its identity on. Inside an opened zone there are no lanes (`opened`).
   const { grouped, hidden, controls } = grouping;

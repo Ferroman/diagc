@@ -186,6 +186,25 @@ export function planGraph(model: DiagramModel, plane?: string): PlanGraph {
   };
 }
 
+// Per (model, plane): the layout, the time-axis header, the chips and the
+// team view all read the graph, and each model identity is one derivation.
+const graphCache = new WeakMap<DiagramModel, Map<string | undefined, PlanGraph>>();
+
+/** `planGraph`, once per model identity and plane. */
+export function planGraphCached(model: DiagramModel, plane: string | undefined): PlanGraph {
+  let byPlane = graphCache.get(model);
+  if (byPlane === undefined) {
+    byPlane = new Map();
+    graphCache.set(model, byPlane);
+  }
+  let g = byPlane.get(plane);
+  if (g === undefined) {
+    g = planGraph(model, plane);
+    byPlane.set(plane, g);
+  }
+  return g;
+}
+
 /** The zones, events and periods visible on the plane, in declaration order. */
 function zonesAndEvents(
   model: DiagramModel,

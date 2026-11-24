@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { model } from '../../builder/index';
-import { dayOf, planGraph } from './plan';
-import { PLAN_UNASSIGNED, planTeams, planTint, teamsOf } from './teams';
+import { dayOf, planGraph, planGraphCached } from './plan';
+import { PLAN_UNASSIGNED, planIndex, planTeams, planTint, teamsOf } from './teams';
 
 const D = (iso: string): number => dayOf(iso)!;
 const none: ReadonlySet<string> = new Set();
@@ -31,6 +31,33 @@ describe('teamsOf', () => {
     const { m, bob } = fixture();
     expect(teamsOf(m.toJSON(), bob.id)).toEqual(['pay', 'plat']);
     expect(teamsOf(m.toJSON(), 'carol')).toEqual([]);
+  });
+});
+
+describe('planIndex', () => {
+  // planView runs on every fold and edit; the person -> teams and node lookups
+  // are built once per model, not once per zone or per copy
+  it('is built once per model and answers teamsOf', () => {
+    const { m, bob, alice } = fixture();
+    const json = m.toJSON();
+    expect(planIndex(json)).toBe(planIndex(json));
+    expect(planIndex(json).teamsOf.get(bob.id)).toEqual(['pay', 'plat']);
+    expect(planIndex(json).teamsOf.get(alice.id)).toEqual(['pay']);
+    expect(planIndex(json).byId.get('pay')?.name).toBe('Payments');
+  });
+
+  it('lists each zone executor in relation order', () => {
+    const { m, p, pay, alice } = fixture();
+    p.zone('a', { start: '2026-01-05', end: '2026-01-09' }).executor(alice).owner(pay).executor(pay);
+    expect(planIndex(m.toJSON()).executes.get('a')).toEqual(['alice', 'pay']);
+  });
+});
+
+describe('planGraphCached', () => {
+  it('is one derivation per model and plane', () => {
+    const json = fixture().m.toJSON();
+    expect(planGraphCached(json, undefined)).toBe(planGraphCached(json, undefined));
+    expect(planGraphCached(json, undefined)).toEqual(planGraph(json));
   });
 });
 
@@ -121,6 +148,27 @@ describe('planTeams', () => {
     const { teams } = run(m, new Set(['dave']));
     expect(teams.hiddenZones.has('infra')).toBe(true);
     expect(teams.laneKeysOf.get('checkout')).toEqual(['pay']);
+  });
+
+  it('a hidden person in two teams hides the zone they alone execute, from both lanes', () => {
+    const { m, p, bob, pay } = fixture();
+    p.zone('a', { start: '2026-01-05', end: '2026-01-09' }).executor(bob);
+    p.zone('b', { start: '2026-01-05', end: '2026-01-09' }).executor(pay);
+    const { teams } = run(m, new Set(['bob']));
+    expect(teams.hiddenZones.has('a')).toBe(true);
+    expect(teams.laneKeysOf.has('a')).toBe(false);
+    expect(teams.lanes.map((l) => l.key)).toEqual(['pay']);
+  });
+
+  it('a zone inheriting from a hidden ancestor executor is hidden, not sent to Unassigned', () => {
+    const { m, p, alice } = fixture();
+    const co = p.zone('checkout', { start: '2026-01-05', end: '2026-02-27' }).executor(alice);
+    co.zone('inner', { start: '2026-01-05', end: '2026-01-30' });
+    const { teams } = run(m, new Set(['alice']));
+    expect(teams.hiddenZones.has('inner')).toBe(true);
+    expect(teams.hiddenZones.has('checkout')).toBe(true);
+    expect(teams.lanes.map((l) => l.key)).toEqual([]);
+    expect(teams.hasUnassigned).toBe(false);
   });
 
   it('a project disappears once nothing visible is inside it', () => {

@@ -251,6 +251,7 @@ export {
   rolesOf,
   planPeriodsOf,
   planGraph,
+  planGraphCached,
   planSubtree,
   planSubtreeRange,
   type PlanRole,
@@ -262,8 +263,10 @@ export {
 export {
   PLAN_UNASSIGNED,
   teamsOf,
+  planIndex,
   planTeams,
   planTint,
+  type PlanIndex,
   type PlanLane,
   type PlanTeams,
   type PlanTintInput,
