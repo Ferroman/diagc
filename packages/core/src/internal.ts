@@ -250,3 +250,4 @@ export {
   type PlanGraph,
   type PlanChildren,
 } from './notations/plan/plan';
+export { PLAN_UNASSIGNED, teamsOf, planTeams, planTint, type PlanLane, type PlanTeams } from './notations/plan/teams';
