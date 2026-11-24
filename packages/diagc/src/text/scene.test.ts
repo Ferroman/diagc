@@ -99,4 +99,14 @@ describe('buildScene', () => {
     const scene = await buildScene({ model: plan, pins: open }, UNICODE);
     expect(scene.view.edges).toEqual([]);
   });
+
+  it("does not draw a plan period's interruption as a line", async () => {
+    const plan: DiagramModel = {
+      ...model,
+      notation: 'plan',
+      relations: [{ id: 'r', from: 'c', to: 'a', kind: 'interrupts' }],
+    };
+    const scene = await buildScene({ model: plan, pins: open }, UNICODE);
+    expect(scene.view.edges).toEqual([]);
+  });
 });

@@ -66,9 +66,17 @@ export default m;
 - **`x` is always the date — the layout owns it.** `y` is free only for a top-level zone (drag it up or down to reorder); nested zones and events inside a zone are rows, automatic and sorted by start date. Any other node inside a zone (a scheduled C4 container, a plain box) is free-form instead: it stays wherever you drag it, and the bar grows to fit.
 - **Actors are relations, not containment.** `owns` / `executes` / `checks` runs from the actor — a person or a team — to the zone, so one actor can hold a role on many zones, and a zone can be shared by several actors in the same role.
 - **Role relations never draw as arrows.** `owns`, `executes` and `checks` become the `O·` / `E·` / `C·` chips on the zone instead. Any other relation kind between two zones or events (`sync`, …) draws as a dependency arrow, finish to start: it curves from the end of the first bar into the dependent bar's start, with its label halfway. A short bar's name, drawn beside it, goes on the side the curve does not use while the chart has room for it there; otherwise the curve meets the bar's end just above or below the name. It is drawn over the bars, so a bar it crosses never hides it. Fold a zone and the dependencies into or out of its rows become one arrow, zone to zone. A link to or from a box scheduled inside a zone (a C4 container, say) has no dates to run between and keeps its curve, and a relation with its own `shape` or a fixed side keeps that.
+- **A period pauses work without moving it.** `plan.period(id, { name, start, end, interrupts: [zone, …] })` (or `.interrupts(zone)` on it) is a stretch of days — a holiday freeze, an offsite — that takes no row: it is a bracket over its days in the header, and each zone it interrupts is hatched over those days, folded or open, clipped to the zone's own dates. A nested zone is hatched only if you name it too. A period that interrupts nothing pauses everyone: the whole chart is shaded over its days, under the bars. A period changes no date — the bars already span the pause — and in the studio it is shown, selected and noted, but its days are edited in the source or the JSON.
+
+  ```ts
+  const temporal = plan.zone('temporal', { name: 'Temporal chart', start: '2026-12-07', end: '2027-01-19' });
+  const secrets = plan.zone('secrets', { name: 'External Secrets', start: '2026-12-14', end: '2027-01-12' });
+  plan.period('freeze', { name: 'Holiday change freeze', start: '2026-12-21', end: '2027-01-03', interrupts: [temporal, secrets] });
+  plan.period('offsite', { name: 'Team offsite', start: '2027-01-18', end: '2027-01-19' }); // everyone
+  ```
 - **The header has three rows: months, ISO weeks, and days.** Each day shows its weekday letter over the day of the month, and weekends are shaded down the whole chart, so a bar's start and end read against real dates.
 - **Today follows the reader's clock, and it is never in the PNG.** On the page and in the studio, today's day is filled in the accent colour with a line down the chart. An export has no "tomorrow" to be wrong about, so publishing draws the header without it — open the page instead to see it.
-- **Five validation codes are specific to a plan:** `plan-date` (a date isn't real `YYYY-MM-DD`), `plan-missing` (a zone lacks `start`/`end`, or an event lacks `at`), `plan-span` (a zone's `end` is before its `start`), `plan-nested` (a nested zone or event falls outside its parent's span), `plan-role-target` (a role relation points at something other than a `plan-zone`).
+- **Six validation codes are specific to a plan:** `plan-date` (a date isn't real `YYYY-MM-DD`), `plan-missing` (a zone or a period lacks `start`/`end`, or an event lacks `at`), `plan-span` (a zone's or a period's `end` is before its `start`), `plan-nested` (a nested zone or event falls outside its parent's span), `plan-role-target` (a role relation points at something other than a `plan-zone`), `plan-interrupts` (an `interrupts` relation does not run from a period to a zone).
 - Hand-ordering the ROWS a zone's nested zones and events fall into is still a follow-up — not yet built; those rows sort by start date only. A free-form child (see above) is already hand-placed — it was never in that row order to begin with.
 
 ## Examples
@@ -77,13 +85,13 @@ export default m;
 
 [![Starter: launch plan](../../.diagrams/static/examples/plan/starter.png)](https://ferroman.github.io/diagc/html/examples/plan/starter.html)
 
-**Q4 roadmap** — a C4 container view and a plan plane that schedules those same containers inside zones — switch planes on the page to see either. [Source](../../.diagrams/src/examples/plan/q4-roadmap.diagram.ts)
+**Q4 roadmap** — a C4 container view and a plan plane that schedules those same containers inside zones, with Thanksgiving pausing Checkout v2 — switch planes on the page to see either. [Source](../../.diagrams/src/examples/plan/q4-roadmap.diagram.ts)
 
 [![Q4 roadmap](../../.diagrams/static/examples/plan/q4-roadmap.png)](https://ferroman.github.io/diagc/html/examples/plan/q4-roadmap.html)
 
 ## See also
 
 - [Model reference](../reference/model.md#plan-conventions) — the node types, roles, metadata keys and validation codes
-- [Builder API](../reference/builder-api.md#mplanid-opts--planbuilder) — `plan`, `zone`, `event`, `person`, `team`, `owner`/`executor`/`checker`
+- [Builder API](../reference/builder-api.md#mplanid-opts--planbuilder) — `plan`, `zone`, `event`, `period`, `person`, `team`, `owner`/`executor`/`checker`
 - [Comment on a diagram](comment-on-a-diagram.md) — the same comments and links a zone or event carries
 - [Use planes and layers](use-planes-and-layers.md) — adding a plan plane beside an existing view, and switching between them

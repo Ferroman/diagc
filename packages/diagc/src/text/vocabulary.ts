@@ -3,6 +3,7 @@ import {
   GIT_STAGE_TYPE,
   isActivityChrome,
   isPlanRole,
+  PLAN_INTERRUPTS,
   type DiagramNode,
   type NotationId,
   type ViewEdge,
@@ -149,6 +150,7 @@ export const TYPE_LOOKS: Readonly<Record<string, TypeLook>> = {
   'tm-boundary': box('', { ...dashed, ...open, legend: 'Trust boundary' }),
   'plan-zone': shaped('rounded', '', { legend: 'Zone' }),
   'plan-event': shaped('diamond', '', { legend: 'Event' }),
+  'plan-period': box('', { legend: 'Period' }),
   'sm-machine': box('', open),
   'sm-state': shaped('rounded', ''),
   'sm-region': box('', { ...dashed, ...open }),
@@ -189,6 +191,7 @@ export const KIND_LOOKS: Readonly<Record<string, KindLook>> = {
   owns: { ...solid, legend: 'Owns' },
   executes: { ...solid, legend: 'Executes' },
   checks: { ...solid, legend: 'Checks' },
+  interrupts: { ...solid, legend: 'Interrupts' },
   transition: { ...solid, legend: 'Transition' },
 };
 
@@ -256,9 +259,10 @@ export function kindLook(edge: Pick<ViewEdge, 'kind' | 'style'>, notation: Notat
   return { ...base, line, ...(style.end !== undefined ? { end: style.end } : {}) };
 }
 
-/** Kinds a notation never draws as lines: a plan's roles become chips on the zone. */
+/** Kinds a notation never draws as lines: a plan's roles become chips on the zone, and
+ * a period's interruption is drawn as the hatch on the bar, not as an arrow. */
 export function hidesKind(kind: string, notation: NotationId | undefined): boolean {
-  return notation === 'plan' && isPlanRole(kind);
+  return notation === 'plan' && (isPlanRole(kind) || kind === PLAN_INTERRUPTS);
 }
 
 /** The renderer's `typeSubtitle`: `[Container]` + `Java` → `[Container: Java]`. An

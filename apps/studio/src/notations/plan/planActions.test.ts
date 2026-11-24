@@ -403,6 +403,19 @@ describe('quick-adds', () => {
     });
     expect(seedDates({ model: m, plane: 'plan', today: '2026-05-04' }, 'service', { x: 5 })).toBeUndefined();
   });
+  it('seedOnRetype: a node retyped into a period gets a span as a zone does, and one already spanned keeps it', () => {
+    // a period with no dates is refused at save (plan-missing): Properties → Type
+    // must seed them, as for a zone
+    const top = roadmap();
+    top.nodes.push({ id: 'blank', name: 'Blank' });
+    expect(seedOnRetype({ model: top, plane: 'plan', today: '2026-05-04' }, 'blank', 'plan-period')).toEqual({
+      type: 'set-plan-dates',
+      id: 'blank',
+      dates: { start: '2026-05-04', end: shift('2026-05-04', ZONE_DAYS - 1) },
+    });
+    top.nodes.push({ id: 'p', name: 'P', metadata: { start: '2026-01-01', end: '2026-01-05' } });
+    expect(seedOnRetype({ model: top, plane: 'plan', today: '2026-05-04' }, 'p', 'plan-period')).toBeUndefined();
+  });
   it('seedOnRetype: seeds a plain node retyped into a zone or event, clamped into an existing parent, keeps dates already there, and skips a non-plan type', () => {
     const top = roadmap();
     top.nodes.push({ id: 'blank', name: 'Blank' });

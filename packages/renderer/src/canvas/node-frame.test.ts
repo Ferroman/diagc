@@ -109,6 +109,11 @@ describe('nodeFrameProps: size', () => {
     expect(nodeFrameProps(zone, geo, undefined, ctx({ profile: owned })).style).toEqual(size);
   });
 
+  it('sizes a plan period from the layout: its width is its days, and its bracket has no size of its own', () => {
+    const period = viewNode({ type: 'plan-period' });
+    expect(nodeFrameProps(period, geo, undefined, ctx({ profile: owned })).style).toEqual(size);
+  });
+
   it('floors an ordinary box at the width elk laid out, and leaves its height to CSS', () => {
     const frame = nodeFrameProps(viewNode(), geo, undefined, ctx());
     expect(frame.style).toEqual({ minWidth: 140 });

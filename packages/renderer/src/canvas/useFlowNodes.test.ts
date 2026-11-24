@@ -52,6 +52,7 @@ function input({ arrangedGeometry, fixed, regionSeparators, ...over }: Flat = {}
       nodeChips: undefined,
       isAlwaysExpanded: () => false,
       labelSides: undefined,
+      stripes: undefined,
     },
     icons,
     preset,

@@ -31,6 +31,10 @@ describe('plan', () => {
     type: 'plan-event',
     metadata: at !== undefined ? { at } : {},
   });
+  const period = (id: string, start?: string, end?: string): DiagramNode => ({
+    ...zone(id, start, end),
+    type: 'plan-period',
+  });
   const codes = (m: DiagramModel) => validate(m).map((i) => [i.code, i.ref]);
 
   it('accepts a well-formed plan', () => {
@@ -125,5 +129,35 @@ describe('plan', () => {
     );
     expect(codes(m)).toEqual([['plan-role-target', 'bad']]);
     expect(codes({ ...m, notation: undefined })).toEqual([]);
+  });
+  it('a period needs both dates, real ones', () => {
+    expect(codes(planModel([period('f', '2026-12-21'), period('g', '2026-12-21', 'soon')]))).toEqual([
+      ['plan-missing', 'f'],
+      ['plan-date', 'g'],
+    ]);
+  });
+  it("a period's end is not before its start", () => {
+    expect(codes(planModel([period('f', '2027-01-03', '2026-12-21')]))).toEqual([['plan-span', 'f']]);
+  });
+  it('interrupts must point at a zone, from a period', () => {
+    const m = planModel(
+      [
+        zone('q', '2026-12-01', '2027-01-30'),
+        period('f', '2026-12-21', '2027-01-03'),
+        event('e', '2026-12-24'),
+        { id: 's', name: 'S', type: 'service' },
+      ],
+      [],
+      [
+        { id: 'ok', from: 'f', to: 'q', kind: 'interrupts' },
+        { id: 'to-event', from: 'f', to: 'e', kind: 'interrupts' },
+        { id: 'from-box', from: 's', to: 'q', kind: 'interrupts' },
+      ],
+    );
+    expect(codes(m)).toEqual([
+      ['plan-interrupts', 'to-event'],
+      ['plan-interrupts', 'from-box'],
+    ]);
+    expect(validate(m).find((i) => i.ref === 'to-event')?.message).toMatch(/'f'/);
   });
 });

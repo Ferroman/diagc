@@ -26,6 +26,7 @@ describe('@diagc/core entry points', () => {
     'LaneRef',
     'ModelBuilder',
     'NodeRef',
+    'PeriodBuilder',
     'PlanBuilder',
     'RELATION_LINES',
     'RELATION_MARKERS',

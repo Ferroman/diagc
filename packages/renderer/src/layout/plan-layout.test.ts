@@ -9,7 +9,7 @@ import {
   type DiagramModel,
 } from '@diagc/core/internal';
 import { notationProfile } from '../notations';
-import { PLAN_LAYOUT, planLabelSides, planLayout, planX } from './plan-layout';
+import { PLAN_LAYOUT, planLayout, planX } from './plan-layout';
 
 const { DAY, BAR_H, TITLE_H, PAD, ROW_GAP, EVENT, HEADER_H, MONTH_H, WEEK_H, DAY_H, ROSTER_GAP } = PLAN_LAYOUT;
 
@@ -220,6 +220,32 @@ describe('planLayout', () => {
     for (const id of ['kickoff', 'alice', 'bob']) expect(r.fixed?.has(id)).toBe(true);
   });
 
+  it('a period sits in the header over its days and takes no row', () => {
+    const plan = (withPeriod: boolean) => {
+      const m = model('r2');
+      const p = m.plan();
+      const later = p.zone('later', { name: 'Later', start: '2026-04-01', end: '2026-04-10' });
+      p.zone('q1', { name: 'Q1', start: '2026-01-05', end: '2026-03-27' });
+      if (withPeriod)
+        p.period('freeze', { name: 'Freeze', start: '2026-02-09', end: '2026-02-15', interrupts: [later] });
+      return m.toJSON();
+    };
+    const plain = plan(false);
+    const j = plan(true);
+    const r = planLayout({ view: view(j), model: j, plane: 'plan' });
+    expect(r.geometry.get('freeze')).toEqual({
+      x: planX(dayOf('2026-02-09')!, origin),
+      y: -(DAY_H + WEEK_H) - EVENT / 2,
+      width: 7 * DAY,
+      height: EVENT,
+    });
+    expect(r.fixed?.has('freeze')).toBe(true);
+    // the zones stand where they would without it
+    const without = planLayout({ view: view(plain), model: plain, plane: 'plan' });
+    expect(r.geometry.get('q1')!.y).toBe(without.geometry.get('q1')!.y);
+    expect(r.geometry.get('later')!.y).toBe(without.geometry.get('later')!.y);
+  });
+
   it('wraps the roster into a further row once a card would cross the plan width, stacking rows upward', () => {
     const m = model('w');
     const p = m.plan();
@@ -335,88 +361,6 @@ describe('planLayout', () => {
     const first = r.geometry.get('n1')!;
     expect(first.y).toBeGreaterThan(TITLE_H);
     expect(r.geometry.get('narrow')!.height).toBe(first.y + first.height + PAD);
-  });
-
-  it('draws the name of a bar too short for it beside the bar, on the side its parent has room', () => {
-    const m = model('short');
-    const p = m.plan();
-    const parent = p.zone('parent', { name: 'Upgrade', start: '2026-11-30', end: '2026-12-31' });
-    parent.zone('first-day', { name: 'EU prod', start: '2026-11-30', end: '2026-11-30' });
-    parent.zone('last-day', { name: 'EU prod', start: '2026-12-31', end: '2026-12-31' });
-    parent.zone('long', { name: 'Dev + demo', start: '2026-12-01', end: '2026-12-20' });
-    p.zone('root-day', { name: 'Imlek / CNY (ID 5-6, SG 6-8 Feb)', start: '2027-02-05', end: '2027-02-08' });
-    const sides = planLabelSides(m.toJSON(), 'plan');
-    expect(sides.get('first-day')).toBe('right');
-    expect(sides.get('last-day')).toBe('left'); // to the right is outside its parent
-    expect(sides.get('root-day')).toBe('right'); // nothing to stay inside of
-    expect(sides.has('long')).toBe(false); // fits: drawn inside, as ever
-    expect(sides.has('parent')).toBe(false); // fits its dates
-  });
-
-  it('hangs the name of a bar an arrow leaves on its left, and of one an arrow enters on its right, so the curve never crosses it', () => {
-    const m = model('leads');
-    const p = m.plan();
-    // three weeks of chart before gw and after db
-    p.event('kickoff', { name: 'Kickoff', at: '2026-11-09' });
-    p.event('done', { name: 'Done', at: '2026-12-31' });
-    const gw = p.zone('gw', { name: 'API gateway upgrade', start: '2026-11-30', end: '2026-12-02' });
-    // no room on its left inside gw: it hangs out of gw's left wall, over open canvas
-    const stage = gw.zone('stage', { name: 'Staging and QA', start: '2026-11-30', end: '2026-11-30' });
-    gw.zone('quiet', { name: 'Nothing after', start: '2026-12-01', end: '2026-12-01' });
-    const db = p.zone('db', { name: 'Database', start: '2026-12-07', end: '2026-12-08' });
-    // no room on its right inside db: it hangs out of db's right wall
-    const eu = db.zone('eu', { name: 'EU go-live', start: '2026-12-08', end: '2026-12-08' });
-    m.relate(stage, eu, { kind: 'depends' });
-    const sides = planLabelSides(m.toJSON(), 'plan');
-    expect(sides.get('stage')).toBe('left');
-    // folded, gw stands in for stage at the arrow's start, and db for eu at its end
-    expect(sides.get('gw')).toBe('left');
-    expect(sides.get('db')).toBe('right');
-    expect(sides.get('eu')).toBe('right');
-    expect(sides.get('quiet')).toBe('right');
-  });
-
-  it('a name that would hang off the start of the chart stays on the right; one off its end, on the left', () => {
-    const m = model('edges');
-    const p = m.plan();
-    const first = p.zone('first', { name: 'API gateway 2.4 to 3.0 upgrade', start: '2026-11-30', end: '2026-12-01' });
-    const last = p.zone('last', { name: 'Database 15 to 16 upgrade', start: '2026-12-14', end: '2026-12-15' });
-    m.relate(first, last, { kind: 'depends' });
-    const sides = planLabelSides(m.toJSON(), 'plan');
-    expect(sides.get('first')).toBe('right');
-    expect(sides.get('last')).toBe('left');
-  });
-
-  it('a bar an arrow both enters and leaves keeps the usual side', () => {
-    const m = model('chain');
-    const p = m.plan();
-    const a = p.zone('a', { name: 'First step here', start: '2026-11-30', end: '2026-11-30' });
-    const parent = p.zone('parent', { name: 'Parent', start: '2026-12-01', end: '2026-12-10' });
-    const mid = parent.zone('mid', { name: 'Middle step', start: '2026-12-10', end: '2026-12-10' });
-    const c = p.zone('c', { name: 'Last step here', start: '2026-12-14', end: '2026-12-14' });
-    m.relate(a, mid, { kind: 'depends' });
-    m.relate(mid, c, { kind: 'depends' });
-    expect(planLabelSides(m.toJSON(), 'plan').get('mid')).toBe('left'); // its parent's wall is on the right
-  });
-
-  it('a role is no arrow: an owner leaves the name beside the bar', () => {
-    const m = model('roles');
-    const p = m.plan();
-    const z = p.zone('z', { name: 'Staging and QA', start: '2026-11-30', end: '2026-11-30' });
-    z.owner(p.person('ana', 'Ana'));
-    expect(planLabelSides(m.toJSON(), 'plan').get('z')).toBe('right');
-  });
-
-  it('gives a zone with rows a side too, for when it is folded into a bar', () => {
-    const m = model('folds');
-    const p = m.plan();
-    // a long name on a three-day zone: open, it titles its band; folded, it is
-    // a bar like any other and its name goes beside it
-    p.zone('short', { name: 'Kubernetes 1.29 to 1.30', start: '2026-03-02', end: '2026-03-04' }).zone('row', {
-      start: '2026-03-02',
-      end: '2026-03-03',
-    });
-    expect(planLabelSides(m.toJSON(), 'plan').get('short')).toBe('right');
   });
 
   describe('a fold', () => {

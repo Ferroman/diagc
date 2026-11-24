@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import { NodeChrome } from '../chrome';
+import { NodeStripes } from '../NodeStripes';
 import {
   accentStyle,
   assetUrl,
@@ -59,6 +60,7 @@ export function GroupBody({ id, data, selected, width, height, profile, parts }:
       {/* never the preset's own fill: this box is where the children and their
           edges are drawn (see SketchFill) — and an outline group stays a line */}
       {sketchOf(data, style.shape, { id, width, height }, groupOutline ? 'none' : 'wash')}
+      <NodeStripes stripes={data.stripes} />
       <NodeChrome id={id} data={data} selected={selected} uses={['threat', 'comment', 'quickAdd']} />
       <div className="dg-group-header">
         {data.image !== undefined && (

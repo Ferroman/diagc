@@ -22,10 +22,13 @@ q4.zone('search-launch', { name: 'Search launch', start: '2025-10-06', end: '202
   .executor(eli)
   .checker(dana)
   .link('Design doc', 'https://example.com/docs/search');
-q4.zone('checkout-v2', { name: 'Checkout v2', start: '2025-10-27', end: '2025-12-12', color: '#2f6fed' })
+const checkout = q4
+  .zone('checkout-v2', { name: 'Checkout v2', start: '2025-10-27', end: '2025-12-12', color: '#2f6fed' })
   .contains(web, api)
-  .executor(dana)
-  .event('beta', { name: 'Beta', at: '2025-11-24' });
+  .executor(dana);
+checkout.event('beta', { name: 'Beta', at: '2025-11-24' });
+// days the work stops without moving its dates: hatched on the bar it pauses
+plan.period('thanksgiving', { name: 'Thanksgiving', start: '2025-11-26', end: '2025-11-28' }).interrupts(checkout);
 q4.event('freeze', { name: 'Holiday freeze', at: '2025-12-15' });
 plan.event('review', { name: 'Quarter review', at: '2025-12-19' });
 

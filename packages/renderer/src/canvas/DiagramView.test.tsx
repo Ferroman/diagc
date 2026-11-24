@@ -2603,6 +2603,23 @@ describe('plan notation', () => {
     // freeze must not write the folded picture into the layout
     await waitFor(() => expect(apiRef.current?.snapshotPositions()['b']?.y).toBe(400));
   });
+  it('draws a period as a bracket node in the header, a hatch on the bar it interrupts, and no edge for it', async () => {
+    const m = model('p');
+    const p = m.plan();
+    const q = p.zone('q', { name: 'Q1', start: '2026-01-05', end: '2026-01-30' });
+    p.period('freeze', { name: 'Freeze', start: '2026-01-12', end: '2026-01-16', interrupts: [q] });
+    p.period('offsite', { name: 'Offsite', start: '2026-01-20', end: '2026-01-21' });
+    const { container } = render(<DiagramView model={m.toJSON()} plane="plan" notation="plan" />);
+    await waitFor(() =>
+      expect(
+        container.querySelector(".react-flow__node[data-id='freeze'] .dg-node[data-type='plan-period']"),
+      ).not.toBeNull(),
+    );
+    expect(container.querySelector(".react-flow__node[data-id='freeze'] .dg-period-name")?.textContent).toBe('Freeze');
+    expect(container.querySelector(".react-flow__node[data-id='q'] .dg-stripe")).not.toBeNull();
+    expect(container.querySelectorAll('.react-flow__edge')).toHaveLength(0);
+    expect(container.querySelectorAll('.dg-time-axis-period')).toHaveLength(1);
+  });
   it('draws no today line when the host passes null', async () => {
     const { container } = render(<DiagramView model={plan()} plane="plan" notation="plan" today={null} />);
     await waitFor(() => expect(container.querySelector('.dg-time-axis')).not.toBeNull());

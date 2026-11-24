@@ -236,6 +236,30 @@ describe('plan profile', () => {
     expect(notationProfile('plan').drillCarry!(m.toJSON(), 'plan', 'a')).toEqual(['alice', 'dana']);
   });
 
+  it('an opened zone carries the periods interrupting it or a zone inside it, and those that interrupt nothing and touch its days', () => {
+    const m = model('periods');
+    const p = m.plan();
+    const a = p.zone('a', { start: '2026-01-05', end: '2026-01-30' });
+    const a1 = a.zone('a1', { start: '2026-01-05', end: '2026-01-09' });
+    const b = p.zone('b', { start: '2026-02-02', end: '2026-02-06' });
+    p.period('on-a1', { start: '2026-01-06', end: '2026-01-07', interrupts: [a1] });
+    p.period('on-b', { start: '2026-01-10', end: '2026-02-03', interrupts: [b] });
+    p.period('everyone', { start: '2026-01-29', end: '2026-02-01' });
+    p.period('later', { start: '2026-03-01', end: '2026-03-02' });
+    const carry = notationProfile('plan').drillCarry!(m.toJSON(), 'plan', 'a');
+    expect(carry.filter((id) => !['alice'].includes(id))).toEqual(['on-a1', 'everyone']);
+  });
+
+  it('interrupts is never drawn as an edge', () => {
+    expect(notationProfile('plan').edge?.hidden?.('interrupts')).toBe(true);
+  });
+
+  it('a period is not dragged: its days are edited in the source', () => {
+    const drags = notationProfile('plan').node!.draggableWhenFixed!;
+    expect(drags({ id: 'f', name: 'F', type: 'plan-period' })).toBe(false);
+    expect(drags({ id: 'e', name: 'E', type: 'plan-event' })).toBe(true);
+  });
+
   it('owns the layout and the header, rests zones open, sizes events, hides the role kinds', () => {
     const p = notationProfile('plan');
     expect(p.layout).toBe(planLayout);

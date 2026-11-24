@@ -16,7 +16,8 @@ import type { TypeHues } from './type-hues';
 import { toRfNode } from './adapter';
 import { buildNodeDataCached, type NodeDataContext } from './build-data';
 import { diffNodeClasses, withDiffClass } from './diff-marks';
-import { nodeFrameProps } from './node-frame';
+import { nodeFrameProps, type NodeFrameContext } from './node-frame';
+import type { NodeGeometry } from '../layout/layout';
 import type { Notation } from './useNotation';
 import type { ViewLayout } from './useViewLayout';
 import type { DiagramViewProps, EditingApi } from './view-types';
@@ -31,7 +32,10 @@ export interface FlowNodesInput {
   >;
   editing: boolean;
   edit: EditingApi | undefined;
-  notation: Pick<Notation, 'profile' | 'typeRegistry' | 'nodeColors' | 'nodeChips' | 'isAlwaysExpanded' | 'labelSides'>;
+  notation: Pick<
+    Notation,
+    'profile' | 'typeRegistry' | 'nodeColors' | 'nodeChips' | 'isAlwaysExpanded' | 'labelSides' | 'stripes'
+  >;
   icons: IconRegistry;
   preset: StylePreset;
   /** the preset's colouring of the model, when it has a palette */
@@ -59,10 +63,38 @@ export interface FlowNodes {
   rfNodesRef: MutableRefObject<Node[]>;
 }
 
+/** Every box the view shows, parents before their children (React Flow
+ * resolves `parentId` against the nodes it has already seen), each with its
+ * data and frame; one the layout has not placed is left out. */
+function boxNodes(
+  roots: readonly ViewNode[],
+  geometry: ReadonlyMap<string, NodeGeometry>,
+  nodeDataCtx: NodeDataContext,
+  frameCtx: NodeFrameContext,
+): Node[] {
+  const out: Node[] = [];
+  const walk = (n: ViewNode, parent?: string) => {
+    const geo = geometry.get(n.id);
+    if (geo === undefined) return;
+    out.push(
+      toRfNode({
+        id: n.id,
+        position: { x: geo.x, y: geo.y },
+        data: buildNodeDataCached(n, nodeDataCtx),
+        parentId: parent,
+        ...nodeFrameProps(n, geo, parent, frameCtx),
+      }),
+    );
+    n.children.forEach((c) => walk(c, n.id));
+  };
+  roots.forEach((r) => walk(r));
+  return out;
+}
+
 /** The nodes React Flow draws: each box's data and frame, the notes after them, and React Flow's copy. */
 export function useFlowNodes(input: FlowNodesInput): FlowNodes {
   const { props, editing, edit, compiled, labelEdit, preset, setLabelEdit } = input;
-  const { profile, typeRegistry, nodeColors, nodeChips, isAlwaysExpanded, labelSides } = input.notation;
+  const { profile, typeRegistry, nodeColors, nodeChips, isAlwaysExpanded, labelSides, stripes } = input.notation;
   const { arrangedGeometry, fixed, regionSeparators } = input.layout;
   // The per-node data channel inputs, as one object the cached builder keys
   // its identity on (see build-data.ts): while every field is referentially
@@ -101,6 +133,7 @@ export function useFlowNodes(input: FlowNodesInput): FlowNodes {
       regionSeparators,
       isAlwaysExpanded,
       labelSides,
+      stripes,
     }),
     [
       input.metaKeys,
@@ -132,31 +165,17 @@ export function useFlowNodes(input: FlowNodesInput): FlowNodes {
       regionSeparators,
       isAlwaysExpanded,
       labelSides,
+      stripes,
     ],
   );
 
-  const derivedNodes = useMemo((): Node[] => {
-    if (arrangedGeometry === null) return [];
-    const out: Node[] = [];
-    const frameCtx = { editing, profile, typeRegistry, fixed };
-    const walk = (n: ViewNode, parent?: string) => {
-      const geo = arrangedGeometry.get(n.id);
-      if (geo === undefined) return;
-      const data = buildNodeDataCached(n, nodeDataCtx);
-      out.push(
-        toRfNode({
-          id: n.id,
-          position: { x: geo.x, y: geo.y },
-          data,
-          parentId: parent,
-          ...nodeFrameProps(n, geo, parent, frameCtx),
-        }),
-      );
-      n.children.forEach((c) => walk(c, n.id));
-    };
-    compiled.roots.forEach((r) => walk(r));
-    return out;
-  }, [compiled, arrangedGeometry, nodeDataCtx, editing, typeRegistry, profile, fixed]);
+  const derivedNodes = useMemo(
+    (): Node[] =>
+      arrangedGeometry === null
+        ? []
+        : boxNodes(compiled.roots, arrangedGeometry, nodeDataCtx, { editing, profile, typeRegistry, fixed }),
+    [compiled, arrangedGeometry, nodeDataCtx, editing, typeRegistry, profile, fixed],
+  );
 
   // Boxes first, notes after: React Flow resolves `parentId` against the nodes
   // it has already seen, so a note must never precede the box it rides on.

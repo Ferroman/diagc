@@ -1,6 +1,7 @@
 import {
   FISHBONE_TYPES,
   isActivityChrome,
+  PLAN_PERIOD_TYPE,
   PLAN_ZONE_TYPE,
   runsToPlainText,
   SM_STATE_TYPE,
@@ -36,8 +37,9 @@ export const FORCED_SIZE_SHAPES: ReadonlySet<string> = new Set([
  * childless `plan-zone` belongs here too: its width IS its dates,
  * `(end − start + 1) × DAY` — that span cannot round-trip through a
  * CSS-natural, label-hugging width, and the studio's resize reads the drawn
- * width back into `end`, so the wrapper must carry the layout's width exactly. */
-export const LAYOUT_SIZED_TYPES: ReadonlySet<string> = new Set([...FISHBONE_TYPES, PLAN_ZONE_TYPE]);
+ * width back into `end`, so the wrapper must carry the layout's width exactly.
+ * A `plan-period` too: its bracket spans its days and has no size of its own. */
+export const LAYOUT_SIZED_TYPES: ReadonlySet<string> = new Set([...FISHBONE_TYPES, PLAN_ZONE_TYPE, PLAN_PERIOD_TYPE]);
 
 /**
  * Deterministic (no-DOM) footprint of an ordinary box node — the branch of

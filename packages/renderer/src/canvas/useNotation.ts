@@ -19,6 +19,8 @@ export interface Notation {
   nodeChips: NodeDataContext['nodeChips'];
   /** leaf boxes whose name is drawn beside them (a plan's short bars) */
   labelSides: NodeDataContext['labelSides'];
+  /** hatched stretches over boxes (a plan bar's interrupted days) */
+  stripes: NodeDataContext['stripes'];
 }
 
 /** A container the notation never folds: git lanes are rows, not boxes with an inside. */
@@ -64,5 +66,6 @@ export function useNotation(
     () => profile.node?.labelSides?.(props.model, props.plane),
     [profile, props.model, props.plane],
   );
-  return { profile, typeRegistry, kindRegistry, isAlwaysExpanded, nodeColors, nodeChips, labelSides };
+  const stripes = useMemo(() => profile.node?.stripes?.(props.model, props.plane), [profile, props.model, props.plane]);
+  return { profile, typeRegistry, kindRegistry, isAlwaysExpanded, nodeColors, nodeChips, labelSides, stripes };
 }

@@ -100,4 +100,33 @@ describe('plan', () => {
     // @ts-expect-error — same guard as person(): plane is forced, opts must not accept an override.
     p.team('growth', 'Growth', { plane: 'arch' });
   });
+
+  it('a period carries its dates and one interrupts relation per row', () => {
+    const m = model('p');
+    const p = m.plan();
+    const temporal = p.zone('temporal', { start: '2026-12-07', end: '2027-01-19' });
+    const secrets = p.zone('secrets', { start: '2026-12-14', end: '2027-01-12' });
+    p.period('freeze', {
+      name: 'Holiday change freeze',
+      start: '2026-12-21',
+      end: '2027-01-03',
+      interrupts: [temporal],
+      color: '#888888',
+    }).interrupts(secrets);
+    const json = m.toJSON();
+    expect(json.nodes.find((n) => n.id === 'freeze')).toEqual({
+      id: 'freeze',
+      name: 'Holiday change freeze',
+      type: 'plan-period',
+      plane: 'plan',
+      color: '#888888',
+      metadata: { start: '2026-12-21', end: '2027-01-03' },
+    });
+    expect(json.relations.map((r) => [r.from, r.to, r.kind])).toEqual([
+      ['freeze', 'temporal', 'interrupts'],
+      ['freeze', 'secrets', 'interrupts'],
+    ]);
+    // a period sits on the plan plane, in no zone
+    expect(json.containment).toEqual([]);
+  });
 });
