@@ -141,9 +141,10 @@ export function useFlowEdges(input: FlowEdgesInput): FlowEdges {
         data: status !== undefined ? { ...data, diff: status } : data,
         reconnectable: editing && relation !== undefined,
         className: withDiffClass(undefined, status),
+        zIndex: profile.edge?.zIndex,
       });
     });
-  }, [compiled, placedGeometry, edgeDataCtx, editing, diffMarks]);
+  }, [compiled, placedGeometry, edgeDataCtx, editing, diffMarks, profile]);
 
   // Edge selection is React Flow's own, but the edges are controlled: its
   // select changes reach the canvas only through this set. Without it no edge

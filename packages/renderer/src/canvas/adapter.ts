@@ -4,6 +4,7 @@ import { DiagramEdge, type DiagramEdgeData } from '../edge/DiagramEdge';
 import { DiagramNode, type DiagramNodeData } from '../node/DiagramNode';
 import { NoteNode, type NoteData } from '../notes/NoteNode';
 import { defined, type Point } from '@diagc/core/internal';
+import { NOTE_Z } from './stacking';
 
 // The single boundary where React Flow v12's typing is widened. v12 types
 // nodeTypes/edgeTypes as components taking full NodeProps/EdgeProps while our
@@ -55,8 +56,9 @@ export function toRfNoteNode({ data, ...props }: RfNoteInput): Node {
     type: 'note',
     data: data as unknown as Record<string, unknown>,
     selectable: false,
-    // above the boxes it annotates, below nothing that matters
-    zIndex: 2,
+    // above the boxes it annotates and above a notation's lifted edges,
+    // below nothing that matters (a selected node, at 1000)
+    zIndex: NOTE_Z,
   };
 }
 
@@ -69,6 +71,8 @@ export interface RfEdgeInput {
   reconnectable?: boolean;
   /** extra class on React Flow's edge wrapper (a diff mark) */
   className?: string;
+  /** React Flow's stacking order for the edge; unset = drawn under the boxes */
+  zIndex?: number;
 }
 
 /** Build a React Flow edge, widening our typed data channel at the boundary. */

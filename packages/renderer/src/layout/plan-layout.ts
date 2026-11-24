@@ -7,6 +7,7 @@ import {
   isPlanZone,
   PLAN_NOTATION,
   PLAN_ROLES,
+  isPlanRole,
   planGraph,
   planSubtree,
   planSubtreeRange,
@@ -254,8 +255,33 @@ const sidesCache = new WeakMap<DiagramModel, Map<string | undefined, ReadonlyMap
  * do: to the right, or to the left where the right would cross the wall of the
  * zone the bar is in, and failing both wherever there is more room. A zone with
  * rows gets a side as well: open, its name titles its band (`titleBand`) and
- * the canvas ignores the side; folded, it is a bar like any other.
+ * the canvas ignores the side; folded, it is a bar like any other. A
+ * dependency arrow curves out of a bar's end and into a bar's start, so a bar
+ * only an arrow leaves hangs its name on its left and one only an arrow enters
+ * on its right, whatever the walls: past its zone's wall the name lies over
+ * open canvas, since no other row shares its height. A zone whose rows an
+ * arrow leaves or enters counts too: folded, it stands in for them.
  */
+/** The side an arrow leaves free for a bar's name — left of a bar only an
+ * arrow leaves, right of one only an arrow enters — while the chart has room
+ * for it there, else the other side if that has room; undefined when no arrow
+ * decides (none, or both ways) or neither side fits, and the walls decide. */
+function arrowSide(
+  { leaves, enters }: { leaves: boolean; enters: boolean },
+  span: PlanSpan,
+  range: PlanSpan | undefined,
+  need: number,
+): LabelSide | undefined {
+  if (leaves === enters || range === undefined) return undefined;
+  const room = {
+    left: (span.start - range.start) * PLAN_LAYOUT.DAY,
+    right: (range.end - span.end) * PLAN_LAYOUT.DAY,
+  };
+  const free: LabelSide = leaves ? 'left' : 'right';
+  const other: LabelSide = leaves ? 'right' : 'left';
+  return room[free] >= need ? free : room[other] >= need ? other : undefined;
+}
+
 export function planLabelSides(model: DiagramModel, plane: string | undefined): ReadonlyMap<string, LabelSide> {
   let byPlane = sidesCache.get(model);
   if (byPlane === undefined) {
@@ -269,6 +295,8 @@ export function planLabelSides(model: DiagramModel, plane: string | undefined): 
   const graph = planGraphCached(model, plane);
   const chips = planChips(model, plane);
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
+  const leaves = arrowEnds(model, graph, 'from');
+  const enters = arrowEnds(model, graph, 'to');
   const sides = new Map<string, LabelSide>();
   for (const id of graph.zones) {
     const node = byId.get(id)!;
@@ -276,13 +304,18 @@ export function planLabelSides(model: DiagramModel, plane: string | undefined): 
     if (span === undefined) continue;
     const row = nameRowWidth(node.name, chips.get(id));
     if (row + 2 * PAD_X + BORDER <= (span.end - span.start + 1) * DAY) continue;
+    const need = row + OUTSIDE_GAP + PAD_X;
+    const onChart = arrowSide({ leaves: leaves.has(id), enters: enters.has(id) }, span, graph.range, need);
+    if (onChart !== undefined) {
+      sides.set(id, onChart);
+      continue;
+    }
     const parentId = graph.parent.get(id);
     const parentSpan = parentId !== undefined ? spanOf(byId.get(parentId)!) : undefined;
     if (parentSpan === undefined) {
       sides.set(id, 'right');
       continue;
     }
-    const need = row + OUTSIDE_GAP + PAD_X;
     const right = (parentSpan.end - span.end) * DAY;
     const left = (span.start - parentSpan.start) * DAY;
     sides.set(id, right >= need ? 'right' : left >= need ? 'left' : right >= left ? 'right' : 'left');
@@ -290,6 +323,28 @@ export function planLabelSides(model: DiagramModel, plane: string | undefined): 
   byPlane.set(plane, sides);
   return sides;
 }
+/** The zones a dependency arrow leaves (`from`) or enters (`to`): that end of
+ * any relation that is not a role, and each zone holding it, up to — not
+ * including — one that also holds the other end (folded, the zone stands in for
+ * the row inside it; core's `liftRolledUp` draws the arrow from it then). */
+function arrowEnds(model: DiagramModel, graph: PlanGraph, end: 'from' | 'to'): Set<string> {
+  const ends = new Set<string>();
+  const upFrom = (id: string): string[] => {
+    const chain: string[] = [];
+    for (let cur: string | undefined = id; cur !== undefined; cur = graph.parent.get(cur)) chain.push(cur);
+    return chain;
+  };
+  for (const r of model.relations) {
+    if (isPlanRole(r.kind)) continue;
+    const holdsOther = new Set(upFrom(end === 'from' ? r.to : r.from));
+    for (const id of upFrom(r[end])) {
+      if (holdsOther.has(id)) break;
+      ends.add(id);
+    }
+  }
+  return ends;
+}
+
 const nodeOf = (run: PlanRun, id: string): DiagramNode => run.byId.get(id)!;
 
 /** Where a zone's bar begins. `spanOf` gives up on a reversed or malformed

@@ -46,6 +46,9 @@ export interface ResolveEdgesOptions {
   includeBase?: boolean;
   /** a relation drawn end to end is its own edge (state-machine planes) */
   separateDirect?: boolean;
+  /** a relation rolled up at either end lifts both ends to the rows side by
+   *  side under their common host (plan planes): see `liftEnds` */
+  liftRolledUp?: boolean;
 }
 
 export function resolveEdges(model: DiagramModel, tree: ViewTree, opts: ResolveEdgesOptions = {}): ViewEdge[] {
@@ -54,6 +57,7 @@ export function resolveEdges(model: DiagramModel, tree: ViewTree, opts: ResolveE
     active: new Set(opts.activeLayers ?? []),
     includeBase: opts.includeBase ?? true,
     separateDirect: opts.separateDirect ?? false,
+    liftRolledUp: opts.liftRolledUp ?? false,
   });
   // A transition's label already uses ' / ' before its effect, so on a state-machine
   // plane two merged transitions `pay` and `ship` must not read as `pay / ship`.
@@ -68,7 +72,8 @@ function groupRelations(
     active,
     includeBase,
     separateDirect,
-  }: { active: ReadonlySet<string>; includeBase: boolean; separateDirect: boolean },
+    liftRolledUp,
+  }: { active: ReadonlySet<string>; includeBase: boolean; separateDirect: boolean; liftRolledUp: boolean },
 ): Map<string, Group> {
   const anchorFor = (id: string): string | undefined => (tree.byId.has(id) ? id : tree.anchorOf.get(id));
   const groups = new Map<string, Group>();
@@ -76,9 +81,9 @@ function groupRelations(
     // Effective layer: the relation's own, else what `layerRules` assigns.
     const layer = relationLayer(model, r);
     if (layer === undefined ? !includeBase : !active.has(layer)) continue;
-    const from = anchorFor(r.from);
-    const to = anchorFor(r.to);
-    if (from === undefined || to === undefined) continue;
+    const anchors = endsOf(r, anchorFor, liftRolledUp ? tree.hostOf : undefined);
+    if (anchors === undefined) continue;
+    const [from, to] = anchors;
     const isOriginalSelfLoop = r.from === r.to;
     if (from === to && !(isOriginalSelfLoop && tree.byId.has(r.from))) continue;
     // Folding exists to merge, so only a relation drawn end to end stays apart:
@@ -90,6 +95,46 @@ function groupRelations(
     groups.set(key, group);
   }
   return groups;
+}
+
+/** The two visible ends `r` draws between; undefined when either is not shown. */
+function endsOf(
+  r: DiagramRelation,
+  anchorFor: (id: string) => string | undefined,
+  hostOf: ReadonlyMap<string, string | null> | undefined,
+): [string, string] | undefined {
+  const from = anchorFor(r.from);
+  const to = anchorFor(r.to);
+  if (from === undefined || to === undefined) return undefined;
+  if (hostOf === undefined || attachesDirectly(r, from, to)) return [from, to];
+  return liftEnds(from, to, hostOf);
+}
+
+/**
+ * Both ends of a rolled-up relation, lifted to the two rows side by side under
+ * their nearest common host. A plan's dependency into a folded zone says the
+ * zone waits on something; drawn from each open row that leads into it, the
+ * fold would hide one end and leave the other's detail standing, as several
+ * arrows into one bar. Lifted, the folded zone is joined by the zone beside it
+ * — one arrow, zone to zone, as a Gantt chart summarises — and folding either
+ * side reads the same. An end that is itself that common host (a zone to a row
+ * inside its own folded child) keeps its place.
+ */
+function liftEnds(from: string, to: string, hostOf: ReadonlyMap<string, string | null>): [string, string] {
+  const chainOf = (id: string): string[] => {
+    const chain = [id];
+    for (let cur = hostOf.get(id) ?? null; cur !== null; cur = hostOf.get(cur) ?? null) chain.push(cur);
+    return chain;
+  };
+  const up = chainOf(from);
+  const down = chainOf(to);
+  const shared = new Set(down);
+  const common = up.find((id) => shared.has(id));
+  const below = (chain: string[]): string => {
+    const i = common === undefined ? chain.length : chain.indexOf(common);
+    return chain[Math.max(i - 1, 0)]!;
+  };
+  return [below(up), below(down)];
 }
 
 // Two arrows between the same pair fixed to *different* border sides are

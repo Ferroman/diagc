@@ -5,6 +5,7 @@ import { compileView, model, type DiagramModel } from '@diagc/core/internal';
 import { notationProfile } from '../notations';
 import { createKindRegistry } from '../registry';
 import { stylePreset } from '../sketch/stylePresets';
+import { toRfNoteNode } from './adapter';
 import { useFlowEdges, type FlowEdgesInput } from './useFlowEdges';
 
 /** two services and the one relation between them */
@@ -41,6 +42,37 @@ function input(over: Partial<FlowEdgesInput> = {}): FlowEdgesInput {
 const dataOf = (edges: { data?: Record<string, unknown> }[]) => edges[0]!.data!;
 
 describe('useFlowEdges', () => {
+  it("lifts a plan's dependencies over its bars, under its notes; other notations keep React Flow's order", () => {
+    const m = model('p');
+    const p = m.plan();
+    const a = p.zone('a', { start: '2026-01-05', end: '2026-01-09' });
+    const b = p.zone('b', { start: '2026-01-12', end: '2026-01-16' });
+    m.relate(a, b, { kind: 'flow' });
+    const json = m.toJSON();
+    const plan = notationProfile('plan');
+    const { result } = renderHook(() =>
+      useFlowEdges(
+        input({
+          props: { model: json, plane: 'plan' },
+          notation: { profile: plan, kindRegistry: createKindRegistry(plan.kindStyles) },
+          compiled: compileView(json, { plane: 'plan' }),
+        }),
+      ),
+    );
+    const z = result.current.rfEdges[0]!.zIndex!;
+    // React Flow stacks a child at `parentZ >= childZ ? parentZ + 1 : childZ`
+    // (@xyflow/system adoptUserNodes), and a node wins a tie with an edge: a
+    // bar inside open zones four deep (each open zone at -1) still sits under
+    const OPEN = -1;
+    let deepest = OPEN;
+    for (const child of [OPEN, OPEN, OPEN, 0]) deepest = deepest >= child ? deepest + 1 : child;
+    expect(z).toBeGreaterThan(deepest);
+    expect(z).toBeLessThan(
+      toRfNoteNode({ id: 'n', position: { x: 0, y: 0 }, data: {} as never, draggable: false }).zIndex!,
+    );
+    expect(renderHook(() => useFlowEdges(input())).result.current.rfEdges[0]!.zIndex).toBeUndefined();
+  });
+
   it('draws nothing before the layout has placed the boxes', () => {
     const { result } = renderHook(() => useFlowEdges(input({ layout: { ...input().layout, placedGeometry: null } })));
     expect(result.current.rfEdges).toEqual([]);

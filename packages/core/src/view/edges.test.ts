@@ -472,6 +472,74 @@ describe('resolveEdges: separateDirect', () => {
   });
 });
 
+describe('resolveEdges: liftRolledUp', () => {
+  /** gw ⊃ { stage, us }, db ⊃ { eu, dbus }: two dependencies across, both
+   * "required first"; deep ⊃ inner ⊃ leaf, with leaf → eu */
+  function rows(): DiagramModel {
+    const m = model('t');
+    const gw = m.node('gw', { type: 'row' });
+    const db = m.node('db', { type: 'row' });
+    const stage = m.node('stage', { type: 'row' });
+    const us = m.node('us', { type: 'row' });
+    const eu = m.node('eu', { type: 'row' });
+    const dbus = m.node('dbus', { type: 'row' });
+    gw.contains(stage, us);
+    db.contains(eu, dbus);
+    m.relate(stage, dbus, { kind: 'depends', label: 'required first' });
+    m.relate(us, eu, { kind: 'depends', label: 'required first' });
+    return m.toJSON();
+  }
+  const run = (j: DiagramModel, lod: LodState, liftRolledUp?: boolean) =>
+    resolveEdges(j, buildViewTree(j, buildHierarchy(j), lod), { liftRolledUp });
+
+  it('a folded target: the rows that lead into it lift to their own zone, and the arrows merge into one', () => {
+    const edges = run(rows(), { gw: 'expanded', db: 'collapsed' }, true);
+    expect(edges.map((e) => e.id)).toEqual(['gw=>db:']);
+    expect(edges[0]?.constituents).toHaveLength(2);
+    expect(edges[0]?.label).toBe('required first');
+  });
+
+  it('a folded source: one arrow from it to the zone the rows it leads to sit in', () => {
+    expect(run(rows(), { gw: 'collapsed', db: 'expanded' }, true).map((e) => e.id)).toEqual(['gw=>db:']);
+  });
+
+  it('both open: each row keeps its own arrow', () => {
+    expect(run(rows(), { gw: 'expanded', db: 'expanded' }, true).map((e) => e.id)).toEqual(['stage=>dbus:', 'us=>eu:']);
+  });
+
+  it('without the flag a rolled-up arrow keeps its open end, as in every other notation', () => {
+    expect(run(rows(), { gw: 'expanded', db: 'collapsed' }).map((e) => e.id)).toEqual(['stage=>db:', 'us=>db:']);
+  });
+
+  it('lifts a deep row to the one beside the folded zone, not to the top', () => {
+    const m = model('t');
+    const plan = m.node('plan', { type: 'row' });
+    const a = m.node('a', { type: 'row' });
+    const inner = m.node('inner', { type: 'row' });
+    const leaf = m.node('leaf', { type: 'row' });
+    const b = m.node('b', { type: 'row' });
+    const b1 = m.node('b1', { type: 'row' });
+    plan.contains(a, b);
+    a.contains(inner);
+    inner.contains(leaf);
+    b.contains(b1);
+    m.relate(leaf, b1, { kind: 'depends' });
+    const edges = run(m.toJSON(), { plan: 'expanded', a: 'expanded', inner: 'expanded', b: 'collapsed' }, true);
+    expect(edges.map((e) => e.id)).toEqual(['a=>b:']);
+  });
+
+  it('a zone to a row inside its own folded child: the zone keeps its end', () => {
+    const m = model('t');
+    const a = m.node('a', { type: 'row' });
+    const sub = m.node('sub', { type: 'row' });
+    const x = m.node('x', { type: 'row' });
+    a.contains(sub);
+    sub.contains(x);
+    m.relate(a, x, { kind: 'depends' });
+    expect(run(m.toJSON(), { a: 'expanded', sub: 'collapsed' }, true).map((e) => e.id)).toEqual(['a=>sub:']);
+  });
+});
+
 describe('soleRelation', () => {
   const r = (id: string): DiagramRelation => ({ id, from: 'a', to: 'b', kind: 'uses' });
   const edge = (constituents: DiagramRelation[]) => ({ id: 'e', from: 'a', to: 'b', kind: 'uses', constituents });

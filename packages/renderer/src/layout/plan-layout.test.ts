@@ -353,6 +353,60 @@ describe('planLayout', () => {
     expect(sides.has('parent')).toBe(false); // fits its dates
   });
 
+  it('hangs the name of a bar an arrow leaves on its left, and of one an arrow enters on its right, so the curve never crosses it', () => {
+    const m = model('leads');
+    const p = m.plan();
+    // three weeks of chart before gw and after db
+    p.event('kickoff', { name: 'Kickoff', at: '2026-11-09' });
+    p.event('done', { name: 'Done', at: '2026-12-31' });
+    const gw = p.zone('gw', { name: 'API gateway upgrade', start: '2026-11-30', end: '2026-12-02' });
+    // no room on its left inside gw: it hangs out of gw's left wall, over open canvas
+    const stage = gw.zone('stage', { name: 'Staging and QA', start: '2026-11-30', end: '2026-11-30' });
+    gw.zone('quiet', { name: 'Nothing after', start: '2026-12-01', end: '2026-12-01' });
+    const db = p.zone('db', { name: 'Database', start: '2026-12-07', end: '2026-12-08' });
+    // no room on its right inside db: it hangs out of db's right wall
+    const eu = db.zone('eu', { name: 'EU go-live', start: '2026-12-08', end: '2026-12-08' });
+    m.relate(stage, eu, { kind: 'depends' });
+    const sides = planLabelSides(m.toJSON(), 'plan');
+    expect(sides.get('stage')).toBe('left');
+    // folded, gw stands in for stage at the arrow's start, and db for eu at its end
+    expect(sides.get('gw')).toBe('left');
+    expect(sides.get('db')).toBe('right');
+    expect(sides.get('eu')).toBe('right');
+    expect(sides.get('quiet')).toBe('right');
+  });
+
+  it('a name that would hang off the start of the chart stays on the right; one off its end, on the left', () => {
+    const m = model('edges');
+    const p = m.plan();
+    const first = p.zone('first', { name: 'API gateway 2.4 to 3.0 upgrade', start: '2026-11-30', end: '2026-12-01' });
+    const last = p.zone('last', { name: 'Database 15 to 16 upgrade', start: '2026-12-14', end: '2026-12-15' });
+    m.relate(first, last, { kind: 'depends' });
+    const sides = planLabelSides(m.toJSON(), 'plan');
+    expect(sides.get('first')).toBe('right');
+    expect(sides.get('last')).toBe('left');
+  });
+
+  it('a bar an arrow both enters and leaves keeps the usual side', () => {
+    const m = model('chain');
+    const p = m.plan();
+    const a = p.zone('a', { name: 'First step here', start: '2026-11-30', end: '2026-11-30' });
+    const parent = p.zone('parent', { name: 'Parent', start: '2026-12-01', end: '2026-12-10' });
+    const mid = parent.zone('mid', { name: 'Middle step', start: '2026-12-10', end: '2026-12-10' });
+    const c = p.zone('c', { name: 'Last step here', start: '2026-12-14', end: '2026-12-14' });
+    m.relate(a, mid, { kind: 'depends' });
+    m.relate(mid, c, { kind: 'depends' });
+    expect(planLabelSides(m.toJSON(), 'plan').get('mid')).toBe('left'); // its parent's wall is on the right
+  });
+
+  it('a role is no arrow: an owner leaves the name beside the bar', () => {
+    const m = model('roles');
+    const p = m.plan();
+    const z = p.zone('z', { name: 'Staging and QA', start: '2026-11-30', end: '2026-11-30' });
+    z.owner(p.person('ana', 'Ana'));
+    expect(planLabelSides(m.toJSON(), 'plan').get('z')).toBe('right');
+  });
+
   it('gives a zone with rows a side too, for when it is folded into a bar', () => {
     const m = model('folds');
     const p = m.plan();
