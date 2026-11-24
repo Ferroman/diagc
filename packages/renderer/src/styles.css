@@ -2059,6 +2059,12 @@ path.dg-loop-badge-circle {
   fill: color-mix(in srgb, var(--dg-text-muted) 18%, transparent);
   stroke: none;
 }
+.dg-time-axis-period-hatched {
+  fill: url(#dg-time-axis-hatch);
+}
+.dg-time-axis-hatch {
+  fill: color-mix(in srgb, var(--dg-text-muted) 60%, transparent);
+}
 .dg-time-axis-event {
   stroke: var(--dg-text-muted);
   stroke-width: 1;
@@ -2291,8 +2297,9 @@ path.dg-loop-badge-circle {
 .dg-notation-plan .dg-group[data-type='plan-zone'],
 .dg-notation-plan .dg-node[data-type='plan-zone'] {
   --dg-node-accent-tint: var(--dg-plan-zone-tint);
+  --dg-zone-edge: 3px;
   border-style: solid;
-  border-left-width: 3px;
+  border-left-width: var(--dg-zone-edge);
   border-radius: 6px;
 }
 /* A childless zone is a bar exactly as wide as its dates: React Flow's wrapper
@@ -2408,6 +2415,17 @@ path.dg-loop-badge-circle {
   );
   border-left: 1px dashed var(--dg-stripe);
   border-right: 1px dashed var(--dg-stripe);
+}
+/* A stripe's x is from the bar's outer edge, where its days start. In a
+   positioned box it is placed from inside the borders instead (the zone's 3px
+   left edge, the box's 1.5px elsewhere), which drew a folded bar's hatch 3px
+   late and out past its end: pull it back over them. An open group is not
+   positioned in the clean look, so its stripe already lands on the edge. */
+.dg-notation-plan .dg-node[data-type='plan-zone'] > .dg-stripe,
+.dg-notation-plan.dg-style-rough .dg-group[data-type='plan-zone'] > .dg-stripe {
+  margin-left: calc(-1 * var(--dg-zone-edge));
+  top: -1.5px;
+  bottom: -1.5px;
 }
 .dg-notation-plan .dg-node[data-type='plan-zone'] > .dg-node-row,
 .dg-notation-plan .dg-group[data-type='plan-zone'] > .dg-group-header {
