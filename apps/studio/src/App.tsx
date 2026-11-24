@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
-import { PLAN_LAYOUT, todayIso, type CanvasCommands } from '@diagc/renderer';
+import { useMemo, useRef } from 'react';
+import { todayIso, type CanvasCommands } from '@diagc/renderer';
 import { useDiagramBoot } from './diagrams/useDiagramBoot';
 import { useDeepLink } from './diagrams/useDeepLink';
 import { useEditSession } from './session/useEditSession';
@@ -108,9 +108,6 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
   // the host's calendar date: a plan plane's today line, and where a quick-add
   // or a library drop with no other anchor lands.
   const today = todayIso();
-  // the plan canvas's px per day: the canvas changes it (its day buttons, an
-  // opened zone) and the gestures read it, so it lives here, above both
-  const [dayWidth, setDayWidth] = useState<number>(PLAN_LAYOUT.DAY);
   const loops = useCausalLoopAnalysis({
     editing,
     loopAnalysis: studioProfile.loopAnalysis === true,
@@ -145,7 +142,6 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
     lib,
     drillRoot,
     today,
-    dayWidth,
   });
 
   // Diagram lifecycle: create + rename + duplicate (the flows that re-key the
@@ -282,8 +278,6 @@ export function App({ initialTheme = 'dark' }: { initialTheme?: 'light' | 'dark'
               <StudioCanvas
                 model={model}
                 today={today}
-                dayWidth={dayWidth}
-                onDayWidthChange={setDayWidth}
                 editing={editing}
                 nav={nav}
                 selection={canvasSelection}

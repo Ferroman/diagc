@@ -54,11 +54,7 @@ const dates = (c: EditorCommand | undefined) => commands(c).filter((x) => x.type
 
 describe('planMoves', () => {
   it("rounds a top-level zone's dx to days, shifts its subtree, and writes back the derived x with a clamped y", () => {
-    const c = planMoves(
-      { model: roadmap(), plane: 'plan', dayWidth: DAY },
-      { q1: { x: 999, y: -30 } },
-      { q1: { dx: 7 * DAY + 6, dy: -30 } },
-    );
+    const c = planMoves(roadmap(), 'plan', { q1: { x: 999, y: -30 } }, { q1: { dx: 7 * DAY + 6, dy: -30 } });
     expect(dates(c)).toEqual([
       { type: 'set-plan-dates', id: 'q1', dates: { start: shift('2026-01-05', 7), end: shift('2026-03-27', 7) } },
       { type: 'set-plan-dates', id: 'design', dates: { start: shift('2026-01-05', 7), end: shift('2026-01-30', 7) } },
@@ -74,11 +70,7 @@ describe('planMoves', () => {
     });
   });
   it('a vertical move of a top-level zone changes no dates but still saves y', () => {
-    const c = planMoves(
-      { model: roadmap(), plane: 'plan', dayWidth: DAY },
-      { q1: { x: 0, y: 120 } },
-      { q1: { dx: 3, dy: 120 } },
-    );
+    const c = planMoves(roadmap(), 'plan', { q1: { x: 0, y: 120 } }, { q1: { dx: 3, dy: 120 } });
     expect(dates(c)).toEqual([]);
     expect(commands(c)).toEqual([
       { type: 'set-position', nodeId: 'q1', x: planX(d('2026-01-05'), origin, PLAN_LAYOUT.DAY), y: 120, plane: 'plan' },
@@ -86,20 +78,12 @@ describe('planMoves', () => {
   });
   it('clamps a nested zone inside its parent and saves no position for it', () => {
     // design may move right by at most 56 days (Jan 30 → Mar 27); ask for 70
-    const c = planMoves(
-      { model: roadmap(), plane: 'plan', dayWidth: DAY },
-      { design: { x: 0, y: 0 } },
-      { design: { dx: 70 * DAY, dy: 0 } },
-    );
+    const c = planMoves(roadmap(), 'plan', { design: { x: 0, y: 0 } }, { design: { dx: 70 * DAY, dy: 0 } });
     expect(commands(c)).toEqual([
       { type: 'set-plan-dates', id: 'design', dates: { start: shift('2026-01-05', 56), end: '2026-03-27' } },
     ]);
     // and left: never before the parent's start
-    const back = planMoves(
-      { model: roadmap(), plane: 'plan', dayWidth: DAY },
-      { build: { x: 0, y: 0 } },
-      { build: { dx: -100 * DAY, dy: 0 } },
-    );
+    const back = planMoves(roadmap(), 'plan', { build: { x: 0, y: 0 } }, { build: { dx: -100 * DAY, dy: 0 } });
     expect(dates(back)[0]).toEqual({
       type: 'set-plan-dates',
       id: 'build',
@@ -114,7 +98,8 @@ describe('planMoves', () => {
     const m = roadmap();
     m.nodes.push({ id: 'platform', name: 'Platform', type: 'team' });
     const c = planMoves(
-      { model: m, plane: 'plan', dayWidth: DAY },
+      m,
+      'plan',
       { kickoff: { x: 0, y: 0 }, m1: { x: 0, y: 0 }, alice: { x: 5, y: 5 }, platform: { x: 5, y: 5 } },
       {
         kickoff: { dx: -2 * DAY, dy: 0 },
@@ -128,11 +113,7 @@ describe('planMoves', () => {
       { type: 'set-plan-dates', id: 'm1', dates: { at: '2026-03-27' } },
     ]);
     expect(
-      planMoves(
-        { model: roadmap(), plane: 'plan', dayWidth: DAY },
-        { kickoff: { x: 0, y: 0 } },
-        { kickoff: { dx: DAY / 3, dy: 0 } },
-      ),
+      planMoves(roadmap(), 'plan', { kickoff: { x: 0, y: 0 } }, { kickoff: { dx: DAY / 3, dy: 0 } }),
     ).toBeUndefined();
   });
   it('a stray — a node the plane shows but no zone holds — keeps the spot it was dropped on', () => {
@@ -141,11 +122,7 @@ describe('planMoves', () => {
     // command of its own the drop snapped back on the next arrange.
     const m = roadmap();
     m.nodes.push({ id: 'stray', name: 'Stray', type: 'service', plane: 'plan' });
-    const c = planMoves(
-      { model: m, plane: 'plan', dayWidth: DAY },
-      { stray: { x: 40, y: 300 } },
-      { stray: { dx: 40, dy: 300 } },
-    );
+    const c = planMoves(m, 'plan', { stray: { x: 40, y: 300 } }, { stray: { dx: 40, dy: 300 } });
     expect(commands(c)).toEqual([{ type: 'set-position', nodeId: 'stray', x: 40, y: 300, plane: 'plan' }]);
   });
   it('a nested zone under a parent with unusable dates still saves no position', () => {
@@ -154,11 +131,7 @@ describe('planMoves', () => {
     // in the layout file. The plan graph's parent map is the honest test.
     const m = roadmap();
     m.nodes.find((n) => n.id === 'q1')!.metadata!.end = '2025-01-01';
-    const c = planMoves(
-      { model: m, plane: 'plan', dayWidth: DAY },
-      { design: { x: 0, y: 0 } },
-      { design: { dx: DAY, dy: 0 } },
-    );
+    const c = planMoves(m, 'plan', { design: { x: 0, y: 0 } }, { design: { dx: DAY, dy: 0 } });
     expect(commands(c).some((x) => x.type === 'set-position')).toBe(false);
     expect(dates(c)).toEqual([
       { type: 'set-plan-dates', id: 'design', dates: { start: shift('2026-01-05', 1), end: shift('2026-01-30', 1) } },
@@ -169,7 +142,8 @@ describe('planMoves', () => {
     // negative, so the clamp toward q1's END (0 days of slack that way) cannot
     // swallow it the way a positive delta would; only the shifted-guard stops it
     const c = planMoves(
-      { model: roadmap(), plane: 'plan', dayWidth: DAY },
+      roadmap(),
+      'plan',
       { q1: { x: 0, y: 0 }, build: { x: 0, y: 0 } },
       { q1: { dx: DAY, dy: 0 }, build: { dx: -3 * DAY, dy: 0 } },
     );
@@ -180,11 +154,7 @@ describe('planMoves', () => {
   });
   it('a sub-day nudge on a nested zone is undefined, not an empty batch', () => {
     expect(
-      planMoves(
-        { model: roadmap(), plane: 'plan', dayWidth: DAY },
-        { design: { x: 0, y: 0 } },
-        { design: { dx: DAY / 4, dy: 0 } },
-      ),
+      planMoves(roadmap(), 'plan', { design: { x: 0, y: 0 } }, { design: { dx: DAY / 4, dy: 0 } }),
     ).toBeUndefined();
   });
   it('clamps a nested "other" child inside its zone (x ≥ 0, y ≥ TITLE_H); a stray is never clamped', () => {
@@ -195,7 +165,8 @@ describe('planMoves', () => {
     );
     m.containment.push({ parent: 'build', child: 'other', plane: 'plan' });
     const c = planMoves(
-      { model: m, plane: 'plan', dayWidth: DAY },
+      m,
+      'plan',
       { other: { x: -30, y: 10 }, stray: { x: -30, y: 10 } },
       { other: { dx: -30, dy: 10 }, stray: { dx: -30, dy: 10 } },
     );
@@ -207,7 +178,8 @@ describe('planMoves', () => {
     m.nodes.push({ id: 'fresh', name: 'Fresh', type: 'plan-zone', plane: 'plan' });
     const n = 10;
     const c = planMoves(
-      { model: m, plane: 'plan', dayWidth: DAY },
+      m,
+      'plan',
       { fresh: { x: planX(origin + n, origin, PLAN_LAYOUT.DAY), y: 200 } },
       { fresh: { dx: 0, dy: 0 } },
     );
@@ -231,21 +203,13 @@ describe('planMoves', () => {
     m.nodes.push({ id: 'fresh', name: 'Fresh', type: 'plan-zone' });
     m.containment.push({ parent: 'design', child: 'fresh', plane: 'plan' }); // design: Jan 5 – Jan 30 (26 days)
     // dropped 40 days right of design's start: past design's end, both start and end clamp there
-    const c = planMoves(
-      { model: m, plane: 'plan', dayWidth: DAY },
-      { fresh: { x: 40 * DAY, y: 0 } },
-      { fresh: { dx: 0, dy: 0 } },
-    );
+    const c = planMoves(m, 'plan', { fresh: { x: 40 * DAY, y: 0 } }, { fresh: { dx: 0, dy: 0 } });
     expect(commands(c)).toEqual([
       { type: 'set-plan-dates', id: 'fresh', dates: { start: shift('2026-01-05', 25), end: shift('2026-01-05', 25) } },
     ]);
   });
   it('a zone that already has dates is unaffected by the dateless-drop path', () => {
-    const c = planMoves(
-      { model: roadmap(), plane: 'plan', dayWidth: DAY },
-      { q1: { x: 0, y: 0 } },
-      { q1: { dx: DAY, dy: 0 } },
-    );
+    const c = planMoves(roadmap(), 'plan', { q1: { x: 0, y: 0 } }, { q1: { dx: DAY, dy: 0 } });
     expect(dates(c)[0]).toMatchObject({ id: 'q1', dates: { start: shift('2026-01-05', 1) } });
   });
 });
@@ -266,9 +230,7 @@ describe('planMoves, every kind in one gesture', () => {
     const ids = ['kickoff', 'stray', 'alice', 'build', 'q1', 'fresh', 'other', 'solo', 'm1'];
     const positions = Object.fromEntries(ids.map((id, i) => [id, { x: 3 * DAY + i, y: TITLE_H + 10 * i - 50 }]));
     const deltas = Object.fromEntries(ids.map((id, i) => [id, { dx: ((i % 3) + 1) * DAY + 2, dy: 5 }]));
-    expect(
-      JSON.stringify(planMoves({ model: m, plane: 'plan', dayWidth: DAY }, positions, deltas)),
-    ).toMatchInlineSnapshot(
+    expect(JSON.stringify(planMoves(m, 'plan', positions, deltas))).toMatchInlineSnapshot(
       `"{"type":"batch","commands":[{"type":"set-plan-dates","id":"q1","dates":{"start":"2026-01-07","end":"2026-03-29"}},{"type":"set-plan-dates","id":"design","dates":{"start":"2026-01-07","end":"2026-02-01"}},{"type":"set-plan-dates","id":"build","dates":{"start":"2026-02-04","end":"2026-03-29"}},{"type":"set-plan-dates","id":"m1","dates":{"at":"2026-03-04"}},{"type":"set-position","nodeId":"q1","x":120,"y":30,"plane":"plan"},{"type":"set-plan-dates","id":"kickoff","dates":{"at":"2026-01-06"}},{"type":"set-position","nodeId":"stray","x":61,"y":0,"plane":"plan"},{"type":"set-plan-dates","id":"fresh","dates":{"start":"2026-01-04","end":"2026-01-17"}},{"type":"set-position","nodeId":"fresh","x":60,"y":40,"plane":"plan"},{"type":"set-position","nodeId":"other","x":66,"y":50,"plane":"plan"},{"type":"set-plan-dates","id":"solo","dates":{"start":"2026-04-03","end":"2026-04-12"}},{"type":"set-position","nodeId":"solo","x":1840,"y":60,"plane":"plan"}]}"`,
     );
   });
@@ -276,22 +238,17 @@ describe('planMoves, every kind in one gesture', () => {
 
 describe('planResize', () => {
   it('right handle: end follows the width, inclusive', () => {
-    const c = planResize({ model: roadmap(), plane: 'plan', dayWidth: DAY }, 'design', 0, 30 * DAY);
+    const c = planResize({ model: roadmap(), plane: 'plan' }, 'design', 0, 30 * DAY);
     expect(c).toEqual({ type: 'set-plan-dates', id: 'design', dates: { end: shift('2026-01-05', 29) } });
   });
   it('left handle: start follows x, parent-relative for a nested zone, absolute for a root', () => {
-    expect(planResize({ model: roadmap(), plane: 'plan', dayWidth: DAY }, 'build', 21 * DAY, 100)).toEqual({
+    expect(planResize({ model: roadmap(), plane: 'plan' }, 'build', 21 * DAY, 100)).toEqual({
       type: 'set-plan-dates',
       id: 'build',
       dates: { start: shift('2026-01-05', 21) },
     });
     expect(
-      planResize(
-        { model: roadmap(), plane: 'plan', dayWidth: DAY },
-        'solo',
-        planX(d('2026-04-03'), origin, PLAN_LAYOUT.DAY),
-        100,
-      ),
+      planResize({ model: roadmap(), plane: 'plan' }, 'solo', planX(d('2026-04-03'), origin, PLAN_LAYOUT.DAY), 100),
     ).toEqual({
       type: 'set-plan-dates',
       id: 'solo',
@@ -300,45 +257,33 @@ describe('planResize', () => {
   });
   it('clamps to the parent and to the children, and is a no-op when nothing changes', () => {
     // design's right edge cannot pass q1's end
-    expect(planResize({ model: roadmap(), plane: 'plan', dayWidth: DAY }, 'design', 0, 200 * DAY)).toEqual({
+    expect(planResize({ model: roadmap(), plane: 'plan' }, 'design', 0, 200 * DAY)).toEqual({
       type: 'set-plan-dates',
       id: 'design',
       dates: { end: '2026-03-27' },
     });
     // build's left edge cannot pass m1 (Mar 2) — nor q1's start
-    expect(planResize({ model: roadmap(), plane: 'plan', dayWidth: DAY }, 'build', 80 * DAY, 10)).toEqual({
+    expect(planResize({ model: roadmap(), plane: 'plan' }, 'build', 80 * DAY, 10)).toEqual({
       type: 'set-plan-dates',
       id: 'build',
       dates: { start: '2026-03-02' },
     });
-    expect(planResize({ model: roadmap(), plane: 'plan', dayWidth: DAY }, 'build', -50 * DAY, 10)).toEqual({
+    expect(planResize({ model: roadmap(), plane: 'plan' }, 'build', -50 * DAY, 10)).toEqual({
       type: 'set-plan-dates',
       id: 'build',
       dates: { start: '2026-01-05' },
     });
     // q1's left edge is held by design's start (Jan 5) and its right edge by build's end (Mar 27): both already at the clamp
     expect(
-      planResize(
-        { model: roadmap(), plane: 'plan', dayWidth: DAY },
-        'q1',
-        planX(d('2026-01-12'), origin, PLAN_LAYOUT.DAY),
-        100,
-      ),
+      planResize({ model: roadmap(), plane: 'plan' }, 'q1', planX(d('2026-01-12'), origin, PLAN_LAYOUT.DAY), 100),
     ).toBeUndefined();
     expect(
-      planResize(
-        { model: roadmap(), plane: 'plan', dayWidth: DAY },
-        'q1',
-        planX(d('2026-01-05'), origin, PLAN_LAYOUT.DAY),
-        10 * DAY,
-      ),
+      planResize({ model: roadmap(), plane: 'plan' }, 'q1', planX(d('2026-01-05'), origin, PLAN_LAYOUT.DAY), 10 * DAY),
     ).toBeUndefined();
     // build already ends at q1's end: stretching it further changes nothing
-    expect(
-      planResize({ model: roadmap(), plane: 'plan', dayWidth: DAY }, 'build', 28 * DAY, 200 * DAY),
-    ).toBeUndefined();
-    expect(planResize({ model: roadmap(), plane: 'plan', dayWidth: DAY }, 'design', 0, 26 * DAY)).toBeUndefined();
-    expect(planResize({ model: roadmap(), plane: 'plan', dayWidth: DAY }, 'alice', 0, 300)).toBeUndefined();
+    expect(planResize({ model: roadmap(), plane: 'plan' }, 'build', 28 * DAY, 200 * DAY)).toBeUndefined();
+    expect(planResize({ model: roadmap(), plane: 'plan' }, 'design', 0, 26 * DAY)).toBeUndefined();
+    expect(planResize({ model: roadmap(), plane: 'plan' }, 'alice', 0, 300)).toBeUndefined();
   });
 });
 
@@ -441,7 +386,7 @@ describe('quick-adds', () => {
     const m = roadmap();
     expect(
       seedDates({ model: m, plane: 'plan', today: '2026-05-04' }, 'plan-zone', {
-        x: { px: planX(d('2026-02-10'), origin, PLAN_LAYOUT.DAY) + 3, dayWidth: DAY },
+        x: planX(d('2026-02-10'), origin, PLAN_LAYOUT.DAY) + 3,
       }),
     ).toEqual({
       start: '2026-02-10',
@@ -449,7 +394,7 @@ describe('quick-adds', () => {
     });
     expect(
       seedDates({ model: m, plane: 'plan', today: '2026-05-04' }, 'plan-event', {
-        x: { px: planX(d('2026-02-10'), origin, PLAN_LAYOUT.DAY) + DAY - 1, dayWidth: DAY },
+        x: planX(d('2026-02-10'), origin, PLAN_LAYOUT.DAY) + DAY - 1,
       }),
     ).toEqual({
       at: '2026-02-10',
@@ -461,17 +406,11 @@ describe('quick-adds', () => {
     expect(seedDates({ model: m, plane: 'plan', today: '2026-05-04' }, 'plan-event', {})).toEqual({ at: '2026-05-04' });
     const empty = model('e');
     empty.plan();
-    expect(
-      seedDates({ model: empty.toJSON(), plane: 'plan', today: '2026-05-04' }, 'plan-zone', {
-        x: { px: 500, dayWidth: DAY },
-      }),
-    ).toEqual({
+    expect(seedDates({ model: empty.toJSON(), plane: 'plan', today: '2026-05-04' }, 'plan-zone', { x: 500 })).toEqual({
       start: '2026-05-04',
       end: shift('2026-05-04', ZONE_DAYS - 1),
     });
-    expect(
-      seedDates({ model: m, plane: 'plan', today: '2026-05-04' }, 'service', { x: { px: 5, dayWidth: DAY } }),
-    ).toBeUndefined();
+    expect(seedDates({ model: m, plane: 'plan', today: '2026-05-04' }, 'service', { x: 5 })).toBeUndefined();
   });
   it('seedOnRetype: a node retyped into a period gets a span as a zone does, and one already spanned keeps it', () => {
     // a period with no dates is refused at save (plan-missing): Properties → Type
@@ -537,7 +476,7 @@ describe('quick-adds', () => {
 
 describe('assign', () => {
   it('an actor dropped on a zone it holds no role on gets executes', () => {
-    expect(assign({ model: roadmap(), plane: 'plan', dayWidth: DAY }, 'alice', 'design', { x: 10, y: 20 })).toEqual({
+    expect(assign({ model: roadmap(), plane: 'plan' }, 'alice', 'design', { x: 10, y: 20 })).toEqual({
       type: 'add-relation',
       from: 'alice',
       to: 'design',
@@ -546,14 +485,12 @@ describe('assign', () => {
   });
   it('an actor that already holds a role on the zone is a no-op', () => {
     // alice already owns build (roadmap())
-    expect(
-      assign({ model: roadmap(), plane: 'plan', dayWidth: DAY }, 'alice', 'build', { x: 10, y: 20 }),
-    ).toBeUndefined();
+    expect(assign({ model: roadmap(), plane: 'plan' }, 'alice', 'build', { x: 10, y: 20 })).toBeUndefined();
   });
   it('a team is an actor too', () => {
     const m = roadmap();
     m.nodes.push({ id: 'platform', name: 'Platform', type: 'team' });
-    expect(assign({ model: m, plane: 'plan', dayWidth: DAY }, 'platform', 'design', { x: 0, y: 0 })).toEqual({
+    expect(assign({ model: m, plane: 'plan' }, 'platform', 'design', { x: 0, y: 0 })).toEqual({
       type: 'add-relation',
       from: 'platform',
       to: 'design',
@@ -563,7 +500,7 @@ describe('assign', () => {
   it('a plain node at the plane root dropped on a zone is contained there, no remove-containment', () => {
     const m = roadmap();
     m.nodes.push({ id: 'other', name: 'Other', type: 'service' });
-    const c = assign({ model: m, plane: 'plan', dayWidth: DAY }, 'other', 'design', { x: 15, y: TITLE_H + 25 });
+    const c = assign({ model: m, plane: 'plan' }, 'other', 'design', { x: 15, y: TITLE_H + 25 });
     expect(c).toEqual({
       type: 'batch',
       commands: [
@@ -576,7 +513,7 @@ describe('assign', () => {
     const m = roadmap();
     m.nodes.push({ id: 'other', name: 'Other', type: 'service' });
     m.containment.push({ parent: 'build', child: 'other', plane: 'plan' });
-    const c = assign({ model: m, plane: 'plan', dayWidth: DAY }, 'other', 'design', { x: 5, y: TITLE_H + 5 });
+    const c = assign({ model: m, plane: 'plan' }, 'other', 'design', { x: 5, y: TITLE_H + 5 });
     expect(c).toEqual({
       type: 'batch',
       commands: [
@@ -593,7 +530,7 @@ describe('assign', () => {
       { parent: 'design', child: 'other', plane: 'plan' },
       { parent: 'solo', child: 'other', plane: 'plan' },
     );
-    const c = assign({ model: m, plane: 'plan', dayWidth: DAY }, 'other', 'build', { x: 5, y: TITLE_H + 5 });
+    const c = assign({ model: m, plane: 'plan' }, 'other', 'build', { x: 5, y: TITLE_H + 5 });
     expect(c).toEqual({
       type: 'batch',
       commands: [
@@ -608,17 +545,15 @@ describe('assign', () => {
     const m = roadmap();
     m.nodes.push({ id: 'other', name: 'Other', type: 'service' });
     m.containment.push({ parent: 'build', child: 'other', plane: 'plan' });
-    expect(assign({ model: m, plane: 'plan', dayWidth: DAY }, 'other', 'build', { x: 5, y: 5 })).toBeUndefined();
+    expect(assign({ model: m, plane: 'plan' }, 'other', 'build', { x: 5, y: 5 })).toBeUndefined();
   });
   it('a zone dropped on a zone is a no-op', () => {
-    expect(
-      assign({ model: roadmap(), plane: 'plan', dayWidth: DAY }, 'design', 'build', { x: 0, y: 0 }),
-    ).toBeUndefined();
+    expect(assign({ model: roadmap(), plane: 'plan' }, 'design', 'build', { x: 0, y: 0 })).toBeUndefined();
   });
   it('rel below the floor is clamped to (0, TITLE_H)', () => {
     const m = roadmap();
     m.nodes.push({ id: 'other', name: 'Other', type: 'service' });
-    const c = assign({ model: m, plane: 'plan', dayWidth: DAY }, 'other', 'design', { x: -50, y: -50 });
+    const c = assign({ model: m, plane: 'plan' }, 'other', 'design', { x: -50, y: -50 });
     expect(c).toEqual({
       type: 'batch',
       commands: [
@@ -657,59 +592,5 @@ describe('setActorRole', () => {
         { type: 'delete-relation', id: 'alice->build#1' },
       ],
     });
-  });
-});
-
-describe('at 80 px per day', () => {
-  // the canvas stretched four times: every pixel step below is a quarter of a day
-  const W = 4 * DAY;
-  const at = { model: roadmap(), plane: 'plan', dayWidth: W };
-  it('a move of 240 px is 3 days', () => {
-    const c = planMoves(at, { design: { x: 0, y: 0 } }, { design: { dx: 240, dy: 0 } });
-    expect(dates(c)).toEqual([
-      { type: 'set-plan-dates', id: 'design', dates: { start: '2026-01-08', end: '2026-02-02' } },
-    ]);
-  });
-  it('inside an opened zone, a move of 240 px is 3 days', () => {
-    // an opened zone's view hands back parent-relative positions (saved-frame.ts):
-    // a nested row's delta is the same pixels, read at the same width
-    const c = planMoves(at, { m1: { x: 0, y: 0 } }, { m1: { dx: 240, dy: 0 } });
-    expect(dates(c)).toEqual([{ type: 'set-plan-dates', id: 'm1', dates: { at: '2026-03-05' } }]);
-  });
-  it('a resize of 160 px wider ends 2 days later', () => {
-    expect(planResize(at, 'design', 0, 26 * W + 160)).toEqual({
-      type: 'set-plan-dates',
-      id: 'design',
-      dates: { end: '2026-02-01' },
-    });
-  });
-  it('a free child dragged to x = 320 saves x = 80, and a stray to x = 400 saves x = 100', () => {
-    const m = roadmap();
-    m.nodes.push(
-      { id: 'api', name: 'API', type: 'service' },
-      { id: 'stray', name: 'Stray', type: 'service', plane: 'plan' },
-    );
-    m.containment.push({ parent: 'build', child: 'api', plane: 'plan' });
-    const c = planMoves(
-      { model: m, plane: 'plan', dayWidth: W },
-      { api: { x: 320, y: 100 }, stray: { x: 400, y: 900 } },
-      { api: { dx: 1, dy: 1 }, stray: { dx: 1, dy: 1 } },
-    );
-    const xs = Object.fromEntries(
-      commands(c).flatMap((x) => (x.type === 'set-position' ? [[x.nodeId, x.x] as const] : [])),
-    );
-    expect(xs).toEqual({ api: 80, stray: 100 });
-  });
-  it('a child dropped into a zone saves its x in 20 px-per-day units', () => {
-    const m = roadmap();
-    m.nodes.push({ id: 'free', name: 'Free', type: 'service', plane: 'plan' });
-    const c = assign({ model: m, plane: 'plan', dayWidth: W }, 'free', 'design', { x: 160, y: 60 });
-    expect(commands(c).find((x) => x.type === 'set-position')).toMatchObject({ x: 40, y: 60 });
-  });
-  it('a library card dropped at x = 800 starts 10 days after the origin', () => {
-    const seeded = seedDates({ model: roadmap(), plane: 'plan', today: '2026-05-04' }, 'plan-zone', {
-      x: { px: 800, dayWidth: W },
-    });
-    expect(seeded?.start).toBe(isoOf(origin + 10));
   });
 });

@@ -2787,6 +2787,23 @@ describe('plan notation: stretching time', () => {
     await widthOf(container, 'dep', 5 * 40);
   });
 
+  it('at 80 px a day a saved loose box keeps its day: drawn four times out, and snapshotted back as saved', async () => {
+    // a stray (a box on the plan plane no zone holds) saved at x 1000 — what
+    // Freeze layout and Re-layout write must be that same 1000, or it moves by days
+    const m = plan();
+    m.nodes.push({ id: 'loose', name: 'Loose', type: 'service', plane: 'plan' });
+    const layout = { version: 1 as const, planes: { plan: { loose: { x: 1000, y: 700 } } } };
+    const apiRef: { current: LayoutApi | null } = { current: null };
+    const { container } = render(
+      <DiagramView model={m} plane="plan" notation="plan" layout={layout} dayWidth={80} layoutApiRef={apiRef} />,
+    );
+    await waitFor(() => {
+      const el = container.querySelector<HTMLElement>('.react-flow__node[data-id="loose"]');
+      expect(el?.style.transform).toContain('translate(4000px,700px)');
+    });
+    await waitFor(() => expect(apiRef.current?.snapshotPositions()['loose']).toEqual({ x: 1000, y: 700 }));
+  });
+
   it('opening another diagram resets the width to 20', async () => {
     const { container, rerender } = render(<DiagramView model={plan('a')} plane="plan" notation="plan" />);
     fireEvent.click(screen.getByRole('button', { name: 'Wider days' }));

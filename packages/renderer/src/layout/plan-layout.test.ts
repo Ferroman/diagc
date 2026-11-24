@@ -527,15 +527,6 @@ describe('planLayout', () => {
       const r = planLayout({ view: view(j), model: j, plane: 'plan', dayWidth: W });
       expect(r.geometry.get('freeze')).toMatchObject({ x: planX(dayOf('2026-02-09')!, origin, W), width: 7 * W });
     });
-
-    it('a saved stray keeps its day: drawn at its x scaled, and locked on x so the saved one is not re-applied', () => {
-      const m = roadmap();
-      m.nodes.push({ id: 'stray', name: 'Stray', type: 'service', plane: 'plan' });
-      const positions = { stray: { x: 2000, y: 700 } };
-      const r = planLayout({ view: view(m), model: m, plane: 'plan', positions, dayWidth: W });
-      expect(r.geometry.get('stray')!.x).toBe(4000);
-      expect(r.lockedX?.has('stray')).toBe(true);
-    });
   });
 
   it('draws an empty plan as nothing, with no origin to trip on', () => {

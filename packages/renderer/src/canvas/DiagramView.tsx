@@ -28,7 +28,7 @@ import { useCanvasClicks } from './useCanvasClicks';
 import { useCanvasCommands } from './useCanvasCommands';
 import { useCommitMoves } from './useCommitMoves';
 import { useCompiledView } from './useCompiledView';
-import { useCentreDayPan, useDayWidth, useDrillStretch } from './useDayWidth';
+import { savedScale, useCentreDayPan, useDayWidth, useDrillStretch } from './useDayWidth';
 import { useDrillNavigation } from './useDrillNavigation';
 import { useDropAndPaste } from './useDropAndPaste';
 import { useEditRequests } from './useEditRequests';
@@ -37,7 +37,7 @@ import { useFlowEdges } from './useFlowEdges';
 import { useFlowNodes, type LabelEdit } from './useFlowNodes';
 import { MAX_ZOOM, MIN_ZOOM, useLayoutApi } from './useLayoutApi';
 import { useMoveFrames } from './useMoveFrames';
-import { savedResize } from './saved-frame';
+import { savedPoints, savedResize } from './saved-frame';
 import { useNodeDragging } from './useNodeDragging';
 import { useNodeResync } from './useNodeResync';
 import { useNoteNodes } from './useNoteNodes';
@@ -66,7 +66,11 @@ function Inner(props: DiagramViewProps) {
   // The edit-mode callbacks travel as one optional object (see EditingApi); the
   // affordance gate `editing` derives from `mode` alone, so a read-only host
   // without an `edit` object disables every mutation path structurally.
-  const edit = props.edit;
+  // drawn px per saved px on x: 1, but for a plan whose days are stretched —
+  // every point the host may save from is reported at 20 px a day (saved-frame.ts)
+  const scaleRef = useRef(1);
+  // scaleRef is a stable useRef identity, read at gesture time
+  const edit = useMemo(() => savedPoints(props.edit, { scaleRef }), [props.edit]);
   const editing = props.mode === 'edit';
   const chromeless = props.chrome === false;
   const preset = useMemo(() => stylePreset(props.styleId), [props.styleId]);
@@ -198,11 +202,15 @@ function Inner(props: DiagramViewProps) {
     dayWidth: stretches ? days.width : undefined,
   });
   useCentreDayPan({ days, geometry: viewLayout.geometry, reactFlow, wrapperRef });
-  const frames = useMoveFrames(compiled, viewLayout);
+  // the width the boxes on screen are drawn at, once their layout has landed
+  scaleRef.current = savedScale(stretches, viewLayout.settledWidth, days.width);
+  const frames = useMoveFrames(compiled, viewLayout, scaleRef);
+  // read at resize time: whether a box's width is its dates (an x-resized plan bar)
+  const widthIsDatesRef = useRef<(id: string) => boolean>(() => false);
   // a resize is reported at the saved position, as a move is (saved-frame.ts);
   // the refs are stable, so this changes only with `edit`
   /* eslint-disable-next-line react-hooks/exhaustive-deps -- frames' refs are stable useRef identities */
-  const nodeEdit = useMemo(() => savedResize(edit, frames), [edit]);
+  const nodeEdit = useMemo(() => savedResize(edit, frames, (id) => widthIsDatesRef.current(id)), [edit]);
   useRootFit({
     pendingRootFitRef: nav.pendingRootFitRef,
     compiled,
@@ -253,6 +261,8 @@ function Inner(props: DiagramViewProps) {
     noteNodes: notes.noteNodes,
   });
   const { derivedNodes, setRfNodes, rfNodesRef } = flow;
+  widthIsDatesRef.current = (id) =>
+    (rfNodesRef.current.find((n) => n.id === id)?.data as { resizeAxis?: string } | undefined)?.resizeAxis === 'x';
   const { setNoteEdit } = noteSession;
   useEditRequests({ editing, edit, derivedNodes, setLabelEdit, setNoteEdit, setRfNodes, selectOnAppearRef });
   const commitMoves = useCommitMoves({
@@ -301,6 +311,7 @@ function Inner(props: DiagramViewProps) {
     legendReserveRef: legend.legendReserveRef,
     viewShiftRef: frames.viewShiftRef,
     savedFrameRef: frames.savedFrameRef,
+    scaleRef,
   });
   const edges = useFlowEdges({ props, editing, edit, notation, preset, compiled, layout: viewLayout, moves });
 

@@ -45,8 +45,6 @@ export interface UseNodePlacementOptions {
   notation?: NotationId;
   /** the host's date, YYYY-MM-DD: where a seeded drop lands with no other anchor */
   today: string;
-  /** the canvas's px per day (a plan's): a drop point is read at it */
-  dayWidth: number;
 }
 
 export interface NodePlacement {

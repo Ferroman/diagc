@@ -71,7 +71,6 @@ function setup(m: DiagramModel, over: Partial<EditContext> = {}, layout: LayoutO
     requestLabelEdit: vi.fn(),
     requestThreatEdit: vi.fn(),
     groupSel: [],
-    dayWidth: 20,
     ...over,
   };
   return { ctx, commands, live: () => live.state };
@@ -321,20 +320,6 @@ describe('nodeGestureHandlers', () => {
       expect.objectContaining({ plane: undefined, deltas: { a: { dx: 1, dy: 2 } } }),
     );
     expect(commands).toEqual([]);
-  });
-
-  it("hands a notation's gestures the canvas's day width", () => {
-    // Breaks if a plan gesture reads days at 20 px while the canvas is stretched.
-    const nodesMoved = vi.fn(() => undefined);
-    const dropInto = vi.fn(() => undefined);
-    const resize = vi.fn(() => undefined);
-    const { ctx } = setup(model(), { dayWidth: 60, profile: { gestures: { nodesMoved, dropInto, resize } } });
-    const h = nodeGestureHandlers(ctx);
-    h.onNodesMoved({ a: { x: 1, y: 2 } }, { a: { dx: 1, dy: 2 } });
-    h.onDropInto('a', 'b', { x: 0, y: 0 });
-    h.onResize('a', 10, 10, { x: 0, y: 0 });
-    for (const g of [nodesMoved, dropInto, resize])
-      expect(g).toHaveBeenCalledWith(expect.objectContaining({ dayWidth: 60 }));
   });
 
   it('a lane moved no slots, a drop with no drop rule and a role before the diagram is there do nothing', () => {

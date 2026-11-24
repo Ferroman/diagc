@@ -77,8 +77,6 @@ export interface EditContext {
   requestThreatEdit: (target: ElementRef, id: string) => void;
   /** the canvas multi-selection (Shift+click / marquee) */
   groupSel: string[];
-  /** the canvas's px per day (a plan's): its gestures are read at it */
-  dayWidth: number;
 }
 
 /** The `Notes` chip and its key: offered, armed, pressed, and the press. */
@@ -273,14 +271,14 @@ export function relationEndHandlers({ editor, model }: EditContext) {
 }
 
 /** Moves, drops, resizes and the plan's role chips: a notation that reads a gesture its own way answers first. */
-export function nodeGestureHandlers({ editor, model, activePlane, planeOpt, profile, dayWidth }: EditContext) {
+export function nodeGestureHandlers({ editor, model, activePlane, planeOpt, profile }: EditContext) {
   return {
     onNodesMoved: (positions: Record<string, Point>, deltas: Record<string, { dx: number; dy: number }>) => {
       // a notation that reads a move its own way (the plan: as
       // dates) consumes it, even when it changed nothing
       const nodesMoved = profile.gestures?.nodesMoved;
       if (nodesMoved !== undefined && model !== undefined) {
-        const command = nodesMoved({ model, plane: activePlane, dayWidth, positions, deltas });
+        const command = nodesMoved({ model, plane: activePlane, positions, deltas });
         if (command !== undefined) editor.dispatch(command);
         return;
       }
@@ -294,7 +292,7 @@ export function nodeGestureHandlers({ editor, model, activePlane, planeOpt, prof
       // only a notation with drop targets (the plan) reads a drop
       const dropInto = profile.gestures?.dropInto;
       if (dropInto !== undefined && model !== undefined) {
-        const command = dropInto({ model, plane: activePlane, dayWidth, id, targetId, rel });
+        const command = dropInto({ model, plane: activePlane, id, targetId, rel });
         if (command !== undefined) editor.dispatch(command);
       }
     },
@@ -314,7 +312,7 @@ export function nodeGestureHandlers({ editor, model, activePlane, planeOpt, prof
       // dates), and hands back a node it does not
       const resize = profile.gestures?.resize;
       if (resize !== undefined && model !== undefined) {
-        const command = resize({ model, plane: activePlane, dayWidth, id, w, h, pos });
+        const command = resize({ model, plane: activePlane, id, w, h, pos });
         if (command !== 'generic') {
           if (command !== undefined) editor.dispatch(command);
           return;

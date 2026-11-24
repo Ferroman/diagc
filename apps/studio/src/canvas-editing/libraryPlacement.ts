@@ -31,7 +31,6 @@ export type LibraryPlacementScope = Pick<
   | 'drillRoot'
   | 'notation'
   | 'today'
-  | 'dayWidth'
   | 'selectNode'
   | 'requestLabelEdit'
 >;
@@ -53,7 +52,7 @@ function addEntryNode(
   entry: LibraryEntry,
   at: { place: CreateNodePlace; parentId: string | undefined; position: Point | undefined },
 ): void {
-  const { editor, activePlane, penLayer, notation, today, dayWidth } = scope;
+  const { editor, activePlane, penLayer, notation, today } = scope;
   const { place, parentId, position } = at;
   // The Zone/Event templates carry no dates of their own, and validation
   // checks a zone's or event's dates on any plane, so every placement seeds
@@ -62,13 +61,7 @@ function addEntryNode(
   const seeded = seedDates(
     { model: m, plane: activePlane, today },
     entry.template.type,
-    defined({
-      x:
-        studioNotation(notation).datesFromDropPoint === true && position !== undefined
-          ? { px: position.x, dayWidth }
-          : undefined,
-      parentId,
-    }),
+    defined({ x: studioNotation(notation).datesFromDropPoint === true ? position?.x : undefined, parentId }),
   );
   const node = {
     ...entryToNode(entry, place.id, placeTags(place, penLayer)),

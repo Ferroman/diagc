@@ -21,10 +21,10 @@ describe("the plan's gestures", () => {
   it('reads a move as dates, the way planMoves does', () => {
     const model = schedule();
     const move = { positions: { build: { x: 0, y: 0 } }, deltas: { build: { dx: 3 * DAY, dy: 0 } } };
-    expect(gestures.nodesMoved!({ model, plane: 'plan', dayWidth: DAY, ...move })).toEqual(
-      planMoves({ model, plane: 'plan', dayWidth: DAY }, move.positions, move.deltas),
+    expect(gestures.nodesMoved!({ model, plane: 'plan', ...move })).toEqual(
+      planMoves(model, 'plan', move.positions, move.deltas),
     );
-    expect(gestures.nodesMoved!({ model, plane: 'plan', dayWidth: DAY, ...move })).toBeDefined();
+    expect(gestures.nodesMoved!({ model, plane: 'plan', ...move })).toBeDefined();
   });
 
   it('consumes a move it has no answer for: an actor is a list entry, not a position', () => {
@@ -33,7 +33,6 @@ describe("the plan's gestures", () => {
       gestures.nodesMoved!({
         model,
         plane: 'plan',
-        dayWidth: DAY,
         positions: { alice: { x: 5, y: 5 } },
         deltas: { alice: { dx: 5, dy: 5 } },
       }),
@@ -42,10 +41,8 @@ describe("the plan's gestures", () => {
 
   it('reads a drop into a zone as a role, the way assign does', () => {
     const model = schedule();
-    const drop = { model, plane: 'plan', dayWidth: DAY, id: 'alice', targetId: 'build', rel: { x: 4, y: 4 } };
-    expect(gestures.dropInto!(drop)).toEqual(
-      assign({ model, plane: 'plan', dayWidth: DAY }, 'alice', 'build', drop.rel),
-    );
+    const drop = { model, plane: 'plan', id: 'alice', targetId: 'build', rel: { x: 4, y: 4 } };
+    expect(gestures.dropInto!(drop)).toEqual(assign({ model, plane: 'plan' }, 'alice', 'build', drop.rel));
     expect(gestures.dropInto!(drop)).toEqual({
       type: 'add-relation',
       from: 'alice',
@@ -56,9 +53,9 @@ describe("the plan's gestures", () => {
 
   it('resizes a zone as dates, and hands any other node back to the generic resize', () => {
     const model = schedule();
-    const resize = { model, plane: 'plan', dayWidth: DAY, w: 10 * DAY, h: 40, pos: { x: 0, y: 0 } };
+    const resize = { model, plane: 'plan', w: 10 * DAY, h: 40, pos: { x: 0, y: 0 } };
     expect(gestures.resize!({ ...resize, id: 'build' })).toEqual(
-      planResize({ model, plane: 'plan', dayWidth: DAY }, 'build', 0, 10 * DAY),
+      planResize({ model, plane: 'plan' }, 'build', 0, 10 * DAY),
     );
     expect(gestures.resize!({ ...resize, id: 'build' })).toMatchObject({ type: 'set-plan-dates', id: 'build' });
     expect(gestures.resize!({ ...resize, id: 'm1' })).toBe('generic');
@@ -83,7 +80,6 @@ describe('the plan gestures, given what an opened zone reports', () => {
     const command = gestures.resize!({
       model: deep(),
       plane: 'plan',
-      dayWidth: DAY,
       id: 'a1x',
       w: 4 * DAY,
       h: 40,

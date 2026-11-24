@@ -13,6 +13,13 @@ export function nextDayWidth(width: number, dir: 1 | -1): number {
   return [...steps].reverse().find((s) => s < width) ?? PLAN_LAYOUT.DAY_MIN;
 }
 
+/** Drawn px per saved px on x for a canvas whose days are drawn `drawn` wide
+ * (the width its layout landed at; `width` before the first one): a
+ * saved x is kept at `PLAN_LAYOUT.DAY` (saved-frame.ts); 1 for a notation that
+ * does not stretch time. */
+export const savedScale = (stretches: boolean, drawn: number | undefined, width: number): number =>
+  stretches ? (drawn ?? width) / PLAN_LAYOUT.DAY : 1;
+
 /** The viewport that keeps the day under the canvas centre there once days go
  * from `from` to `to` px wide. Every x the plan draws is a day times the width
  * (planX counts from x = 0), so the centre's flow x scales by `to / from`; the

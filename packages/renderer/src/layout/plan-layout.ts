@@ -551,20 +551,14 @@ function placeStubs(run: PlanRun, roots: readonly string[]): void {
 }
 
 /** Strays (a shared node with no zone) park under the zones at `y`, from the
- * chart's first day, as git-graph's spare row. One dropped somewhere keeps its
- * day: its saved x is in `PLAN_LAYOUT.DAY` units, scaled here and locked on x
- * so the overlay applies only its saved y, not the raw x on top. */
+ * chart's first day, as git-graph's spare row. One dropped somewhere is moved
+ * there by the overlay pass, which scales its saved x to the day width
+ * (useViewLayout's drawnAt), so it keeps its day. */
 function placeStrays(run: PlanRun, roots: readonly string[], y: number): void {
   let sx = chartLeft(run);
   for (const id of roots) {
     if (run.geometry.has(id)) continue;
     const size = hint(run, id);
-    const saved = run.positions?.[id];
-    if (saved !== undefined) {
-      run.geometry.set(id, { x: scaledX(saved.x, run.day), y: saved.y, ...size });
-      run.lockedX.add(id);
-      continue;
-    }
     run.geometry.set(id, { x: sx, y, ...size });
     sx += size.width + PLAN_LAYOUT.ROW_GAP;
   }

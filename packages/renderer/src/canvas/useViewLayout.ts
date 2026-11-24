@@ -27,6 +27,7 @@ import type { NotationProfile } from '../notations';
 import { overlayPositions } from './placement';
 import { withShownTableRows } from '../node/table-ports';
 import type { Registry, TypeStyle } from '../registry';
+import { PLAN_LAYOUT } from '../layout/plan-layout';
 
 export interface ViewLayoutInput {
   model: DiagramModel;
@@ -128,6 +129,15 @@ function movable(positions: Record<string, Point>, fixed: ReadonlySet<string>): 
   return Object.fromEntries(Object.entries(positions).filter(([id]) => !fixed.has(id)));
 }
 
+/** Saved positions as drawn: a stretched plan keeps every saved x at
+ * `PLAN_LAYOUT.DAY` px a day (saved-frame.ts), so a box saved there keeps its
+ * day at the width the layout drew; the same object back at 20. */
+function drawnAt(positions: Record<string, Point>, dayWidth: number | undefined): Record<string, Point> {
+  if (dayWidth === undefined || dayWidth === PLAN_LAYOUT.DAY) return positions;
+  const k = dayWidth / PLAN_LAYOUT.DAY;
+  return Object.fromEntries(Object.entries(positions).map(([id, p]) => [id, { x: p.x * k, y: p.y }]));
+}
+
 /** `positions` with the x of every locked id replaced by the arranged x, so
  * overlayPositions can apply them as usual and only y takes effect. */
 function yOnly(
@@ -142,6 +152,40 @@ function yOnly(
       return [id, g !== undefined ? { x: g.x, y: pos.y } : pos];
     }),
   );
+}
+
+/** The arranged geometry with the saved positions laid over it, then a view
+ * drag (outside edit mode), then the fold shift — what everything RENDERS. */
+function placeSaved(
+  p: {
+    geometry: Map<string, NodeGeometry> | null;
+    fixed: ReadonlySet<string>;
+    lockedX: ReadonlySet<string>;
+    viewShift: ReadonlyMap<string, number>;
+    saved: Record<string, Point>;
+    /** the width the geometry's days were laid out at (a stretched plan) */
+    dayWidth: number | undefined;
+  },
+  { editing, viewPositions }: { editing: boolean; viewPositions: Record<string, Point> },
+): Map<string, NodeGeometry> | null {
+  const { geometry, fixed, lockedX, viewShift, saved, dayWidth } = p;
+  if (geometry === null) return geometry;
+  // A fixed node reads no position from anywhere. Filtered HERE, not only at
+  // the gesture: a saved position can predate the rule (a fish dragged before its nodes
+  // were fixed), or arrive with a node that was placed as a stray and hung on
+  // the fish afterwards — either would leave it behind when the fish next
+  // changes shape, its lines floating in to a box they were never drawn to.
+  // (`saved` itself is the same value a notation's own layout may have just
+  // read and clamped — see `layoutPositions` above; a fixed id here is a
+  // node the layout placed itself, so movable() still drops it.)
+  const withSaved = overlayPositions(geometry, yOnly(drawnAt(movable(saved, fixed), dayWidth), lockedX, geometry));
+  // A drag still wins over an automatic arrangement, so moving a box while
+  // auto-arrange is on behaves the way dragging always does.
+  const placed = editing
+    ? withSaved
+    : overlayPositions(withSaved, yOnly(drawnAt(movable(viewPositions, fixed), dayWidth), lockedX, geometry));
+  // last: the shift moves a node from wherever it was saved or dragged to
+  return withViewShift(placed, viewShift);
 }
 
 /** How a routed edge's corners are drawn (px radius). The waypoints are elk's
@@ -474,25 +518,11 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
   // the active plane substituted in (width/height stay elk's). Derived so the
   // elk cache is never mutated; everything that RENDERS reads this, while the
   // raw `geometry` remains the layout-effect state.
-  const placedGeometry = useMemo(() => {
-    if (geometry === null) return geometry;
-    // A fixed node reads no position from anywhere. Filtered HERE, not only at
-    // the gesture: a saved position can predate the rule (a fish dragged before its nodes
-    // were fixed), or arrive with a node that was placed as a stray and hung on
-    // the fish afterwards — either would leave it behind when the fish next
-    // changes shape, its lines floating in to a box they were never drawn to.
-    // (`saved` itself is the same value a notation's own layout may have just
-    // read and clamped — see `layoutPositions` above; a fixed id here is a
-    // node the layout placed itself, so movable() still drops it.)
-    const withSaved = overlayPositions(geometry, yOnly(movable(saved, fixed), lockedX, geometry));
-    // A drag still wins over an automatic arrangement, so moving a box while
-    // auto-arrange is on behaves the way dragging always does.
-    const placed = input.editing
-      ? withSaved
-      : overlayPositions(withSaved, yOnly(movable(input.viewPositions, fixed), lockedX, geometry));
-    // last: the shift moves a node from wherever it was saved or dragged to
-    return withViewShift(placed, viewShift);
-  }, [geometry, fixed, lockedX, viewShift, saved, input.editing, input.viewPositions]);
+  const placedGeometry = useMemo(
+    () => placeSaved({ geometry, fixed, lockedX, viewShift, saved, dayWidth: settledWidth }, input),
+    /* eslint-disable-next-line react-hooks/exhaustive-deps -- placeSaved reads input.editing and input.viewPositions only */
+    [geometry, fixed, lockedX, viewShift, saved, input.editing, input.viewPositions, settledWidth],
+  );
 
   // A hand-placed child may sit past the wall of the box elk sized for it: the
   // container gives way (fit-containers.ts). Not where the notation owns the

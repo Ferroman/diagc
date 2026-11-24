@@ -42,8 +42,6 @@ export interface UseCanvasEditingOptions {
   drillRoot: string | undefined;
   /** the host's date, YYYY-MM-DD */
   today: string;
-  /** the canvas's px per day (a plan's), as DiagramView reports it */
-  dayWidth: number;
 }
 
 export interface CanvasEditing {
@@ -80,7 +78,6 @@ export function useCanvasEditing({
   lib,
   drillRoot,
   today,
-  dayWidth,
 }: UseCanvasEditingOptions): CanvasEditing {
   const { editing, editor, layoutApiRef, reportIssues } = session;
   const { activePlane, notation, activePlaneBorrowsContainment, activePlaneManual, penLayer } = nav;
@@ -105,7 +102,6 @@ export function useCanvasEditing({
     lib,
     notation,
     today,
-    dayWidth,
   });
   const { createAt, addImages, dropLibraryEntry } = placement;
 
@@ -127,7 +123,6 @@ export function useCanvasEditing({
     requestLabelEdit: selection.requestLabelEdit,
     requestThreatEdit: selection.requestThreatEdit,
     groupSel: selection.groupSel,
-    dayWidth,
   };
   const quickAdd = quickAddHandlers(ctx);
   return {

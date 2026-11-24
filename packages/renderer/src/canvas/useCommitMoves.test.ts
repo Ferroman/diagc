@@ -58,4 +58,25 @@ describe('useCommitMoves', () => {
     result.current({ r: { x: 160, y: 30 } });
     expect(onNodesMoved).toHaveBeenCalledWith({ r: { x: 60, y: 70 } }, { r: { dx: 20, dy: 0 } });
   });
+
+  it('at 80 px a day, commits the position and the displacement in 20 px-a-day units', () => {
+    // a free box 3 days into a stretched bar, dragged 3 days on: a plan reads
+    // days off the displacement at 20 px a day, and keeps the box's day saved
+    const onNodesMoved = vi.fn();
+    const box: Node = { id: 'x', position: { x: 480, y: 50 }, data: {} };
+    const { result } = renderHook(() =>
+      useCommitMoves(
+        input({
+          editing: true,
+          edit: { onNodesMoved },
+          rfNodesRef: { current: [box] },
+          arrangedRef: { current: new Map([['x', { x: 240, y: 50, width: 100, height: 40 }]]) },
+          viewShiftRef: { current: new Map() },
+          scaleRef: { current: 4 },
+        }),
+      ),
+    );
+    result.current({ x: { x: 480, y: 50 } });
+    expect(onNodesMoved).toHaveBeenCalledWith({ x: { x: 120, y: 50 } }, { x: { dx: 60, dy: 0 } });
+  });
 });
