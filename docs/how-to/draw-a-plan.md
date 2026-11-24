@@ -16,7 +16,7 @@ A schedule: zones as date bars that nest, events as milestones, people or teams 
 7. Schedule a node that lives on another plane (a C4 container, an ER table…) by selecting it and, in Properties → Memberships, adding the zone as a container on the plan plane. It drops into the zone's flow at first; drag it anywhere inside the bar afterwards and it stays exactly there (the bar grows to fit) instead of snapping back into the flow.
 8. Comment on a bar in Properties → Comments and attach resources in Properties → Links — the badge at the bar's corner opens both on the published page.
 
-![The + on a zone adds the next zone, the same length, and opens its name](../media/draw-a-plan.webp)
+![The + on a zone adds the next zone, the same length, and opens its name; Group by team then draws a lane for each team](../media/draw-a-plan.webp)
 
 GIF: [draw-a-plan.gif](../media/draw-a-plan.gif)
 

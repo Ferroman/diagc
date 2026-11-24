@@ -18,6 +18,13 @@
       "color": "#b08ad9"
     },
     {
+      "id": "core",
+      "name": "Core team",
+      "type": "team",
+      "plane": "plan",
+      "color": "#3a9d5d"
+    },
+    {
       "id": "discovery",
       "name": "Discovery",
       "type": "plan-zone",
@@ -46,13 +53,31 @@
       "id": "alice->discovery#0",
       "from": "alice",
       "to": "discovery",
-      "kind": "owns"
+      "kind": "executes"
     },
     {
       "id": "bob->build#0",
       "from": "bob",
       "to": "build",
       "kind": "executes"
+    },
+    {
+      "id": "alice->core#0",
+      "from": "alice",
+      "to": "core",
+      "kind": "member-of"
+    },
+    {
+      "id": "bob->core#0",
+      "from": "bob",
+      "to": "core",
+      "kind": "member-of"
+    },
+    {
+      "id": "discovery->build#0",
+      "from": "discovery",
+      "to": "build",
+      "kind": "sync"
     }
   ],
   "layers": [],
