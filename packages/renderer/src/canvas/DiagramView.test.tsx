@@ -2833,6 +2833,31 @@ describe('plan notation: stretching time', () => {
       return m.toJSON();
     }
 
+    it('a rename asked for a zone drawn in two lanes opens one editor, on its first copy', async () => {
+      const m = model('two');
+      const p = m.plan();
+      const pay = p.team('pay', 'Payments');
+      const plat = p.team('plat', 'Platform');
+      const co = p.zone('co', { name: 'Checkout', start: '2026-01-05', end: '2026-02-27' });
+      co.zone('api', { name: 'API', start: '2026-01-05', end: '2026-01-30' }).executor(pay);
+      co.zone('ui', { name: 'UI', start: '2026-02-02', end: '2026-02-20' }).executor(plat);
+      const { container } = render(
+        <DiagramView
+          model={m.toJSON()}
+          plane="plan"
+          notation="plan"
+          grouped
+          mode="edit"
+          edit={{ editLabelRequest: { id: 'co', nonce: 1 }, onRenameNode: vi.fn() }}
+        />,
+      );
+      await screen.findByLabelText('Rename');
+      expect(screen.getAllByLabelText('Rename')).toHaveLength(1);
+      const host = screen.getByLabelText('Rename').closest('.react-flow__node');
+      expect(host?.getAttribute('data-id')).toBe(planCopyId('pay', 'co'));
+      expect(container.querySelectorAll(`.react-flow__node[data-id="${planCopyId('plat', 'co')}"]`)).toHaveLength(1);
+    });
+
     it('turning it on draws a lane per team', async () => {
       const { container } = render(<DiagramView model={teamPlan()} plane="plan" notation="plan" />);
       expect(container.querySelector('.dg-plan-lane')).toBeNull();

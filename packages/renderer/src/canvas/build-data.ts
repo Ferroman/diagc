@@ -55,7 +55,7 @@ import type { DiagramNodeData } from '../node/DiagramNode';
 import { behaviorLines } from '../node/behavior-lines';
 import type { RegionSeparator } from '../layout/state-machine-layout';
 import { edgeLabelBox, zoneNoteOf } from '../layout/layout-graph';
-import { modelIdOf } from './copy-ids';
+import { copiesOf, modelIdOf } from './copy-ids';
 
 /** The plan's team view as the roster cards read it (see NodeDataContext.actors). */
 export interface ActorControls {
@@ -279,8 +279,9 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
   if (real !== n.id) data.modelId = real;
   bindActor(data, n, ctx);
   bindNotationMarks(data, n, ctx);
-  // a rename the host asks for names the zone, and opens on its copy
-  if (ctx.labelEditingId !== undefined && [n.id, real].includes(ctx.labelEditingId)) bindLabelEdit(data, n, ctx);
+  // a rename the host asks for names the zone, and opens on its first copy
+  // only (boxOf's pick): an editor on every copy would race for focus
+  if (labelEditsHere(n.id, real, ctx)) bindLabelEdit(data, n, ctx);
   // an image or a shape's mask is fetched from the asset or library folder
   if (n.node.image !== undefined || n.node.shape !== undefined) {
     data.assetBase = ctx.assetBase;
@@ -289,6 +290,14 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
   if (n.node.link !== undefined) data.onOpenLink = ctx.onOpenLink;
   if (ctx.editing) bindNodeEdits(data, n, ctx);
   return data;
+}
+
+/** The in-place editor opens on the box of that id, else on the first lane
+ * copy of the zone it names. */
+function labelEditsHere(id: string, real: string, ctx: NodeDataContext): boolean {
+  const target = ctx.labelEditingId;
+  if (target === undefined) return false;
+  return id === target || (real === target && copiesOf(ctx.copies, real)[0] === id);
 }
 
 /** A roster card's eye, and the person's other teams. */

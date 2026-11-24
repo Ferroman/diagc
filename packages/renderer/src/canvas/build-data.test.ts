@@ -186,6 +186,18 @@ describe('buildNodeData', () => {
     expect(onRich).toHaveBeenCalledWith('n1', [{ text: 'Rich' }]);
   });
 
+  it('a rename asked for a zone opens on its first lane copy only: two editors would race for focus', () => {
+    const ctx = nodeCtx({
+      copies: new Map([
+        ['pay:n1', 'n1'],
+        ['plat:n1', 'n1'],
+      ]),
+      labelEditingId: 'n1',
+    });
+    expect(buildNodeData(viewNode({ id: 'pay:n1' }), ctx).labelEditing).toBe(true);
+    expect(buildNodeData(viewNode({ id: 'plat:n1' }), ctx).labelEditing).toBeUndefined();
+  });
+
   it('only opens the label editor for the matching node id', () => {
     const d = buildNodeData(viewNode(), nodeCtx({ labelEditingId: 'other' }));
     expect(d.labelEditing).toBeUndefined();
