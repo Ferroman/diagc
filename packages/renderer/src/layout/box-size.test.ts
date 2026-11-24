@@ -268,7 +268,13 @@ describe('withBoxSizes', () => {
 });
 
 describe('LAYOUT_SIZED_TYPES', () => {
-  it('names exactly the fishbone types and the plan zone, which their layout sizes', () => {
-    expect([...LAYOUT_SIZED_TYPES].sort()).toEqual(['fb-category', 'fb-cause', 'fb-effect', 'plan-zone']);
+  it('names exactly the fishbone types, the plan zone and the plan period, which their layout sizes', () => {
+    expect([...LAYOUT_SIZED_TYPES].sort()).toEqual([
+      'fb-category',
+      'fb-cause',
+      'fb-effect',
+      'plan-period',
+      'plan-zone',
+    ]);
   });
 });

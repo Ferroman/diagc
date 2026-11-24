@@ -42,7 +42,8 @@ import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './layout/git
 import { ABOVE_BOXES_Z } from './canvas/stacking';
 import { planArrow, type ArrowEnd } from './edge/plan-arrow';
 import type { LayoutResult, NotationLayoutInput } from './layout/layout';
-import { PLAN_LAYOUT, planChips, planGraphCached, planLabelSides, planLayout, planStripes } from './layout/plan-layout';
+import { PLAN_LAYOUT, planChips, planGraphCached, planLayout } from './layout/plan-layout';
+import { planLabelSides, planStripes } from './layout/plan-marks';
 import { DEFAULT_TYPE_STYLES, type KindStyle, type TypeStyle } from './registry';
 import { stateMachineColors, stateMachineEdgeColor } from './state-kinds';
 
