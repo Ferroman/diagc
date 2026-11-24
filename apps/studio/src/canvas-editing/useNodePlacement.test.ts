@@ -103,6 +103,7 @@ function harness(m: DiagramModel, selection: string | null = null, plane: PlaneC
     model: m,
     lib: { library: { categories: [], entries } } as unknown as UseLibrary,
     today: '2026-01-01',
+    dayWidth: 20,
     ...plane,
   });
   return { placement, dispatched };
@@ -274,6 +275,7 @@ describe('useNodePlacement — every flow, command by command', () => {
       model: m,
       lib: { library: { categories: [], entries } } as unknown as UseLibrary,
       today: '2026-01-01',
+      dayWidth: 20,
       ...over,
     });
     return { placement, dispatched, calls };

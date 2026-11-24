@@ -56,6 +56,8 @@ export interface DockEntry {
 export interface NodesMovedGesture {
   model: DiagramModel;
   plane: string | undefined;
+  /** px per day the canvas drew the gesture at (a plan's; 20 elsewhere) */
+  dayWidth: number;
   positions: Record<string, Point>;
   deltas: Record<string, { dx: number; dy: number }>;
 }
@@ -64,6 +66,7 @@ export interface NodesMovedGesture {
 export interface DropIntoGesture {
   model: DiagramModel;
   plane: string | undefined;
+  dayWidth: number;
   id: string;
   targetId: string;
   rel: Point;
@@ -73,6 +76,7 @@ export interface DropIntoGesture {
 export interface ResizeGesture {
   model: DiagramModel;
   plane: string | undefined;
+  dayWidth: number;
   id: string;
   w: number;
   h: number;

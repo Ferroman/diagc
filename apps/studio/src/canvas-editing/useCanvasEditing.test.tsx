@@ -69,6 +69,7 @@ const options = (over: Partial<UseCanvasEditingOptions> = {}): UseCanvasEditingO
     lib: { library: { categories: [], entries: [] } } as unknown as UseLibrary,
     drillRoot: 'sys',
     today: '2026-01-20',
+    dayWidth: 20,
     ...over,
   };
 };

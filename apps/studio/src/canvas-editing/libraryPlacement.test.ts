@@ -48,6 +48,7 @@ function scope(over: Partial<LibraryPlacementScope> = {}) {
     selection: null,
     drillRoot: undefined,
     today: '2026-01-01',
+    dayWidth: 20,
     selectNode: vi.fn(),
     requestLabelEdit: vi.fn(),
     ...over,

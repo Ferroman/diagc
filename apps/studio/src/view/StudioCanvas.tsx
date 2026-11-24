@@ -16,6 +16,9 @@ export interface StudioCanvasProps {
   model: DiagramModel;
   /** the host's date, YYYY-MM-DD: a plan plane's today line */
   today: string;
+  /** the plan canvas's px per day, held by the host so the gestures read it too */
+  dayWidth: number;
+  onDayWidthChange: (width: number) => void;
   editing: boolean;
   nav: Pick<ViewNavigation, 'activePlane' | 'activeLayers' | 'toggleLayer' | 'pins' | 'toggleExpand' | 'notation'>;
   selection: Pick<CanvasSelection, 'select' | 'multiSelect' | 'groupSel'>;
@@ -36,6 +39,8 @@ export interface StudioCanvasProps {
 export function StudioCanvas({
   model,
   today,
+  dayWidth,
+  onDayWidthChange,
   editing,
   nav,
   selection,
@@ -59,6 +64,8 @@ export function StudioCanvas({
         model={model}
         plane={nav.activePlane}
         today={today}
+        dayWidth={dayWidth}
+        onDayWidthChange={onDayWidthChange}
         activeLayers={nav.activeLayers}
         onToggleLayer={nav.toggleLayer}
         pins={nav.pins}
