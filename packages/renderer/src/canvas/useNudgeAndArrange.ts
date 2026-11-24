@@ -1,7 +1,9 @@
 import { useMemo, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import { applyNodeChanges, type Node, type ReactFlowInstance } from '@xyflow/react';
+import type { CompiledView } from '@diagc/core/internal';
 import { alignBoxes, distributeBoxes, dropDescendants, type AlignMode, type Delta } from './arrange';
 import type { Box } from './box';
+import { pinnedRows, pinRows } from './copy-ids';
 import { NUDGE_STEP, useNudge, type Positions } from './useNudge';
 
 export interface NudgeAndArrangeInput {
@@ -18,6 +20,8 @@ export interface NudgeAndArrangeInput {
   rfNodesRef: MutableRefObject<Node[]>;
   setRfNodes: Dispatch<SetStateAction<Node[]>>;
   commitMoves: (positions: Positions) => void;
+  /** the view on screen: a plan's pinned rows (grouped, or hiding) move on x only */
+  compiledRef?: MutableRefObject<Pick<CompiledView, 'pinnedRows'>>;
 }
 
 export interface NudgeAndArrange {
@@ -34,7 +38,10 @@ export interface NudgeAndArrange {
 
 /** The arrow keys, and align/distribute over the selection. */
 export function useNudgeAndArrange(input: NudgeAndArrangeInput): NudgeAndArrange {
-  const { chromeless, gestureCaptured, reactFlow, rfNodes, rfNodesRef, setRfNodes, commitMoves } = input;
+  const { chromeless, gestureCaptured, reactFlow, rfNodes, rfNodesRef, setRfNodes, commitMoves, compiledRef } = input;
+  // what a key or an arrange may move a node to: a pinned row keeps its y (copy-ids.ts)
+  const pin = (moves: Positions): Positions =>
+    pinRows(moves, rfNodesRef.current, pinnedRows(compiledRef?.current ?? {}));
   // Arrow keys (see useNudge). The step follows the snap grid when one is on,
   // so a nudge lands on the same grid a drag would.
   const nudge = useNudge({
@@ -49,6 +56,7 @@ export function useNudgeAndArrange(input: NudgeAndArrangeInput): NudgeAndArrange
         ),
       ),
     commit: commitMoves,
+    constrain: pin,
   });
   // What align/distribute act on: the selection minus the nodes nothing may move
   // (see `draggable` in nodeFrameProps). They are neither moved nor
@@ -75,11 +83,12 @@ export function useNudgeAndArrange(input: NudgeAndArrangeInput): NudgeAndArrange
       if (n === undefined || abs === undefined || w === undefined || h === undefined) continue;
       boxes.push({ id, x: abs.x, y: abs.y, w, h });
     }
-    const positions: Positions = {};
+    const asked: Positions = {};
     for (const [id, d] of Object.entries(fn(boxes))) {
       const n = byId.get(id)!;
-      positions[id] = { x: n.position.x + d.dx, y: n.position.y + d.dy };
+      asked[id] = { x: n.position.x + d.dx, y: n.position.y + d.dy };
     }
+    const positions = pin(asked);
     if (Object.keys(positions).length === 0) return;
     // Move at once: the commit re-derives the same positions a frame later,
     // but only if the host's onNodesMoved is synchronous — React 18 then

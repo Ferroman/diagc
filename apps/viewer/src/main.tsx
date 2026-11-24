@@ -20,6 +20,7 @@
  */
 import { createRoot } from 'react-dom/client';
 import { Viewer, type ViewerData } from './Viewer';
+import { readTeamView } from './team-url';
 import '@fontsource/kalam/400.css';
 import '@fontsource/kalam/700.css';
 import '@fontsource/caveat/500.css';
@@ -43,8 +44,19 @@ const params = new URLSearchParams(location.search);
 const expandAll = params.has('export');
 const exportPlane = expandAll ? (params.get('plane') ?? undefined) : undefined;
 
+// `group`/`hide` are the reader's view; an export is the PNG and reads neither.
+const teamView = expandAll ? undefined : readTeamView(location.search);
+
 const el = document.getElementById('root');
-if (el) createRoot(el).render(<Viewer data={readData()} expandAll={expandAll} exportPlane={exportPlane} />);
+if (el)
+  createRoot(el).render(
+    <Viewer
+      data={readData()}
+      expandAll={expandAll}
+      exportPlane={exportPlane}
+      {...(teamView !== undefined ? { teamView } : {})}
+    />,
+  );
 
 // The export handshake (__DG_READY__ / __DG_BOUNDS__ / __DG_FIT__) is published
 // by the Viewer once React Flow has laid the graph out — it owns the layout API

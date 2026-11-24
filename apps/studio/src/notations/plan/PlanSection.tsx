@@ -1,16 +1,19 @@
 import { useMemo } from 'react';
 import {
+  PLAN_PERSON_TYPE,
   PLAN_ROLES,
   isPlanActor,
   isPlanEvent,
   isPlanPeriod,
   isPlanZone,
   rolesOf,
+  teamsOf,
   type DiagramModel,
   type DiagramNode,
   type EditorCommand,
   type PlanRole,
 } from '@diagc/core/internal';
+import { removeMember } from './membership';
 import { setRole } from './planActions';
 
 const ROLE_TITLE: Record<PlanRole, string> = { owns: 'Owner', executes: 'Executor', checks: 'Checker' };
@@ -118,7 +121,43 @@ export function PlanSection({ model, node, onCommand }: PlanSectionProps) {
           <DateInput label="End" value={str(node.metadata?.end)} onChange={(end) => set({ end })} />
         </div>
       )}
+      {node.type === PLAN_PERSON_TYPE && <TeamList model={model} personId={node.id} onCommand={onCommand} />}
       {isPlanEvent(node) && <DateInput label="At" value={str(node.metadata?.at)} onChange={(at) => set({ at })} />}
     </section>
+  );
+}
+
+/** A person's teams, each with a remove button. Adding is a drag onto a team
+ * card on the canvas, so the list only ever takes away. */
+function TeamList({
+  model,
+  personId,
+  onCommand,
+}: {
+  model: DiagramModel;
+  personId: string;
+  onCommand: PlanSectionProps['onCommand'];
+}) {
+  const teams = teamsOf(model, personId);
+  const nameOf = (id: string): string => model.nodes.find((n) => n.id === id)?.name ?? id;
+  if (teams.length === 0) return <p className="hint">Not in a team. Drag onto a team card to add.</p>;
+  return (
+    <ul className="plan-teams" aria-label="Teams">
+      {teams.map((t) => (
+        <li key={t}>
+          <span>{nameOf(t)}</span>
+          <button
+            type="button"
+            aria-label={`Remove from ${nameOf(t)}`}
+            onClick={() => {
+              const command = removeMember(model, personId, t);
+              if (command !== undefined) onCommand(command);
+            }}
+          >
+            ×
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }

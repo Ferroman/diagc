@@ -25,6 +25,7 @@ import type {
   LayoutDirection,
   NotationId,
   PlanRole,
+  PlanRosterFrame,
   Point,
   Side,
   TextRun,
@@ -55,6 +56,14 @@ import type { DiagramNodeData } from '../node/DiagramNode';
 import { behaviorLines } from '../node/behavior-lines';
 import type { RegionSeparator } from '../layout/state-machine-layout';
 import { edgeLabelBox, zoneNoteOf } from '../layout/layout-graph';
+import { copiesOf, modelIdOf } from './copy-ids';
+
+/** The plan's team view as the roster cards read it (see NodeDataContext.actors). */
+export interface ActorControls {
+  hides: (n: DiagramNode) => boolean;
+  hidden: ReadonlySet<string>;
+  toggle: (id: string) => void;
+}
 
 /** per-node data inputs the view threads in; kept as one object so the cache
  * can compare it field-by-field with === and skip rebuilds when nothing moved */
@@ -86,6 +95,21 @@ export interface NodeDataContext {
   /** hatched stretches per node id (profile.node.stripes): a plan bar's
    * interrupted days, drawn folded or open alike */
   stripes?: ReadonlyMap<string, NodeStripe[]>;
+  /** a plan's copies: canvas id -> the model id it copies (CompiledView.copies)
+   * — a grouped plan's lane copies, and a person's badge in a second team.
+   * The notation's chips, sides and stripes are the model's, keyed by model
+   * id, so a copy reads them through this. */
+  copies?: ReadonlyMap<string, string>;
+  /** a grouped plan's team tints per copy id (plan-marks planTintStripes),
+   * drawn under the copy's period stripes */
+  tints?: ReadonlyMap<string, NodeStripe[]>;
+  /** the plan's roster cards: which nodes carry an eye (profile.node.hidesActors),
+   * what is hidden, and the toggle. One object per change, since the cache
+   * compares it by identity. */
+  actors?: ActorControls;
+  /** the plan's roster frames (CompiledView.roster): a team listed here is
+   * drawn as a frame around its members' badges, chromeless or not */
+  roster?: readonly PlanRosterFrame[];
   /** px per day (a plan's): an x-resized bar is never narrower than one day */
   dayWidth?: number;
   /** a container the notation never folds (useNotation's isAlwaysExpanded):
@@ -215,13 +239,16 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
   // the threats per data build, not one per render.
   const threats = threatSummary(n.node.threats);
   const color = typeColor(n, ctx);
+  // a lane copy (a grouped plan) draws its zone: the counts and chips are the
+  // zone's, and whatever it reports, it reports as the zone (data.modelId)
+  const real = modelIdOf(ctx.copies, n.id);
   const data: DiagramNodeData = {
     label: n.node.name,
     wrappedLabel: wrappedLabelOf(n, ctx),
     state: n.state,
     promoted: n.promoted,
     sharedMembers: n.sharedMembers,
-    hiddenCount: ctx.hiddenCounts.get(n.id) ?? 0,
+    hiddenCount: ctx.hiddenCounts.get(real) ?? 0,
     metaBadges: metaBadgesOf(n, ctx.metaKeys),
     typeRegistry: ctx.typeRegistry,
     icons: ctx.icons,
@@ -248,12 +275,16 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
     notation: ctx.notation,
     threats: threats.total > 0 ? threats : undefined,
     annotations: nodeAnnotations(n),
-    chips: ctx.nodeChips?.get(n.id),
+    chips: ctx.nodeChips?.get(real),
     ...(n.node.type === SM_STATE_TYPE ? { behaviors: behaviorLines(n.node), composite: n.state !== 'leaf' } : {}),
     ...(n.node.type === SM_ZONE_TYPE && zoneNoteOf(n.node) !== undefined ? { zoneNote: zoneNoteOf(n.node) } : {}),
   };
+  if (real !== n.id) data.modelId = real;
+  bindActor(data, n, ctx);
   bindNotationMarks(data, n, ctx);
-  if (ctx.labelEditingId === n.id) bindLabelEdit(data, n, ctx);
+  // a rename the host asks for names the zone, and opens on its first copy
+  // only (boxOf's pick): an editor on every copy would race for focus
+  if (labelEditsHere(n.id, real, ctx)) bindLabelEdit(data, n, ctx);
   // an image or a shape's mask is fetched from the asset or library folder
   if (n.node.image !== undefined || n.node.shape !== undefined) {
     data.assetBase = ctx.assetBase;
@@ -264,6 +295,24 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
   return data;
 }
 
+/** The in-place editor opens on the box of that id, else on the first lane
+ * copy of the zone it names. */
+function labelEditsHere(id: string, real: string, ctx: NodeDataContext): boolean {
+  const target = ctx.labelEditingId;
+  if (target === undefined) return false;
+  return id === target || (real === target && copiesOf(ctx.copies, real)[0] === id);
+}
+
+/** A roster card's eye, and whether a team's card is the frame around its
+ * members. A person's badge in a second team is a copy (CompiledView.copies),
+ * so its eye reads and toggles the person: both badges show one state. */
+function bindActor(data: DiagramNodeData, n: ViewNode, ctx: NodeDataContext): void {
+  if (ctx.roster?.some((f) => f.team === n.id) === true) data.rosterFrame = true;
+  const actors = ctx.actors;
+  if (actors?.hides(n.node) !== true) return;
+  data.actorEye = { hidden: actors.hidden.has(modelIdOf(ctx.copies, n.id)), toggle: actors.toggle };
+}
+
 /** What the notation decided about this node's frame: the dashed edge a
  * stacked region shares, a bar's name drawn beside it (a leaf's, or a folded
  * container's — an open one titles its band, whatever its width), and a
@@ -272,12 +321,16 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
 function bindNotationMarks(data: DiagramNodeData, n: ViewNode, ctx: NodeDataContext): void {
   const separator = ctx.regionSeparators?.get(n.id);
   if (separator !== undefined) data.regionSeparator = separator;
-  const stripes = ctx.stripes?.get(n.id);
+  // a lane copy is its zone's bar: the zone's marks, plus its lane's tint
+  const real = ctx.copies?.get(n.id) ?? n.id;
+  const periods = ctx.stripes?.get(real);
+  const tints = ctx.tints?.get(n.id);
+  const stripes = tints === undefined ? periods : [...tints, ...(periods ?? [])];
   if (stripes !== undefined) data.stripes = stripes;
   if (n.state !== 'expanded') {
-    const labelSide = ctx.labelSides?.get(n.id);
+    const labelSide = ctx.labelSides?.get(real);
     if (labelSide !== undefined) data.labelSide = labelSide;
-  } else if (ctx.isAlwaysExpanded?.(n.id) === true) {
+  } else if (ctx.isAlwaysExpanded?.(real) === true) {
     data.neverFolds = true;
     data.onEnterNode = undefined;
   }
@@ -286,15 +339,16 @@ function bindNotationMarks(data: DiagramNodeData, n: ViewNode, ctx: NodeDataCont
 /** The in-place label editor's two commits, bound to this node: each closes
  * the editor, then renames only to a new non-blank name. */
 function bindLabelEdit(data: DiagramNodeData, n: ViewNode, ctx: NodeDataContext): void {
+  const id = data.modelId ?? n.id;
   data.labelEditing = true;
   data.onLabelCommit = (value: string | null) => {
     ctx.endLabelEdit?.();
     const name = value?.trim() ?? '';
-    if (name !== '' && name !== n.node.name) ctx.onRenameNode?.(n.id, name);
+    if (name !== '' && name !== n.node.name) ctx.onRenameNode?.(id, name);
   };
   data.onRichCommit = (runs: TextRun[] | null) => {
     ctx.endLabelEdit?.();
-    if (runs !== null && runsToPlainText(runs).trim() !== '') ctx.onSetNodeRich?.(n.id, runs);
+    if (runs !== null && runsToPlainText(runs).trim() !== '') ctx.onSetNodeRich?.(id, runs);
   };
 }
 
@@ -305,7 +359,7 @@ function bindNodeEdits(data: DiagramNodeData, n: ViewNode, ctx: NodeDataContext)
   if (n.node.type === 'db-table' && ctx.onSetTableColumns !== undefined) {
     data.onColumnsChange = (columns: Column[]) => {
       const all = n.node.columns ?? [];
-      ctx.onSetTableColumns?.(n.id, withHiddenColumns(all, n.columns ?? all, columns));
+      ctx.onSetTableColumns?.(data.modelId ?? n.id, withHiddenColumns(all, n.columns ?? all, columns));
     };
   }
   if (ctx.onResize !== undefined) {
@@ -507,7 +561,11 @@ const NODE_CTX_FIELDS = [
   'isAlwaysExpanded',
   'labelSides',
   'stripes',
+  'copies',
+  'tints',
   'dayWidth',
+  'actors',
+  'roster',
 ] as const;
 const _nodeCtxFields: SameKeys<keyof NodeDataContext, (typeof NODE_CTX_FIELDS)[number]> = true;
 void _nodeCtxFields;

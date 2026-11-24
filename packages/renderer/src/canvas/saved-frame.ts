@@ -59,18 +59,22 @@ export function savedPoints(
 
 /** `edit` with its resize report saved: the position (`toSaved`), and the
  * width where the width is dates (a plan bar's, `widthIsDates`) — a box's own
- * width is not stretched, so it is reported as drawn. The same object back
- * when it reports no resize. */
+ * width is not stretched, so it is reported as drawn — under the model id the
+ * box draws (`modelIdOf`: a grouped plan's lane copy resizes its zone). Both
+ * conversions read the canvas id; only the report names the model. The same
+ * object back when it reports no resize. */
 export function savedResize(
   edit: EditingApi | undefined,
   frames: SavedFrames,
   widthIsDates: (id: string) => boolean = () => false,
+  modelIdOf: (id: string) => string = (id) => id,
 ): EditingApi | undefined {
   const onResize = edit?.onResize;
   if (edit === undefined || onResize === undefined) return edit;
   return {
     ...edit,
-    onResize: (id, w, h, pos) => onResize(id, widthIsDates(id) ? savedX(frames, w) : w, h, toSaved(frames, id, pos)),
+    onResize: (id, w, h, pos) =>
+      onResize(modelIdOf(id), widthIsDates(id) ? savedX(frames, w) : w, h, toSaved(frames, id, pos)),
   };
 }
 

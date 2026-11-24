@@ -181,4 +181,86 @@ describe('useDeepLink', () => {
     expect(dl!.enteredPath).toEqual(['sys']);
     expect(dl!.enteredPath).not.toBe(trail);
   });
+
+  it('seeds grouping and hidden ids from the hash', () => {
+    let dl: DeepLink | undefined;
+    window.location.hash = '#/sketch/sys?group=1&hide=t1,__unassigned__';
+    render(<Harness names={NAMES} booted onDeepLink={(d) => (dl = d)} />);
+    expect(dl!.grouped).toBe(true);
+    expect(dl!.hidden).toEqual(['t1', '__unassigned__']);
+  });
+
+  // The view is written into the hash, as a replace: Back must still walk
+  // drill steps, not every eye toggle.
+  it('writes a view change into the hash without a history entry, and nothing when default', () => {
+    let dl: DeepLink | undefined;
+    window.location.hash = '#/sketch';
+    render(<Harness names={NAMES} booted onDeepLink={(d) => (dl = d)} />);
+    const before = window.history.length;
+    act(() => dl!.handleGroupedChange(true));
+    act(() => dl!.handleHiddenChange(['t1']));
+    expect(window.location.hash).toBe('#/sketch?group=1&hide=t1');
+    expect(window.history.length).toBe(before);
+    act(() => dl!.handleGroupedChange(false));
+    act(() => dl!.handleHiddenChange([]));
+    expect(window.location.hash).toBe('#/sketch');
+    expect(window.history.length).toBe(before);
+  });
+
+  // Review Focus 5: one diagram's team ids name nothing in the next.
+  it('a new diagram opens ungrouped with nothing hidden', () => {
+    let dl: DeepLink | undefined;
+    window.location.hash = '#/sketch?group=1&hide=t1';
+    render(<Harness names={NAMES} booted onDeepLink={(d) => (dl = d)} />);
+    act(() => dl!.selectDiagram('two'));
+    expect(dl!.grouped).toBe(false);
+    expect(dl!.hidden).toEqual([]);
+    expect(window.location.hash).toBe('#/two');
+    // the view's own reset report changes nothing and writes nothing
+    const before = window.history.length;
+    act(() => dl!.handleGroupedChange(false));
+    act(() => dl!.handleHiddenChange([]));
+    expect(window.location.hash).toBe('#/two');
+    expect(window.history.length).toBe(before);
+  });
+
+  it('applies the view of an external hash navigation', () => {
+    let dl: DeepLink | undefined;
+    window.location.hash = '#/sketch';
+    render(<Harness names={NAMES} booted onDeepLink={(d) => (dl = d)} />);
+    act(() => {
+      window.location.hash = '#/sketch?group=1&hide=a';
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+    expect(dl!.grouped).toBe(true);
+    expect(dl!.hidden).toEqual(['a']);
+  });
+
+  // A link's own view must win over the view's reset for the model it lands on.
+  it("an external hashchange to another diagram opens with that link's view", () => {
+    let dl: DeepLink | undefined;
+    window.location.hash = '#/sketch?group=1&hide=a';
+    render(<Harness names={NAMES} booted onDeepLink={(d) => (dl = d)} />);
+    act(() => {
+      window.location.hash = '#/two?group=1&hide=t1,__unassigned__';
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+    expect(dl!.selected).toBe('two');
+    expect(dl!.grouped).toBe(true);
+    expect(dl!.hidden).toEqual(['t1', '__unassigned__']);
+    expect(window.location.hash).toBe('#/two?group=1&hide=t1,__unassigned__');
+  });
+
+  // The writer's first run sees the raw, unclamped path: a view-only rewrite
+  // (non-canonical suffix order) must not settle the stale-link flag early, or
+  // the prune that follows would push a history entry Back then loops on.
+  it('prunes a stale path replace-style even when the view part needed rewriting', () => {
+    window.location.hash = '#/sketch/sys/gone?hide=a&group=1';
+    const before = window.history.length;
+    render(<Harness names={NAMES} booted />);
+    expect(window.location.hash).toBe('#/sketch/sys/gone?group=1&hide=a');
+    act(() => screen.getByText('report-sys').click());
+    expect(window.location.hash).toBe('#/sketch/sys?group=1&hide=a');
+    expect(window.history.length).toBe(before);
+  });
 });

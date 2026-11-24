@@ -5,6 +5,7 @@ import {
   compileView,
   dayOf,
   model,
+  planView,
   type CompiledView,
   type DiagramModel,
 } from '@diagc/core/internal';
@@ -535,5 +536,108 @@ describe('planLayout', () => {
     const r = planLayout({ view: view(m.toJSON()), model: m.toJSON(), plane: 'plan' });
     expect(r.geometry.size).toBe(0);
     expect(r.lockedX?.size ?? 0).toBe(0);
+  });
+});
+
+/** The plan example starter (.diagrams/src/examples/plan/starter.diagram.ts), as
+ * a fixture: people, a team, roles, nested rows, a zone event, a top-level one;
+ * `early` adds an earlier zone than any, dana's. */
+function starter(early = false): DiagramModel {
+  const m = model('launch-plan', { name: 'Launch plan' });
+  const plan = m.plan();
+  if (early)
+    plan.zone('early', { name: 'Early', start: '2025-12-01', end: '2025-12-12' }).executor(plan.person('dana', 'Dana'));
+  const alice = plan.person('alice', 'Alice Ng', { color: '#2f6fed' });
+  const bob = plan.person('bob', 'Bob Lee', { color: '#b08ad9' });
+  const chen = plan.person('chen', 'Chen Wu', { color: '#3a9d5d' });
+  const support = plan.team('support', 'Support team', { color: '#607d8b' });
+  const discovery = plan.zone('discovery', { name: 'Discovery', start: '2026-01-05', end: '2026-01-23' });
+  discovery.owner(alice).executor(bob);
+  const build = plan.zone('build', { name: 'Build', start: '2026-01-26', end: '2026-03-06' });
+  build.owner(alice).executor(bob).checker(chen);
+  build.zone('api', { name: 'API', start: '2026-01-26', end: '2026-02-13' });
+  build.zone('ui', { name: 'UI', start: '2026-02-09', end: '2026-03-06' });
+  build.event('code-freeze', { name: 'Code freeze', at: '2026-03-02' });
+  plan.zone('rollout', { name: 'Rollout', start: '2026-03-09', end: '2026-03-20' }).owner(chen).executor(support);
+  plan.event('launch', { name: 'Launch', at: '2026-03-23' });
+  return m.toJSON();
+}
+
+/** A layout as text, one line per node in id order, and its sets: compact
+ * enough to pin a whole arrangement inline. */
+function geometryOf(r: ReturnType<typeof planLayout>): string {
+  const lines = [...r.geometry]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([id, g]) => `${id} ${g.x},${g.y} ${g.width}x${g.height}`);
+  const set = (s: ReadonlySet<string> | undefined) => [...(s ?? [])].sort().join(' ');
+  const shift = [...(r.viewShift ?? [])].map(([id, dy]) => `${id}:${dy}`).join(' ');
+  return [...lines, `fixed ${set(r.fixed)}`, `lockedX ${set(r.lockedX)}`, `viewShift ${shift}`].join('\n');
+}
+
+describe('planLayout, pinned', () => {
+  it('ungrouped with nothing hidden, the layout is unchanged', () => {
+    const m = starter();
+    expect(geometryOf(planLayout({ view: view(m), model: m, plane: 'plan' }))).toMatchInlineSnapshot(`
+      "alice 80,-178 160x80
+      api 0,40 380x40
+      bob 264,-178 160x80
+      build 500,48 800x140
+      chen 448,-178 160x80
+      code-freeze 702,12 16x16
+      discovery 80,0 380x40
+      launch 1622,-60 16x16
+      rollout 1340,196 240x40
+      support 632,-178 160x80
+      ui 280,88 520x40
+      fixed alice api bob chen code-freeze launch support ui
+      lockedX build discovery rollout
+      viewShift "
+    `);
+    // a fold, a saved y and a stretch: the viewShift and scaling paths too
+    const folded = planLayout({
+      view: view(m, ['build']),
+      model: m,
+      plane: 'plan',
+      positions: { rollout: { x: 0, y: 400 } },
+      dayWidth: 2 * DAY,
+    });
+    expect(geometryOf(folded)).toMatchInlineSnapshot(`
+      "alice 160,-178 160x80
+      bob 344,-178 160x80
+      build 1000,48 1600x40
+      chen 528,-178 160x80
+      discovery 160,0 760x40
+      launch 3252,-60 16x16
+      rollout 2680,196 480x40
+      support 712,-178 160x80
+      fixed alice bob chen launch support
+      lockedX build discovery rollout
+      viewShift rollout:-100"
+    `);
+  });
+});
+
+describe('planLayout, hiding', () => {
+  it('hiding the earliest zone moves no other bar', () => {
+    const m = starter(true);
+    const all = planLayout({ view: view(m), model: m, plane: 'plan' });
+    expect(all.geometry.has('early')).toBe(true);
+    const hidden = new Set(['dana']);
+    const some = planLayout({
+      view: planView(view(m), m, 'plan', { grouped: false, hidden }),
+      model: m,
+      plane: 'plan',
+      hidden,
+    });
+    expect(some.geometry.has('early')).toBe(false);
+    for (const [id, g] of some.geometry) expect([id, g.x]).toEqual([id, all.geometry.get(id)!.x]);
+    // grouped too: every top-level copy keeps its zone's x
+    const lanes = planView(view(m), m, 'plan', { grouped: true, hidden });
+    const grouped = planLayout({ view: lanes, model: m, plane: 'plan', hidden });
+    const tops = (lanes.lanes ?? []).flatMap((l) => l.zones);
+    expect(tops.length).toBeGreaterThan(0);
+    for (const copy of tops) {
+      expect([copy, grouped.geometry.get(copy)!.x]).toEqual([copy, all.geometry.get(lanes.copies!.get(copy)!)!.x]);
+    }
   });
 });

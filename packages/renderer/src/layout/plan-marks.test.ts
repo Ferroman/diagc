@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { model } from '@diagc/core/internal';
-import { PLAN_LAYOUT } from './plan-layout';
-import { planLabelSides, planStripes } from './plan-marks';
+import { PLAN_ZONE_TYPE, compileView, model, planCopyId, planView } from '@diagc/core/internal';
+import { PLAN_LAYOUT, planChips } from './plan-layout';
+import { planLabelSides, planStripes, planTintStripes } from './plan-marks';
 
 const { DAY } = PLAN_LAYOUT;
 
@@ -153,5 +153,68 @@ describe('planStripes', () => {
     const json = m.toJSON();
     expect(planStripes(json, 'plan', 2 * DAY).get('z')).toEqual([{ x: 28 * DAY, width: 28 * DAY, title: 'Freeze' }]);
     expect(planStripes(json, 'plan', DAY).get('z')).toEqual([{ x: 14 * DAY, width: 14 * DAY, title: 'Freeze' }]);
+  });
+});
+
+describe('hidden actors', () => {
+  function staffed() {
+    const m = model('staffed');
+    const p = m.plan();
+    const ana = p.person('ana', 'Ana');
+    const bo = p.person('bo', 'Bo');
+    // fits its two days with one chip, not with two
+    p.zone('z', { name: 'Ship', start: '2026-11-30', end: '2026-12-04' }).owner(ana).executor(bo);
+    return m.toJSON();
+  }
+
+  it('a hidden actor has no chip', () => {
+    const m = staffed();
+    expect(
+      planChips(m, 'plan')
+        .get('z')!
+        .map((c) => c.refId),
+    ).toEqual(['ana', 'bo']);
+    expect(
+      planChips(m, 'plan', new Set(['bo']))
+        .get('z')!
+        .map((c) => c.refId),
+    ).toEqual(['ana']);
+    expect(planChips(m, 'plan', new Set(['ana', 'bo'])).has('z')).toBe(false);
+  });
+
+  it("a bar's name is measured without a hidden actor's chip, and the cache answers per hidden set", () => {
+    const m = staffed();
+    const all = planLabelSides(m, 'plan', DAY);
+    const some = planLabelSides(m, 'plan', DAY, new Set(['ana', 'bo']));
+    expect(all.has('z')).toBe(true);
+    expect(some.has('z')).toBe(false);
+    expect(planLabelSides(m, 'plan', DAY, new Set(['bo', 'ana']))).toBe(some);
+    expect(planLabelSides(m, 'plan', DAY)).toBe(all);
+  });
+});
+
+describe('planTintStripes', () => {
+  it("washes each copy's lane days in the lane's colour, in px from the copy's left edge", () => {
+    const m = model('tint');
+    const p = m.plan();
+    const pay = p.team('pay', 'Payments', { color: '#f00' });
+    const plat = p.team('plat', 'Platform');
+    const checkout = p.zone('checkout', { start: '2026-01-05', end: '2026-02-27' });
+    checkout.zone('ui', { start: '2026-01-05', end: '2026-01-30' }).executor(plat);
+    checkout.zone('api', { start: '2026-02-02', end: '2026-02-20' }).executor(pay);
+    const json = m.toJSON();
+    const pins = Object.fromEntries(
+      json.nodes.filter((n) => n.type === PLAN_ZONE_TYPE).map((n) => [n.id, 'expanded' as const]),
+    );
+    const v = planView(compileView(json, { plane: 'plan', pins }), json, 'plan', { grouped: true, hidden: new Set() });
+    const tints = planTintStripes(v, json, 2 * DAY);
+    const api = { x: 28 * 2 * DAY, width: 19 * 2 * DAY, title: 'Payments', color: '#f00', variant: 'tint' };
+    expect(tints.get(planCopyId('pay', 'checkout'))).toEqual([api]);
+    expect(tints.get(planCopyId('pay', 'api'))).toEqual([{ ...api, x: 0 }]);
+    expect(tints.get(planCopyId('plat', 'checkout'))).toEqual([
+      { x: 0, width: 26 * 2 * DAY, title: 'Platform', variant: 'tint' },
+    ]);
+    // ungrouped there is no tint
+    expect(planTintStripes(compileView(json, { plane: 'plan', pins }), json, DAY).size).toBe(0);
   });
 });

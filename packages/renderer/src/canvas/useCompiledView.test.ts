@@ -150,6 +150,50 @@ describe('useCompiledView', () => {
     });
   });
 
+  describe("the plan's team lanes", () => {
+    const planProfile = notationProfile('plan');
+    const planTypes = createTypeRegistry(planProfile.typeStyles);
+    /** zone a (Payments) holding a1, and a2 bo builds; zone b, bo's */
+    function teams() {
+      const m = model('teams');
+      const p = m.plan();
+      const pay = p.team('pay', 'Payments');
+      const bo = p.person('bo', 'Bo');
+      const a = p.zone('a', { start: '2026-01-05', end: '2026-01-30' }).executor(pay);
+      a.zone('a1', { start: '2026-01-05', end: '2026-01-09' });
+      a.zone('a2', { start: '2026-01-12', end: '2026-01-16' }).executor(bo);
+      p.zone('b', { start: '2026-02-02', end: '2026-02-06' }).executor(bo);
+      return m.toJSON();
+    }
+    const plan = (over: Partial<Flat> = {}) =>
+      input({ model: teams(), plane: 'plan', profile: planProfile, typeRegistry: planTypes, ...over });
+
+    it('draws ungrouped with nothing hidden unless asked', () => {
+      const { result } = renderHook(() => useCompiledView(plan()));
+      expect(result.current.compiled.lanes).toBeUndefined();
+      expect(result.current.compiled.roots.map((r) => r.id)).toEqual(expect.arrayContaining(['a', 'b']));
+    });
+
+    it('groups into lanes and hides, once per input', () => {
+      const args = plan({ grouping: { grouped: true, hidden: new Set(['bo']) } });
+      const { result, rerender } = renderHook(() => useCompiledView(args));
+      const first = result.current.compiled;
+      expect(first.lanes?.map((l) => l.lane.key)).toEqual(['pay']);
+      expect(first.copies?.size).toBeGreaterThan(0);
+      rerender();
+      expect(result.current.compiled).toBe(first);
+    });
+
+    it('draws no lanes inside an opened zone; hiding still applies there', () => {
+      const grouping = { grouped: true, hidden: new Set(['bo']) };
+      const { result } = renderHook(() => useCompiledView(plan({ grouping, drillRoot: 'a' })));
+      expect(result.current.compiled.lanes).toBeUndefined();
+      const ids = result.current.compiled.roots.map((r) => r.id);
+      expect(ids).toContain('a1');
+      expect(ids).not.toContain('a2');
+    });
+  });
+
   it('keeps a hidden relation kind off the drawn edges, never off the layout edges', () => {
     const json = nested();
     const profile = { ...plain, edge: { ...plain.edge, hidden: (kind: string | undefined) => kind === 'sync' } };

@@ -48,6 +48,32 @@ describe('PlanSection', () => {
   });
 });
 
+describe('a person', () => {
+  it("a person's teams are listed and can be removed", () => {
+    const m = model('p');
+    const p = m.plan();
+    const alice = p.person('alice', 'Alice');
+    p.team('pay', 'Payments').member(alice);
+    p.team('plat', 'Platform').member(alice);
+    const json = m.toJSON();
+    const onCommand = vi.fn();
+    render(<PlanSection model={json} node={json.nodes.find((n) => n.id === 'alice')!} onCommand={onCommand} />);
+    expect(screen.getByText('Payments')).toBeTruthy();
+    expect(screen.getByText('Platform')).toBeTruthy();
+    expect(screen.queryByLabelText('Start')).toBeNull();
+    const id = json.relations.find((r) => r.from === 'alice' && r.to === 'plat')!.id;
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from Platform' }));
+    expect(onCommand).toHaveBeenCalledWith({ type: 'delete-relation', id });
+  });
+  it('says so when the person is in no team', () => {
+    const m = model('p');
+    m.plan().person('bob', 'Bob');
+    const json = m.toJSON();
+    render(<PlanSection model={json} node={json.nodes[0]!} onCommand={vi.fn()} />);
+    expect(screen.getByText(/Not in a team/)).toBeTruthy();
+  });
+});
+
 describe('roleCandidates', () => {
   it('lists actors — people and teams — first, then other nodes, never zones or events', () => {
     const m = model('c');

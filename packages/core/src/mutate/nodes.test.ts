@@ -171,6 +171,17 @@ describe('deleteNode cascade', () => {
   });
 });
 
+describe('deleteNode of a team', () => {
+  it('takes its member-of relations with it', () => {
+    const b = model('p');
+    const plan = b.plan();
+    plan.team('pay').member(plan.person('alice'));
+    const next = deleteNode(b.toJSON(), 'pay');
+    expect(next.relations.filter((r) => r.kind === 'member-of')).toEqual([]);
+    expect(next.nodes.some((n) => n.id === 'alice')).toBe(true);
+  });
+});
+
 describe('setNodeDetails plane', () => {
   const m = () => ({
     version: 1 as const,

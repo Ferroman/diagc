@@ -47,6 +47,10 @@ export interface ViewLayoutInput {
   drillRoot?: string | undefined;
   /** px per day, handed to a notation that stretches time (undefined otherwise) */
   dayWidth?: number | undefined;
+  /** the plan's hidden actors: the layout measures title bands with the chips drawn */
+  hidden?: ReadonlySet<string>;
+  /** a still export: a notation's layout measures its boxes without the affordances */
+  chromeless?: boolean;
 }
 
 export interface ViewLayout {
@@ -262,6 +266,8 @@ interface LayoutRunInput {
   layoutPositions: Record<string, Point> | undefined;
   drillRoot: string | undefined;
   dayWidth: number | undefined;
+  hidden: ReadonlySet<string> | undefined;
+  chromeless: boolean;
 }
 
 type LayoutRun = Pick<
@@ -309,6 +315,8 @@ function useLayoutRun(run: LayoutRunInput): LayoutRun {
               positions: run.layoutPositions,
               ...(run.drillRoot !== undefined ? { root: run.drillRoot } : {}),
               ...(run.dayWidth !== undefined ? { dayWidth: run.dayWidth } : {}),
+              ...(run.hidden !== undefined ? { hidden: run.hidden } : {}),
+              ...(run.chromeless ? { chromeless: true } : {}),
             }),
           )
         : layoutView(
@@ -357,6 +365,8 @@ function useLayoutRun(run: LayoutRunInput): LayoutRun {
     run.layoutPositions,
     run.drillRoot,
     run.dayWidth,
+    run.hidden,
+    run.chromeless,
   ]);
 
   return { geometry, geometryRef, routes, labelSpots, fixed, lockedX, viewShift, savedFrame, settledFor, settledWidth };
@@ -512,6 +522,8 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
       layoutPositions,
       drillRoot: input.drillRoot,
       dayWidth: input.dayWidth,
+      hidden: input.hidden,
+      chromeless: input.chromeless === true,
     });
 
   // Overlay-applied geometry: elk output with any layout-overlay positions for

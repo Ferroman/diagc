@@ -4,6 +4,7 @@ import {
   FB_EFFECT_TYPE,
   GIT_NOTATION,
   PLAN_EVENT_TYPE,
+  PLAN_LANE_TYPE,
   SM_ENTRY_TYPE,
   SM_EXIT_TYPE,
   SM_HISTORY_TYPE,
@@ -28,6 +29,7 @@ import { ImageBody } from './ImageBody';
 import { NODE_BODIES } from './index';
 import { MachineFrameBody } from './MachineFrameBody';
 import { PlanEventBody } from './PlanEventBody';
+import { PlanLaneBody } from './PlanLaneBody';
 import { RegionBody } from './RegionBody';
 import { SilhouetteBody } from './SilhouetteBody';
 import { SmGlyphBody } from './SmGlyphBody';
@@ -66,6 +68,9 @@ describe('NODE_BODIES', () => {
   });
   it('draws a plan event as one, silhouette notwithstanding', () => {
     expect(bodyFor({ typeId: PLAN_EVENT_TYPE, shape: 'b.svg' })).toBe(PlanEventBody);
+  });
+  it("draws a grouped plan's lane header as one", () => {
+    expect(bodyFor({ typeId: PLAN_LANE_TYPE })).toBe(PlanLaneBody);
   });
   it('prefers a silhouette to an image', () => {
     expect(bodyFor({ typeId: 'service', shape: 'b.svg', image: 'a.png' })).toBe(SilhouetteBody);

@@ -23,6 +23,8 @@ import {
   type LegendSection,
   type StateKind,
   type ViewNode,
+  PLAN_LANE_TYPE,
+  PLAN_UNASSIGNED_TYPE,
   SM_STATE_TYPE,
   STATE_KINDS,
   threatSummary,
@@ -252,7 +254,9 @@ function typeRows(input: LegendInput): LegendRow[] {
   const walk = (nodes: ViewNode[]): void => {
     for (const v of nodes) {
       const t = v.node.type;
-      if (t !== undefined) {
+      // a grouped plan's lane header is the view's heading, and its Unassigned
+      // card a control of the view: neither is a type of the model's
+      if (t !== undefined && t !== PLAN_LANE_TYPE && t !== PLAN_UNASSIGNED_TYPE) {
         const accent = typeColor(v, colors);
         if (!accents.has(t)) accents.set(t, accent);
         else if (accents.get(t) !== accent) accents.set(t, undefined);

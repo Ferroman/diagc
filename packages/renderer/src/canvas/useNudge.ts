@@ -15,6 +15,9 @@ export interface NudgeInput {
   applyMoves: (moves: Positions) => void;
   /** persist a burst of moves — the commit every move ends in (useCommitMoves) */
   commit: (positions: Positions) => void;
+  /** where a press may take each node, given where it asked to go (a grouped
+   * plan's pinned row keeps its y); absent = anywhere */
+  constrain?: (moves: Positions) => Positions;
 }
 
 export const NUDGE_STEP = 5;
@@ -82,7 +85,7 @@ export function useNudge(input: NudgeInput) {
 
   const onKeyDownCapture = useCallback(
     (e: KeyboardEvent<HTMLElement>) => {
-      const { enabled, step, nodesRef, applyMoves } = inputRef.current;
+      const { enabled, step, nodesRef, applyMoves, constrain } = inputRef.current;
       const dir = ARROWS[e.key];
       if (!enabled || dir === undefined) return;
       const target = e.target as Element | null;
@@ -102,11 +105,12 @@ export function useNudge(input: NudgeInput) {
       e.preventDefault();
       e.stopPropagation();
       const d = step * (e.shiftKey ? NUDGE_SHIFT_FACTOR : 1);
-      const moves: Positions = {};
+      const asked: Positions = {};
       for (const n of selected) {
         const cur = pendingRef.current[n.id] ?? n.position;
-        moves[n.id] = { x: cur.x + dir.x * d, y: cur.y + dir.y * d };
+        asked[n.id] = { x: cur.x + dir.x * d, y: cur.y + dir.y * d };
       }
+      const moves = constrain?.(asked) ?? asked;
       pendingRef.current = { ...pendingRef.current, ...moves };
       applyMoves(moves);
       if (timer.current !== null) clearTimeout(timer.current);

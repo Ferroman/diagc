@@ -12,6 +12,9 @@ const SELECTED_KEY = 'diagc.selected';
 // handler settles an applied URL's validity, the URL writer classifies
 // replace-vs-push.
 const contentsEqual = (a: string[], b: string[]) => a.length === b.length && a.every((id, i) => id === b[i]);
+const idsEqual = (a: readonly string[], b: readonly string[]) =>
+  a.length === b.length && a.every((id, i) => id === b[i]);
+const NONE: readonly string[] = [];
 const isStrictPrefix = (a: string[], b: string[]) => a.length < b.length && a.every((id, i) => id === b[i]);
 
 export interface DeepLink {
@@ -26,6 +29,14 @@ export interface DeepLink {
   /** DiagramView's drill-trail report: settles the applied URL's validity and
    * records the new path. The sole authority for clearing `appliedUrlRef`. */
   handleEnteredPathChange: (path: string[]) => void;
+  /** a plan drawn in team lanes, and the team/person ids hidden: view state
+   * the hash carries so a shared link opens the same view */
+  grouped: boolean;
+  hidden: readonly string[];
+  /** DiagramView's reports (its reset for another diagram included): kept as
+   * given, written to the hash in place. */
+  handleGroupedChange: (grouped: boolean) => void;
+  handleHiddenChange: (hidden: readonly string[]) => void;
 }
 
 export interface UseDeepLinkOptions {
@@ -66,6 +77,14 @@ export function useDeepLink({ names, booted, leaveEditRef, resetViewRef }: UseDe
   // The last URL applied INTO state (initial load or hashchange). While set, a
   // report that shortens its path is the stale-link prune — corrected with
   // replaceState so Back never loops over a dead entry.
+  const [grouped, setGrouped] = useState(initialUrl?.grouped ?? false);
+  const [hidden, setHidden] = useState<readonly string[]>(initialUrl?.hidden ?? NONE);
+  // Same ids = same state: a report that changes nothing (the view's reset for
+  // a diagram that was already ungrouped) must not re-render or write the hash.
+  const handleHiddenChange = useCallback(
+    (next: readonly string[]) => setHidden((prev) => (idsEqual(prev, next) ? prev : next)),
+    [],
+  );
   const appliedUrlRef = useRef<UrlState | null>(initialUrl);
   // Live (selected, enteredPath) mirror for the once-subscribed hashchange
   // listener, which must tell a genuine navigation apart from an echo of our
@@ -99,6 +118,8 @@ export function useDeepLink({ names, booted, leaveEditRef, resetViewRef }: UseDe
     if (booted && !names.includes(selected)) {
       setSelected(names[0] ?? '');
       setEnteredPath([]);
+      setGrouped(false);
+      setHidden(NONE);
       resetViewRef.current();
     }
   }, [booted, names, selected, setSelected, setEnteredPath, resetViewRef]);
@@ -108,7 +129,7 @@ export function useDeepLink({ names, booted, leaveEditRef, resetViewRef }: UseDe
   // unknown diagram, stale-path prunes — replace in place.
   useEffect(() => {
     if (!booted || selected === '' || !names.includes(selected)) return;
-    const target = formatHash(selected, enteredPath);
+    const target = formatHash(selected, enteredPath, { grouped, hidden });
     if (getHost().urlState.get() === target) {
       // NOT the ref-clearing point: content and `booted` now arrive in the same
       // commit as this effect's first eligible run, so `enteredPath` can still be
@@ -122,13 +143,19 @@ export function useDeepLink({ names, booted, leaveEditRef, resetViewRef }: UseDe
     }
     const cur = parseHash(getHost().urlState.get());
     const applied = appliedUrlRef.current;
+    // Only the view differs (an eye toggle, or a link whose view part is not
+    // canonical): Back walks drill steps, not those.
+    const viewOnly = cur !== null && cur.diagram === selected && contentsEqual(cur.path, enteredPath);
     const correction =
       cur === null ||
       !names.includes(cur.diagram) ||
-      (applied !== null && applied.diagram === selected && isStrictPrefix(enteredPath, applied.path));
-    appliedUrlRef.current = null;
+      (applied !== null && applied.diagram === selected && isStrictPrefix(enteredPath, applied.path)) ||
+      viewOnly;
+    // A view-only write says nothing about the drill path, so it must not
+    // settle the applied URL: handleEnteredPathChange stays the sole authority.
+    if (!viewOnly) appliedUrlRef.current = null;
     getHost().urlState.set(target, correction); // history push: one entry per navigation step
-  }, [booted, selected, enteredPath, names]);
+  }, [booted, selected, enteredPath, names, grouped, hidden]);
 
   // External navigation: browser Back/Forward or a hand-edited/pasted hash.
   // Applying it makes state match the hash, so the writer above stays quiet.
@@ -155,11 +182,14 @@ export function useDeepLink({ names, booted, leaveEditRef, resetViewRef }: UseDe
       }
       setSelected(parsed.diagram);
       setEnteredPath(parsed.path);
+      // The link's own view; one with none opens plain.
+      setGrouped(parsed.grouped ?? false);
+      handleHiddenChange(parsed.hidden ?? NONE);
       // Another diagram opens on a fresh view; a drill step keeps the plane.
       if (parsed.diagram !== now.selected) resetViewRef.current();
     };
     return getHost().urlState.subscribe(onExternal);
-  }, [leaveEditRef, resetViewRef, setSelected, setEnteredPath]);
+  }, [leaveEditRef, resetViewRef, setSelected, setEnteredPath, handleHiddenChange]);
 
   return {
     selected,
@@ -167,6 +197,9 @@ export function useDeepLink({ names, booted, leaveEditRef, resetViewRef }: UseDe
     selectDiagram: (name) => {
       setSelected(name);
       setEnteredPath([]);
+      // one diagram's team ids name nothing in the next
+      setGrouped(false);
+      setHidden(NONE);
     },
     renameSelected: (name) => {
       setSelected(name);
@@ -177,5 +210,9 @@ export function useDeepLink({ names, booted, leaveEditRef, resetViewRef }: UseDe
       setEnteredPath((p) => [...p]);
     },
     handleEnteredPathChange,
+    grouped,
+    hidden,
+    handleGroupedChange: setGrouped,
+    handleHiddenChange,
   };
 }

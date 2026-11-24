@@ -3,6 +3,7 @@ import type { ReactFlowInstance } from '@xyflow/react';
 import type { CompiledView, ViewNode } from '@diagc/core/internal';
 import type { NodeGeometry } from '../layout/layout';
 import type { Bounds } from './content-bounds';
+import { modelIdOf } from './copy-ids';
 import { revealViewport } from './reveal';
 import type { RootFit } from './useDrillNavigation';
 import type { ViewLayout } from './useViewLayout';
@@ -53,7 +54,9 @@ export function useRevealOnUnfold(input: RevealInput): void {
 }
 
 /** the absolute box of `id`, while the view draws it open; undefined when it is
- * folded or not drawn — a host that ignored the chip opened nothing to show */
+ * folded or not drawn — a host that ignored the chip opened nothing to show.
+ * `id` is the model's (the pin's): a grouped plan draws it as a copy per lane,
+ * and the first open one is the box to bring into view. */
 function openBox(compiled: CompiledView, geometry: ReadonlyMap<string, NodeGeometry>, id: string): Bounds | undefined {
   let found: Bounds | undefined;
   const walk = (n: ViewNode, ox: number, oy: number): void => {
@@ -61,7 +64,8 @@ function openBox(compiled: CompiledView, geometry: ReadonlyMap<string, NodeGeome
     if (g === undefined) return;
     const x = ox + g.x;
     const y = oy + g.y;
-    if (n.id === id) {
+    if (found !== undefined) return;
+    if (modelIdOf(compiled.copies, n.id) === id) {
       if (n.state === 'expanded') found = { x, y, width: g.width, height: g.height };
       return;
     }

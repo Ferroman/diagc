@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
+  PLAN_PERSON_TYPE,
   PLAN_TYPES,
   strideFor,
   type DiagramModel,
@@ -65,7 +66,9 @@ const offersPlanDates = (notation: NotationId | undefined, node: DiagramNode): b
     node.metadata?.start !== undefined ||
     node.metadata?.end !== undefined ||
     node.metadata?.at !== undefined) &&
-  PLAN_TYPES.has(node.type ?? '');
+  (PLAN_TYPES.has(node.type ?? '') ||
+    // a person's teams, on the notation only: nothing of a person's carries dates
+    (node.type === PLAN_PERSON_TYPE && studioNotation(notation).planSection === true));
 
 export function NodePanel({
   model,

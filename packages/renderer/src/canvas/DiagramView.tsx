@@ -26,11 +26,12 @@ import { CanvasOverlays } from './CanvasOverlays';
 import { forwardEdgeClick } from './click-through';
 import { useCanvasClicks } from './useCanvasClicks';
 import { useCanvasCommands } from './useCanvasCommands';
+import { modelIdOf } from './copy-ids';
 import { useCommitMoves } from './useCommitMoves';
 import { useCompiledView } from './useCompiledView';
 import { drawnDayWidth, savedScale, useCentreDayPan, useDayWidth, useDrillStretch } from './useDayWidth';
 import { useDrillNavigation } from './useDrillNavigation';
-import { useDropAndPaste } from './useDropAndPaste';
+import { useDropAndPaste, useInertRef } from './useDropAndPaste';
 import { useEditRequests } from './useEditRequests';
 import { useFitKey } from './useFitKey';
 import { useFlowEdges } from './useFlowEdges';
@@ -43,6 +44,8 @@ import { useNodeResync } from './useNodeResync';
 import { useNoteNodes } from './useNoteNodes';
 import { useNoteSession } from './useNoteSession';
 import { useNotation } from './useNotation';
+import { useActorControls } from './actor-controls';
+import { teamParts, useOffersTeams, useTeamView } from './useTeamView';
 import { useNudgeAndArrange } from './useNudgeAndArrange';
 import { useRevealOnUnfold } from './useRevealOnUnfold';
 import { useRootFit } from './useRootFit';
@@ -76,9 +79,13 @@ function Inner(props: DiagramViewProps) {
   const preset = useMemo(() => stylePreset(props.styleId), [props.styleId]);
   const icons = useMemo(() => props.icons ?? createIconRegistry(), [props.icons]);
   const days = useDayWidth(props);
-  const notation = useNotation(props, days.width);
+  const teams = useTeamView(props);
+  const notation = useNotation(props, days.width, teams.hidden);
   const { profile, typeRegistry } = notation;
+  // the nodes the view draws for itself, which a drop and a save may not name
+  const inertRef = useInertRef(profile);
   const stretches = profile.stretchesTime === true;
+  const teamSwitch = teamParts(useOffersTeams(profile, props.model), teams, chromeless);
   // A palette preset's colour for each node type, over the whole model (type-hues.ts)
   const hues = useMemo(() => typeHuesOf(preset, props.model, typeRegistry), [preset, props.model, typeRegistry]);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -163,6 +170,7 @@ function Inner(props: DiagramViewProps) {
     focus: nav.focus,
     drillRoot,
     visibleRef,
+    grouping: teamSwitch.grouping,
   });
   const legend = useLegendState({
     model: props.model,
@@ -201,6 +209,8 @@ function Inner(props: DiagramViewProps) {
     viewPositions: moves.viewPositions,
     drillRoot,
     dayWidth: stretches ? days.width : undefined,
+    hidden: teams.hidden,
+    chromeless,
   });
   useCentreDayPan({ days, settledWidth: viewLayout.settledWidth, reactFlow, wrapperRef });
   // the width the boxes on screen are drawn at, once their layout has landed
@@ -208,10 +218,19 @@ function Inner(props: DiagramViewProps) {
   const frames = useMoveFrames(compiled, viewLayout, scaleRef);
   // read at resize time: whether a box's width is its dates (an x-resized plan bar)
   const widthIsDatesRef = useRef<(id: string) => boolean>(() => false);
-  // a resize is reported at the saved position, as a move is (saved-frame.ts);
-  // the refs are stable, so this changes only with `edit`
-  /* eslint-disable-next-line react-hooks/exhaustive-deps -- frames' refs are stable useRef identities */
-  const nodeEdit = useMemo(() => savedResize(edit, frames, (id) => widthIsDatesRef.current(id)), [edit]);
+  // a resize is reported at the saved position, as a move is (saved-frame.ts),
+  // and a lane copy's as its zone's; the refs are stable, so this changes only with `edit`
+  const nodeEdit = useMemo(
+    () =>
+      savedResize(
+        edit,
+        frames,
+        (id) => widthIsDatesRef.current(id),
+        (id) => modelIdOf(compiledRef.current.copies, id),
+      ),
+    /* eslint-disable-next-line react-hooks/exhaustive-deps -- frames' and compiledRef are stable useRef identities */
+    [edit],
+  );
   useRootFit({
     pendingRootFitRef: nav.pendingRootFitRef,
     compiled,
@@ -227,7 +246,7 @@ function Inner(props: DiagramViewProps) {
     reactFlow,
     wrapperRef,
   });
-  const drop = useDropAndPaste({ editing, edit, reactFlow, wrapperRef });
+  const drop = useDropAndPaste({ editing, edit, reactFlow, wrapperRef, compiledRef, inertRef });
 
   const notes = useNoteNodes({
     model: props.model,
@@ -244,6 +263,8 @@ function Inner(props: DiagramViewProps) {
     nameOf,
     typeRegistry,
   });
+  // the hook stays unconditional; a still export carries no eye (chromeless)
+  const actors = useActorControls(profile, teams, chromeless);
   const flow = useFlowNodes({
     props: { ...props, ...(onToggleExpand !== undefined ? { onToggleExpand } : {}) },
     editing,
@@ -260,6 +281,7 @@ function Inner(props: DiagramViewProps) {
     setLabelEdit,
     enterNode,
     noteNodes: notes.noteNodes,
+    actors,
   });
   const { derivedNodes, setRfNodes, rfNodesRef } = flow;
   widthIsDatesRef.current = (id) =>
@@ -271,6 +293,7 @@ function Inner(props: DiagramViewProps) {
     edit,
     rfNodesRef,
     ...frames,
+    compiledRef,
     setViewPositions: moves.setViewPositions,
   });
   const arrange = useNudgeAndArrange({
@@ -284,6 +307,7 @@ function Inner(props: DiagramViewProps) {
     rfNodesRef,
     setRfNodes,
     commitMoves,
+    compiledRef,
   });
   const { nudge } = arrange;
   const drag = useNodeDragging({
@@ -292,6 +316,7 @@ function Inner(props: DiagramViewProps) {
     model: props.model,
     plane: props.plane,
     profile,
+    compiled,
     reactFlow,
     rfNodesRef,
     setRfNodes,
@@ -313,6 +338,7 @@ function Inner(props: DiagramViewProps) {
     viewShiftRef: frames.viewShiftRef,
     savedFrameRef: frames.savedFrameRef,
     scaleRef,
+    inertRef,
   });
   const edges = useFlowEdges({ props, editing, edit, notation, preset, compiled, layout: viewLayout, moves });
 
@@ -323,6 +349,7 @@ function Inner(props: DiagramViewProps) {
     plane: props.plane,
     externalHighlight: props.externalHighlight,
     onCldEdges: props.onCldEdges,
+    hidden: teams.hidden,
   });
   const { loopHighlight } = loops;
   const clicks = useCanvasClicks({
@@ -456,6 +483,7 @@ function Inner(props: DiagramViewProps) {
                 builtinKeys={props.builtinKeys}
                 colorMode={props.colorMode}
                 {...(stretches ? { days: { width: days.width, step: days.step } } : {})}
+                teams={teamSwitch.switch}
                 onToggleTheme={props.onToggleTheme}
               />
             )}

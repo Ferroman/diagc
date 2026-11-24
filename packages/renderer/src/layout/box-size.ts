@@ -1,6 +1,7 @@
 import {
   FISHBONE_TYPES,
   isActivityChrome,
+  PLAN_LANE_TYPE,
   PLAN_PERIOD_TYPE,
   PLAN_ZONE_TYPE,
   runsToPlainText,
@@ -38,8 +39,14 @@ export const FORCED_SIZE_SHAPES: ReadonlySet<string> = new Set([
  * `(end − start + 1) × DAY` — that span cannot round-trip through a
  * CSS-natural, label-hugging width, and the studio's resize reads the drawn
  * width back into `end`, so the wrapper must carry the layout's width exactly.
- * A `plan-period` too: its bracket spans its days and has no size of its own. */
-export const LAYOUT_SIZED_TYPES: ReadonlySet<string> = new Set([...FISHBONE_TYPES, PLAN_ZONE_TYPE, PLAN_PERIOD_TYPE]);
+ * A `plan-period` too: its bracket spans its days and has no size of its own;
+ * and a grouped plan's lane header, a band across the chart's days. */
+export const LAYOUT_SIZED_TYPES: ReadonlySet<string> = new Set([
+  ...FISHBONE_TYPES,
+  PLAN_ZONE_TYPE,
+  PLAN_PERIOD_TYPE,
+  PLAN_LANE_TYPE,
+]);
 
 /**
  * Deterministic (no-DOM) footprint of an ordinary box node — the branch of
@@ -83,6 +90,9 @@ export interface BoxSizeInput {
   /** set for a folded container: its hidden-descendant count, drawn as a badge
    * beside the fold/pin chrome */
   collapsedCount?: number;
+  /** px of further chrome in the title row's badges span — a plan roster
+   * card's eye — which a label too long for the box's minimum pushes outward */
+  rowChrome?: number;
   /** how many lines the label is drawn on, `name` being the widest (a wrapped
    * name); absent = one */
   lines?: number;
@@ -194,6 +204,7 @@ export function estimateBoxSize(input: BoxSizeInput): BoxSize {
   // empty) badges span — so one gap trails the label even on a bare box
   let title = textWidth(input.name, label.px) + ROW_GAP;
   if (input.hasIcon === true) title += ICON + ROW_GAP;
+  title += input.rowChrome ?? 0;
   if (input.collapsedCount !== undefined) {
     title += ROW_GAP + COUNT_PAD + String(input.collapsedCount).length * COUNT_CHAR + ROW_GAP + FOLD_CHROME;
   }

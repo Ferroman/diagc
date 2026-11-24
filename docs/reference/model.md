@@ -452,10 +452,10 @@ A plane with `notation: 'plan'` is a schedule: a calendar runs left to right and
 | `plan-zone` | a rounded bar tinted with the node's `color`, a thick left edge, title top-left, role chips after the title; `(end − start + 1)` days wide | A phase or work item. A container: what it contains is scheduled in it — nested zones one row each (by start date) and events in its title strip, both automatic; any other node (a scheduled C4 container, a plain box) is free-form instead, wrapped into rows only until it is dragged, and stays wherever it is put after that. Starts open; folds into one bar on its dates and opens on its own like any container — a viewer gesture, never saved. |
 | `plan-event` | a 16 px diamond, name beside it | A point in time. Top-level events sit in the header, on the line between its month and week rows, with a dashed rule down the chart. |
 | `plan-period` | a bracket over its days in the header, on the events' line, name on it; no row | Days in which planned work pauses — a holiday freeze, an offsite. Each zone it `interrupts` is hatched over those days (clipped to the zone's own span; a nested zone only if it is named too). One that interrupts nothing pauses everyone: the chart is shaded over its days, under the bars. Changes no date. Shown and selectable in the studio; not dragged. |
-| `person` | the ordinary pill | An individual actor. Listed in a roster strip above the header (left to right, wrapping into further rows); attached to zones by role relations, never containment. |
-| `team` | the ordinary pill, a `users` icon | A group actor — same deal as `person`, drawn in the same roster and holding roles the same way, for when a role belongs to a team rather than one individual. |
+| `person` | a pill: a badge in the frame of each team they are in, or a card of its own when they are in none | An individual actor. Listed in a roster strip above the header: first the team frames, then the people in no team; the strip wraps into further rows. Attached to zones by role relations, never containment. |
+| `team` | a frame around its members' badges, in the team's `color`, with a `users` icon and the name in its header; a pill with a `users` icon while nobody is in it | A group actor — drawn in the same roster as `person` and holding roles the same way, for when a role belongs to a team rather than one individual. |
 
-Relation kinds `owns`, `executes`, `checks` — drawn **from the actor (a person or a team) to the zone**, never as arrows: each becomes a chip on the zone (`O·Alice`, `E·Bob`, `C·Chen`; hover for the full name). Kind `interrupts` runs **from a period to a zone** and is never an arrow either: it is the hatch on the bar. Any other kind between zones (`sync`, …) draws as a dependency arrow.
+Relation kinds `owns`, `executes`, `checks` — drawn **from the actor (a person or a team) to the zone**, never as arrows: each becomes a chip on the zone (`O·Alice`, `E·Bob`, `C·Chen`; hover for the full name). Kind `interrupts` runs **from a period to a zone** and is never an arrow either: it is the hatch on the bar. Kind `member-of` runs **from a person to a team** and is never an arrow either: it is what grouping by team reads. Any other kind between zones (`sync`, …) draws as a dependency arrow.
 
 | Metadata key | On | Value |
 | --- | --- | --- |
@@ -596,6 +596,7 @@ The compiler prints them, and the notation's panel lists them.
 | `plan-nested` | A zone or event contained in a zone (on the plan plane) lies outside that zone's span. |
 | `plan-role-target` | On a plan, a relation of kind `owns` / `executes` / `checks` points at something that is not a `plan-zone`. |
 | `plan-interrupts` | On a plan, a relation of kind `interrupts` does not run from a `plan-period` to a `plan-zone`. |
+| `plan-member` | On a plan, a relation of kind `member-of` does not run from a `person` to a `team`. |
 | `invalid-threats` | `threats` is not a list, or an entry is not an object. The per-threat checks below are skipped for that element. |
 | `threat-id` | A threat has no `id`, or repeats one already used on the same element. |
 | `threat-title` | A threat has no `title`. |

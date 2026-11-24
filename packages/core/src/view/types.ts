@@ -1,3 +1,5 @@
+import type { PlanSpan } from '../notations/plan/plan';
+import type { PlanLane } from '../notations/plan/teams';
 import type { Column, DiagramNode, DiagramRelation, EdgeLabel, Polarity, RelationStyle } from '../types';
 
 export type NodeViewState = 'leaf' | 'expanded' | 'collapsed';
@@ -83,4 +85,47 @@ export interface CompiledView {
   anchorOf: ReadonlyMap<string, string>;
   /** drill view only: stub node id -> the real off-frame node it represents. */
   externals?: Map<string, string>;
+  /** Plan view only (`planView`): canvas id -> model id for every copy. A
+   * grouped view's lane copies — zones, the events and free-form children
+   * inside them, and the per-lane arrows (mapped to the arrow they copy) — and,
+   * grouped or not, a roster person's badge in each team after their first
+   * (planRoster), whose real badge is drawn too and so maps to itself. An id
+   * absent here is its own model id; a key here is not always a copy, and a
+   * map is no sign of grouping (read `lanes`). Look ids up here; never parse a
+   * copy id. */
+  copies?: ReadonlyMap<string, string>;
+  /** Grouped plan view only: the lanes in order — the header node's id, the
+   * lane, and its top-level zone copies in their ungrouped order. */
+  lanes?: readonly PlanViewLane[];
+  /** Grouped plan view only: zone copy id -> the days tinted in its lane. */
+  tints?: ReadonlyMap<string, readonly PlanSpan[]>;
+  /** Grouped plan view only: top-level events, the band above the lanes. */
+  topEvents?: readonly string[];
+  /** Plan view only: the top-level rows the view stacks for itself, so none
+   * is drawn at a y of its own — a grouped plan's lane copies (one zone, one
+   * saved y, several lanes), and while anything is hidden every top-level
+   * zone (hiding closes the gaps hidden rows leave). Such a row moves by its
+   * days only, and nothing saves its y. Absent: every row is where it is saved. */
+  pinnedRows?: readonly string[];
+  /** Plan view only: the teams drawn as a frame around their members, in the
+   * teams' model order — grouped or not, chromeless or not, since membership
+   * is part of the plan and not a control. Absent: no team has a member here. */
+  roster?: readonly PlanRosterFrame[];
+}
+
+/** One team's frame in a plan view's roster. */
+export interface PlanRosterFrame {
+  /** the team's model id, which is also its canvas id */
+  team: string;
+  /** canvas ids: a person's real id (in their first team) or their copy id */
+  members: readonly string[];
+}
+
+/** One lane of a grouped plan view. */
+export interface PlanViewLane {
+  /** the lane header's ViewNode id */
+  id: string;
+  lane: PlanLane;
+  /** the lane's top-level zone copy ids, in order */
+  zones: readonly string[];
 }

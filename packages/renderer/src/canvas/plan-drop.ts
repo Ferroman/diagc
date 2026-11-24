@@ -1,5 +1,6 @@
 import type { Node } from '@xyflow/react';
-import type { Point } from '@diagc/core/internal';
+import type { PlanRosterFrame, Point } from '@diagc/core/internal';
+import { modelIdOf, widenToCopies } from './copy-ids';
 
 /** A drop-target candidate's absolute box, in flow coordinates — what
  * useNodeDragging builds from `reactFlow.getInternalNode(id)?.internals` for
@@ -47,8 +48,17 @@ export function dropTargetAt(
  * holds a role on, planRelated) — the studio's `assign` returns undefined for
  * exactly that pair, so offering the outline there would be a promise the
  * drop breaks silently.
+ *
+ * A grouped plan draws one zone as a copy per lane (`copies`): whatever is
+ * excluded is excluded in every copy — a related zone, the parent — since a
+ * drop on any copy is a drop on the zone. `related` holds model ids.
  */
-export function dropExclusions(nodes: readonly Node[], draggedId: string, related: readonly string[]): Set<string> {
+export function dropExclusions(
+  nodes: readonly Node[],
+  draggedId: string,
+  related: readonly string[],
+  copies?: ReadonlyMap<string, string>,
+): Set<string> {
   const exclude = new Set<string>([draggedId]);
   const parentId = nodes.find((n) => n.id === draggedId)?.parentId;
   if (parentId !== undefined) exclude.add(parentId);
@@ -65,5 +75,26 @@ export function dropExclusions(nodes: readonly Node[], draggedId: string, relate
     queue.push(...(childrenOfRf.get(id) ?? []));
   }
   for (const id of related) exclude.add(id);
-  return exclude;
+  return copies === undefined
+    ? exclude
+    : widenToCopies(
+        copies,
+        [...exclude].map((id) => modelIdOf(copies, id)),
+      );
+}
+
+/**
+ * The teams whose roster frame holds a badge of `modelId` (the real badge or
+ * a copy, CompiledView.copies): the frames a person stands in already. A drop
+ * there would add them to a team they are in, which the studio's `assign`
+ * turns down, so the outline is not offered — added here, in the drop path,
+ * rather than to `planRelated`, which also lights the selection, where a
+ * person's own team is no relation worth lighting.
+ */
+export function framesHolding(
+  roster: readonly PlanRosterFrame[] | undefined,
+  copies: ReadonlyMap<string, string> | undefined,
+  modelId: string,
+): string[] {
+  return (roster ?? []).filter((f) => f.members.some((m) => modelIdOf(copies, m) === modelId)).map((f) => f.team);
 }

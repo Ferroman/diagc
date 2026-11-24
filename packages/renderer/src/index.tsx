@@ -22,4 +22,4 @@ export { LeveragePanel, type LeverageFocus } from './loops/LeveragePanel';
 export { ACTIVITY_LAYOUT } from './layout/activity-frame';
 export { PLAN_LAYOUT, planGraphCached, planX } from './layout/plan-layout';
 export { todayIso } from './overlays/time-axis';
-export { useReaderView } from './reader/useReaderView';
+export { useReaderView, type ReaderOpening } from './reader/useReaderView';

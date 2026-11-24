@@ -1,9 +1,10 @@
-import { GIT_STAGE_TYPE, isActivityChrome, type ViewNode } from '@diagc/core/internal';
+import { GIT_STAGE_TYPE, isActivityChrome, type PlanRosterFrame, type ViewNode } from '@diagc/core/internal';
 import { FORCED_SIZE_SHAPES, LAYOUT_SIZED_TYPES } from '../layout/box-size';
 import type { NodeGeometry } from '../layout/layout';
 import type { NotationProfile } from '../notations';
 import type { Registry, TypeStyle } from '../registry';
 import type { RfNodeInput } from './adapter';
+import { ROSTER_FRAME_Z } from './stacking';
 
 export interface NodeFrameContext {
   editing: boolean;
@@ -11,10 +12,15 @@ export interface NodeFrameContext {
   typeRegistry: Registry<TypeStyle>;
   /** the ids the notation's layout fixed in place (LayoutResult.fixed) */
   fixed: ReadonlySet<string>;
+  /** a plan's roster frames (CompiledView.roster): each team's box is sized as a frame */
+  roster?: readonly PlanRosterFrame[] | undefined;
 }
 
 /** How React Flow frames one box: whether it drags, how it keeps to its parent, how it is sized. */
-export type NodeFrame = Pick<RfNodeInput, 'draggable' | 'className' | 'expandParent' | 'extent' | 'style' | 'zIndex'>;
+export type NodeFrame = Pick<
+  RfNodeInput,
+  'draggable' | 'selectable' | 'className' | 'expandParent' | 'extent' | 'style' | 'zIndex'
+>;
 
 /** The frame of the box `n` draws, laid out at `geo` inside `parent` (undefined at the top). */
 export function nodeFrameProps(
@@ -41,6 +47,8 @@ export function nodeFrameProps(
     // for it.
     draggable: dragLocked ? false : undefined,
     className: dragLocked && ctx.editing ? 'nopan' : undefined,
+    // a node nothing acts on (a lane header) is never selected either
+    ...(ctx.profile.node?.inert?.(n.node) === true ? { selectable: false as const } : {}),
     ...parentHold(n, parent, ctx),
     ...frameSize(n, geo, ctx),
   };
@@ -75,6 +83,11 @@ function parentHold(n: ViewNode, parent: string | undefined, ctx: NodeFrameConte
 }
 
 function frameSize(n: ViewNode, geo: NodeGeometry, ctx: NodeFrameContext): NodeFrame {
+  // a roster frame is a leaf of the model laid out as a container: its badges
+  // are roots beside it, not children, so only the stacking keeps it behind
+  // them, selected or not (ROSTER_FRAME_Z)
+  if (ctx.roster?.some((f) => f.team === n.id) === true)
+    return { style: { width: geo.width, height: geo.height }, zIndex: ROSTER_FRAME_Z };
   if (n.state === 'expanded') return { style: { width: geo.width, height: geo.height }, zIndex: -1 };
   // a stage frame is sized by the git layout and sits BEHIND the lanes it spans
   if (n.node.type === GIT_STAGE_TYPE) return { style: { width: geo.width, height: geo.height }, zIndex: -2 };

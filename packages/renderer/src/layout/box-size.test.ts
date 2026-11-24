@@ -38,6 +38,13 @@ describe('estimateBoxSize', () => {
     expect(estimateBoxSize({ name, hasIcon: true }).width).toBe(estimateBoxSize({ name }).width + 22);
   });
 
+  it("chrome in the badges span (a roster card's eye) takes room on the title row", () => {
+    const name = 'a fairly long service name here';
+    expect(estimateBoxSize({ name, rowChrome: 16 }).width).toBe(estimateBoxSize({ name }).width + 16);
+    // a short label's row is narrower than the box's minimum, which absorbs it
+    expect(estimateBoxSize({ name: 'Ana', rowChrome: 16 }).width).toBe(estimateBoxSize({ name: 'Ana' }).width);
+  });
+
   it('meta badges widen the second row', () => {
     const bare = estimateBoxSize({ name: 'x', subtitle: 'service' });
     const tagged = estimateBoxSize({
@@ -268,11 +275,12 @@ describe('withBoxSizes', () => {
 });
 
 describe('LAYOUT_SIZED_TYPES', () => {
-  it('names exactly the fishbone types, the plan zone and the plan period, which their layout sizes', () => {
+  it('names exactly the fishbone types, the plan zone, period and lane header, which their layout sizes', () => {
     expect([...LAYOUT_SIZED_TYPES].sort()).toEqual([
       'fb-category',
       'fb-cause',
       'fb-effect',
+      'plan-lane',
       'plan-period',
       'plan-zone',
     ]);

@@ -202,3 +202,39 @@ describe('useReaderView — a model that arrives later', () => {
     expect(result.current.props?.activeLayers).toEqual([]);
   });
 });
+
+describe('useReaderView — the team view', () => {
+  it("opens grouped with the given ids hidden, and follows the view's reports", () => {
+    const { result } = reader({ model: planed(), opening: { grouped: true, hidden: ['t1', '__unassigned__'] } });
+    expect(result.current.props?.grouped).toBe(true);
+    expect(result.current.props?.hiddenActors).toEqual(['t1', '__unassigned__']);
+    act(() => result.current.props?.onHiddenActorsChange?.(['t1']));
+    expect(result.current.props?.hiddenActors).toEqual(['t1']);
+    act(() => result.current.props?.onGroupedChange?.(false));
+    expect(result.current.props?.grouped).toBe(false);
+  });
+
+  it('opens ungrouped with nothing hidden when the opening says nothing', () => {
+    const { result } = reader({ model: planed() });
+    expect(result.current.props?.grouped).toBe(false);
+    expect(result.current.props?.hiddenActors).toEqual([]);
+  });
+
+  it('an export ignores both', () => {
+    const { result } = reader({
+      model: planed(),
+      exportMode: true,
+      opening: { grouped: true, hidden: ['t1'] },
+    });
+    expect(result.current.props).not.toHaveProperty('grouped');
+    expect(result.current.props).not.toHaveProperty('hiddenActors');
+    expect(result.current.props).not.toHaveProperty('onGroupedChange');
+  });
+
+  it('another model opens ungrouped with nothing hidden', () => {
+    const { result, rerender } = reader({ model: planed(), opening: { grouped: true, hidden: ['t1'] } });
+    rerender({ model: { ...planed(), id: 'other' }, opening: { grouped: true, hidden: ['t1'] } });
+    expect(result.current.props?.grouped).toBe(false);
+    expect(result.current.props?.hiddenActors).toEqual([]);
+  });
+});

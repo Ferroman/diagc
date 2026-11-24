@@ -1,14 +1,15 @@
 import { useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import { applyNodeChanges, type Node, type NodeChange, type OnNodeDrag, type ReactFlowInstance } from '@xyflow/react';
-import type { DiagramModel, Point } from '@diagc/core/internal';
+import type { CompiledView, DiagramModel, Point } from '@diagc/core/internal';
 import type { NodeGeometry } from '../layout/layout';
 import { splitNoteDrag } from '../notes/note-drag';
 import type { NotationProfile } from '../notations';
+import { pinnedRows, modelIdOf, pinRows } from './copy-ids';
 import { dropOffset, laneDrop, movesLeft, snapBackResets } from './drag-outcome';
 import { withoutMeasuredExpansion } from './expand-parent';
 import { GUIDE_THRESHOLD_PX, snapDragFrame, type Guide, type SnapMemo } from './guides';
 import { withDropTarget } from './node-copy';
-import { dropExclusions, dropTargetAt, type DropRect } from './plan-drop';
+import { dropExclusions, dropTargetAt, framesHolding, type DropRect } from './plan-drop';
 import type { Positions } from './useNudge';
 import type { EditingApi } from './view-types';
 
@@ -25,6 +26,8 @@ export interface NodeDraggingInput {
   model: DiagramModel;
   plane: string | undefined;
   profile: NotationProfile;
+  /** the view on screen: a plan's copies, the rows it pins and its roster frames */
+  compiled?: Pick<CompiledView, 'copies' | 'pinnedRows' | 'roster'>;
   reactFlow: ReactFlowInstance;
   /** React Flow's copy of the nodes, kept current in the gesture's own task */
   rfNodesRef: MutableRefObject<Node[]>;
@@ -63,28 +66,48 @@ export interface NodeDragging {
 // dropped into anything), while an actor or a plain box is exactly what a
 // zone receives — nested or not, which `fixed` (a layout fact, not a
 // statement of intent) cannot tell apart.
+//
+// The candidates are the boxes on the canvas, each judged by the model node it
+// draws: a grouped plan draws a zone once per lane, and a drop on any copy is
+// a drop on the zone. The ids here are canvas ids; reportDrop names the models.
 function dropTargetFor(input: NodeDraggingInput, draggedId: string, point: Point): string | undefined {
   const { model, profile, reactFlow } = input;
   const dropTarget = profile.node?.dropTarget;
   if (dropTarget === undefined) return undefined;
-  const draggedNode = model.nodes.find((n) => n.id === draggedId);
+  const copies = input.compiled?.copies;
+  const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
+  const draggedReal = modelIdOf(copies, draggedId);
+  const draggedNode = byId.get(draggedReal);
   if (draggedNode === undefined || profile.node?.canDrop?.(draggedNode) !== true) return undefined;
-  const exclude = dropExclusions(
-    input.rfNodesRef.current,
-    draggedId,
-    profile.related?.(model, input.plane, draggedId) ?? [],
-  );
+  const related = [
+    ...(profile.related?.(model, input.plane, draggedReal) ?? []),
+    ...framesHolding(input.compiled?.roster, copies, draggedReal),
+  ];
+  const exclude = dropExclusions(input.rfNodesRef.current, draggedId, related, copies);
+  const isTarget = (id: string): boolean => {
+    const n = byId.get(modelIdOf(copies, id));
+    return n !== undefined && dropTarget(n);
+  };
+  return dropTargetAt(point, dropRects(input.rfNodesRef.current, reactFlow, isTarget), exclude);
+}
+
+/** Every measured box on the canvas `isTarget` accepts, in absolute flow coordinates. */
+function dropRects(
+  nodes: readonly Node[],
+  reactFlow: ReactFlowInstance,
+  isTarget: (id: string) => boolean,
+): DropRect[] {
   const rects: DropRect[] = [];
-  for (const n of model.nodes) {
-    if (!dropTarget(n)) continue;
-    const internal = reactFlow.getInternalNode(n.id);
+  for (const rf of nodes) {
+    if (!isTarget(rf.id)) continue;
+    const internal = reactFlow.getInternalNode(rf.id);
     const abs = internal?.internals.positionAbsolute;
     const w = internal?.measured?.width;
     const h = internal?.measured?.height;
     if (abs === undefined || w === undefined || h === undefined) continue;
-    rects.push({ id: n.id, x: abs.x, y: abs.y, w, h });
+    rects.push({ id: rf.id, x: abs.x, y: abs.y, w, h });
   }
-  return dropTargetAt(point, rects, exclude);
+  return rects;
 }
 
 /** Dragging boxes and notes: the alignment guides, the drop-target outline, and
@@ -155,7 +178,8 @@ export function useNodeDragging(input: NodeDraggingInput): NodeDragging {
     const targetAbs =
       targetId !== undefined ? reactFlow.getInternalNode(targetId)?.internals.positionAbsolute : undefined;
     if (targetId === undefined || draggedAbs === undefined || targetAbs === undefined) return false;
-    edit.onDropInto(id, targetId, dropOffset(draggedAbs, targetAbs));
+    const real = (c: string) => modelIdOf(input.compiled?.copies, c);
+    edit.onDropInto(real(id), real(targetId), dropOffset(draggedAbs, targetAbs));
     return true;
   };
   const laidAt = (id: string) => input.allNodesRef.current.find((n) => n.id === id)?.position;
@@ -166,7 +190,8 @@ export function useNodeDragging(input: NodeDraggingInput): NodeDragging {
     return snapBackResets(
       boxIds,
       (id) => {
-        const modelNode = model.nodes.find((n) => n.id === id);
+        const real = modelIdOf(input.compiled?.copies, id);
+        const modelNode = model.nodes.find((n) => n.id === real);
         return modelNode !== undefined && snapsBack(modelNode);
       },
       laidAt,
@@ -242,7 +267,11 @@ export function useNodeDragging(input: NodeDraggingInput): NodeDragging {
     setGuides((g) => (g.length === 0 && snapped.lines.length === 0 ? g : snapped.lines));
     // 'remove' stays out (see above); so does an expandParent expansion
     // that was not asked for by a drag (see expand-parent.ts).
-    const kept = withoutMeasuredExpansion(snapped.changes, draggingRef.current).filter((c) => c.type !== 'remove');
+    const kept = pinRowChanges(
+      withoutMeasuredExpansion(snapped.changes, draggingRef.current).filter((c) => c.type !== 'remove'),
+      rfNodesRef.current,
+      pinnedRows(input.compiled ?? {}),
+    );
     // Advanced in step with the state, not left to the next render: a
     // gesture's last change and onNodeDragStop arrive in the same task,
     // and the stop handler's commit reads the final on-screen positions from here.
@@ -271,4 +300,14 @@ export function useNodeDragging(input: NodeDraggingInput): NodeDragging {
       onNodeDragStop,
     },
   };
+}
+
+/** A drag's position changes with every pinned row held at its y (copy-ids.ts
+ * pinRows): grouped or hiding, a row moves its days, never up or down. */
+function pinRowChanges(changes: NodeChange[], nodes: readonly Node[], rows: ReadonlySet<string>): NodeChange[] {
+  if (rows.size === 0) return changes;
+  return changes.map((c) => {
+    if (c.type !== 'position' || c.position === undefined || !rows.has(c.id)) return c;
+    return { ...c, position: pinRows({ [c.id]: c.position }, nodes, rows)[c.id]! };
+  });
 }

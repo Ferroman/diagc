@@ -1,7 +1,8 @@
 import type { CSSProperties } from 'react';
 import type { NodeStripe } from '../notations';
 
-/** The hatched stretches over a box: a plan period's days on a bar it pauses.
+/** The hatched stretches over a box: a plan period's days on a bar it pauses,
+ * and the washed ones, a team's days on a lane copy of a bar (`tint`).
  * Inside the box, so a drag, a resize or a fold carries them along; full
  * height; under the box's own text (styles.css lifts the row over them). */
 export function NodeStripes({ stripes }: { stripes: readonly NodeStripe[] | undefined }) {
@@ -10,8 +11,8 @@ export function NodeStripes({ stripes }: { stripes: readonly NodeStripe[] | unde
     <>
       {stripes.map((s) => (
         <span
-          key={`${s.x}:${s.title}`}
-          className="dg-stripe"
+          key={`${s.variant ?? 'period'}:${s.x}:${s.title}`}
+          className={s.variant === 'tint' ? 'dg-stripe dg-stripe-tint' : 'dg-stripe'}
           title={s.title}
           style={
             {

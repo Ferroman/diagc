@@ -24,6 +24,7 @@ import { createIconRegistry } from '@diagc/icons';
 import { DIFF_COLORS, DiffSwitches, hostClass, openingDiffPlane, useDiffView, type PlaneStatuses } from './diff-view';
 import { ThreatTable, showsThreatTable } from './ThreatTable';
 import { useStyle } from './style';
+import { useTeamViewUrl, withTeamView, type TeamViewParams } from './team-url';
 import { useTheme } from './theme';
 
 const icons = createIconRegistry();
@@ -324,11 +325,14 @@ export function Viewer({
   data,
   expandAll = false,
   exportPlane,
+  teamView,
 }: {
   data: ViewerData | null;
   expandAll?: boolean;
   /** the plane an export draws (`?plane=`); the first plane when absent */
   exportPlane?: string;
+  /** the address's `group`/`hide` (never read for an export); the page keeps them current */
+  teamView?: TeamViewParams;
 }) {
   const model =
     data !== null && typeof data === 'object' && (data as ViewerData).model != null
@@ -363,7 +367,9 @@ export function Viewer({
       ? { opening: { pins: exportFolds(model, layout), ...(exportPlane !== undefined ? { plane: exportPlane } : {}) } }
       : {}),
     ...(diffOpening !== undefined ? { opening: diffOpening } : {}),
+    ...(!expandAll && teamView !== undefined ? { opening: withTeamView(diffOpening, teamView) } : {}),
   });
+  useTeamViewUrl(readerProps?.grouped ?? false, readerProps?.hiddenActors ?? [], expandAll);
   // The causal-loop reading aids, all viewer state and none of it saved: the
   // clicked variable the report is about, the ctrl-clicked one to compare it
   // with, the report row the canvas is glowing, and the signed graph the canvas

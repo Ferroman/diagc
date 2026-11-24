@@ -34,10 +34,16 @@ export function neverFolds(node: DiagramNode, profile: NotationProfile, typeRegi
   );
 }
 
-/** The notation the canvas draws in, its registries, and what it derives for this model and plane. */
+/** nothing hidden: one stable identity, so the memos below keep their input */
+const NONE_HIDDEN: ReadonlySet<string> = new Set();
+
+/** The notation the canvas draws in, its registries, and what it derives for
+ * this model and plane. `hidden` is the plan's hidden actors, whose chips are
+ * neither drawn nor measured (PlanViewOptions.hidden). */
 export function useNotation(
   props: Pick<DiagramViewProps, 'notation' | 'typeRegistry' | 'kindRegistry' | 'model' | 'plane'>,
   dayWidth: number = PLAN_LAYOUT.DAY,
+  hidden: ReadonlySet<string> = NONE_HIDDEN,
 ): Notation {
   const profile = useMemo(() => notationProfile(props.notation), [props.notation]);
   const typeRegistry = useMemo(
@@ -64,12 +70,17 @@ export function useNotation(
     () => profile.node?.colorOf?.(props.model, props.plane),
     [profile, props.model, props.plane],
   );
-  // Derived the same way as nodeColors: id-keyed, one derivation per model/plane.
-  const nodeChips = useMemo(() => profile.node?.chips?.(props.model, props.plane), [profile, props.model, props.plane]);
-  // both measure in px, so a stretch re-derives them (a wider bar may fit its name)
+  // Derived the same way as nodeColors: id-keyed, one derivation per model/plane
+  // (and hidden set: a hidden actor's chip is left out).
+  const nodeChips = useMemo(
+    () => profile.node?.chips?.(props.model, props.plane, hidden),
+    [profile, props.model, props.plane, hidden],
+  );
+  // both measure in px, so a stretch re-derives them (a wider bar may fit its
+  // name); the sides measure the chips too, so they follow the hidden set
   const labelSides = useMemo(
-    () => profile.node?.labelSides?.(props.model, props.plane, dayWidth),
-    [profile, props.model, props.plane, dayWidth],
+    () => profile.node?.labelSides?.(props.model, props.plane, dayWidth, hidden),
+    [profile, props.model, props.plane, dayWidth, hidden],
   );
   const stripes = useMemo(
     () => profile.node?.stripes?.(props.model, props.plane, dayWidth),

@@ -1,6 +1,7 @@
 import { useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import type { Node } from '@xyflow/react';
 import { elementKey } from '@diagc/core/internal';
+import { boxOf } from './copy-ids';
 import { soleSelection } from './node-copy';
 import type { NoteRow } from './useNoteSession';
 import type { EditingApi } from './view-types';
@@ -50,8 +51,11 @@ export function useEditRequests(input: EditRequestsInput): void {
     // and otherwise leave a claim useNodeResync takes the moment
     // the node lands — deselecting the source now would only flash an empty
     // selection in between.
-    if (derivedNodes.some((n) => n.id === labelRequest.id)) {
-      setRfNodes((prev) => soleSelection(prev, labelRequest.id));
+    // The request names a model id; a grouped plan draws it as a lane copy,
+    // and the copy is what takes the selection (boxOf).
+    const box = boxOf(derivedNodes, labelRequest.id);
+    if (box !== undefined) {
+      setRfNodes((prev) => soleSelection(prev, box));
     } else {
       selectOnAppearRef.current = labelRequest.id;
     }

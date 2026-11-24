@@ -31,3 +31,24 @@ describe('urlState', () => {
     }
   });
 });
+
+describe('urlState — the team view', () => {
+  it('a hash round-trips grouping and hidden ids', () => {
+    const view = { grouped: true, hidden: ['t/1', '__unassigned__', 'a,b'] };
+    const hash = formatHash('plan', ['zone'], view);
+    expect(hash).toContain('?group=1&hide=');
+    expect(parseHash(hash)).toEqual({ diagram: 'plan', path: ['zone'], ...view });
+  });
+
+  it('writes nothing for the default view', () => {
+    expect(formatHash('plan', ['z'], { grouped: false, hidden: [] })).toBe('#/plan/z');
+  });
+
+  it('an old hash without them still parses', () => {
+    expect(parseHash('#/plan/zone')).toEqual({ diagram: 'plan', path: ['zone'] });
+  });
+
+  it('hide alone still parses', () => {
+    expect(parseHash('#/plan?hide=a')).toEqual({ diagram: 'plan', path: [], hidden: ['a'] });
+  });
+});

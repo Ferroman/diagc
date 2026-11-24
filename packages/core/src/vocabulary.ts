@@ -132,6 +132,7 @@ export const RELATION_KINDS: readonly string[] = [
   'executes',
   'checks',
   'interrupts',
+  'member-of',
   'network',
   'influence',
   'transition',

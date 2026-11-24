@@ -69,6 +69,17 @@ describe('planMoves', () => {
       plane: 'plan',
     });
   });
+  it('a displacement with no position (a grouped lane row) moves the days and writes no position', () => {
+    // a team lane draws the zone at the lane's y, not its own: the renderer
+    // reports the days only, so the zone's saved y — or its having none — stands
+    const c = planMoves(roadmap(), 'plan', {}, { q1: { dx: 7 * DAY, dy: 0 } });
+    expect(dates(c)[0]).toEqual({
+      type: 'set-plan-dates',
+      id: 'q1',
+      dates: { start: shift('2026-01-05', 7), end: shift('2026-03-27', 7) },
+    });
+    expect(commands(c).some((x) => x.type === 'set-position')).toBe(false);
+  });
   it('a vertical move of a top-level zone changes no dates but still saves y', () => {
     const c = planMoves(roadmap(), 'plan', { q1: { x: 0, y: 120 } }, { q1: { dx: 3, dy: 120 } });
     expect(dates(c)).toEqual([]);
@@ -475,6 +486,27 @@ describe('quick-adds', () => {
 });
 
 describe('assign', () => {
+  it('a person dropped on a team joins it', () => {
+    const m = model('t');
+    const p = m.plan();
+    const pay = p.team('pay', 'Payments');
+    p.team('plat', 'Platform');
+    pay.member(p.person('alice', 'Alice'));
+    p.person('bob', 'Bob');
+    p.zone('q', { name: 'Q', start: '2026-01-05', end: '2026-01-30' });
+    const json = m.toJSON();
+    const ctx = { model: json, plane: 'plan' };
+    expect(assign(ctx, 'bob', 'pay', { x: 0, y: 0 })).toEqual({
+      type: 'add-relation',
+      from: 'bob',
+      to: 'pay',
+      opts: { kind: 'member-of' },
+    });
+    // already a member, a team on a team, and a plain node on a team: nothing
+    expect(assign(ctx, 'alice', 'pay', { x: 0, y: 0 })).toBeUndefined();
+    expect(assign(ctx, 'plat', 'pay', { x: 0, y: 0 })).toBeUndefined();
+    expect(assign(ctx, 'q', 'pay', { x: 0, y: 0 })).toBeUndefined();
+  });
   it('an actor dropped on a zone it holds no role on gets executes', () => {
     expect(assign({ model: roadmap(), plane: 'plan' }, 'alice', 'design', { x: 10, y: 20 })).toEqual({
       type: 'add-relation',

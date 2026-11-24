@@ -58,7 +58,13 @@ export function ThreatBadge({ id, data }: { id: string; data: DiagramNodeData })
     // be written without opening the panel.
     if (data.onAddThreat === undefined || notationProfile(data.notation).offersThreats !== true) return null;
     const add = data.onAddThreat;
-    return <AddThreatButton className="dg-threat-badge nodrag" state="empty" onAdd={() => add({ node: id })} />;
+    return (
+      <AddThreatButton
+        className="dg-threat-badge nodrag"
+        state="empty"
+        onAdd={() => add({ node: data.modelId ?? id })}
+      />
+    );
   }
   // state/text/title come from the shared derivation so this badge and the
   // flow's badge cannot drift apart in what they say (see threat-badge.ts).
@@ -84,8 +90,9 @@ export function CommentBadge({ id, data }: { id: string; data: DiagramNodeData }
  * it stands in for a node this drill view does not draw, and the note
  * derivation skips externals for exactly that reason — the note belongs to
  * the view that draws the node, so a switch here would flip a state nothing
- * on this canvas can show. */
-const noteTarget = (id: string, data: DiagramNodeData) => (data.external === true ? undefined : { node: id });
+ * on this canvas can show. A lane copy's is its zone's (DiagramNodeData.modelId). */
+const noteTarget = (id: string, data: DiagramNodeData) =>
+  data.external === true ? undefined : { node: data.modelId ?? id };
 
 /** The `+` a selected node offers in edit mode: what the host would add on it
  * (a cause on a bone, a flow to a new process, a connected sibling …), named
@@ -107,7 +114,9 @@ export function QuickAddButton({
   side?: QuickAddSide;
 }): ReactElement | null {
   if (selected !== true || data.quickAdd === undefined) return null;
-  const label = data.quickAdd.label(id, side);
+  // a lane copy adds beside its zone, not beside a canvas id the host never named
+  const target = data.modelId ?? id;
+  const label = data.quickAdd.label(target, side);
   if (label === undefined) return null;
   const run = data.quickAdd.run;
   return (
@@ -120,8 +129,8 @@ export function QuickAddButton({
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => {
         e.stopPropagation();
-        if (side === undefined) run(id);
-        else run(id, side);
+        if (side === undefined) run(target);
+        else run(target, side);
       }}
     >
       +

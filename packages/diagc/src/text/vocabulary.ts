@@ -4,6 +4,7 @@ import {
   isActivityChrome,
   isPlanRole,
   PLAN_INTERRUPTS,
+  PLAN_MEMBER_OF,
   type DiagramNode,
   type NotationId,
   type ViewEdge,
@@ -192,6 +193,7 @@ export const KIND_LOOKS: Readonly<Record<string, KindLook>> = {
   executes: { ...solid, legend: 'Executes' },
   checks: { ...solid, legend: 'Checks' },
   interrupts: { ...solid, legend: 'Interrupts' },
+  'member-of': { ...solid, legend: 'Member of' },
   transition: { ...solid, legend: 'Transition' },
 };
 
@@ -260,9 +262,10 @@ export function kindLook(edge: Pick<ViewEdge, 'kind' | 'style'>, notation: Notat
 }
 
 /** Kinds a notation never draws as lines: a plan's roles become chips on the zone, and
- * a period's interruption is drawn as the hatch on the bar, not as an arrow. */
+ * a period's interruption is drawn as the hatch on the bar, not as an arrow. Membership
+ * is read by grouping and never drawn. */
 export function hidesKind(kind: string, notation: NotationId | undefined): boolean {
-  return notation === 'plan' && (isPlanRole(kind) || kind === PLAN_INTERRUPTS);
+  return notation === 'plan' && (isPlanRole(kind) || kind === PLAN_INTERRUPTS || kind === PLAN_MEMBER_OF);
 }
 
 /** The renderer's `typeSubtitle`: `[Container]` + `Java` → `[Container: Java]`. An

@@ -38,6 +38,25 @@ describe('useNotation', () => {
     expect(result.current.kindRegistry).toBe(kindRegistry);
   });
 
+  it("measures and draws a plan's chips without a hidden actor's", () => {
+    const m = model('plan');
+    const p = m.plan();
+    // five days: room for the name alone, not for it and two chips
+    p.zone('z', { name: 'Ship', start: '2026-01-05', end: '2026-01-09' })
+      .owner(p.person('ana', 'Ana'))
+      .executor(p.person('bo', 'Bo'));
+    const json = m.toJSON();
+    const props = { model: json, notation: 'plan' as const, plane: 'plan' };
+    const hidden = new Set(['ana', 'bo']);
+    const all = renderHook(() => useNotation(props)).result.current;
+    const some = renderHook(() => useNotation(props, undefined, hidden)).result.current;
+    expect(all.nodeChips?.get('z')).toHaveLength(2);
+    expect(some.nodeChips?.has('z')).toBe(false);
+    // two chips put the name beside the bar; without them it fits inside
+    expect(all.labelSides?.has('z')).toBe(true);
+    expect(some.labelSides?.has('z')).toBe(false);
+  });
+
   it('derives the same registries and maps again only when their inputs change', () => {
     const json = threatModel();
     const { result, rerender } = renderHook(() => useNotation({ model: json, notation: 'threat-model' }));

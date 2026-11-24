@@ -8,6 +8,7 @@ const alice = plan.person('alice', 'Alice Ng', { color: '#2f6fed' });
 const bob = plan.person('bob', 'Bob Lee', { color: '#b08ad9' });
 const chen = plan.person('chen', 'Chen Wu', { color: '#3a9d5d' });
 const support = plan.team('support', 'Support team', { color: '#607d8b' });
+support.member(chen);
 
 const discovery = plan.zone('discovery', { name: 'Discovery', start: '2026-01-05', end: '2026-01-23', color: '#b08ad9' });
 discovery.owner(alice).executor(bob);

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { describe, expect, it, vi } from 'vitest';
 import { CanvasControls } from './CanvasControls';
@@ -37,5 +37,31 @@ describe('CanvasControls', () => {
       </ReactFlowProvider>,
     );
     expect(screen.queryByRole('button', { name: 'Wider days' })).toBeNull();
+  });
+
+  it('the group switch says whether it is on', () => {
+    const toggle = vi.fn();
+    const at = (grouped: boolean) =>
+      render(
+        <ReactFlowProvider>
+          <CanvasControls {...base} teams={{ grouped, toggle }} />
+        </ReactFlowProvider>,
+      );
+    const off = at(false);
+    expect(screen.getByRole('button', { name: 'Group by team' })).toHaveProperty('ariaPressed', 'false');
+    fireEvent.click(screen.getByRole('button', { name: 'Group by team' }));
+    expect(toggle).toHaveBeenCalledTimes(1);
+    off.unmount();
+    at(true);
+    expect(screen.getByRole('button', { name: 'Group by team' }).getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('no group switch without teams', () => {
+    render(
+      <ReactFlowProvider>
+        <CanvasControls {...base} />
+      </ReactFlowProvider>,
+    );
+    expect(screen.queryByRole('button', { name: 'Group by team' })).toBeNull();
   });
 });

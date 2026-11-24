@@ -1,0 +1,301 @@
+import { describe, expect, it } from 'vitest';
+import { model } from '../../builder/index';
+import { compileView } from '../../view/compile';
+import type { CompiledView, ViewEdge, ViewNode } from '../../view/types';
+import { planGraph } from './plan';
+import { PLAN_LANE_TYPE, PLAN_UNASSIGNED_TYPE, planCopyId, planView, type PlanViewOptions } from './plan-view';
+import { PLAN_UNASSIGNED, planTeams, planTint } from './teams';
+
+const none: ReadonlySet<string> = new Set();
+
+/** Payments (alice) and Platform. `checkout` is shared: Platform builds `ui`,
+ * alice (so Payments) builds `api`, and a `freeze` event sits inside it.
+ * `search` is Platform's alone, `rollout` both teams', `launch` a top-level
+ * event. Arrows: ui -> api and api -> search (no lane holds both), search ->
+ * checkout (only Platform holds both), checkout -> rollout (both lanes do). */
+function fixture() {
+  const m = model('t');
+  const p = m.plan();
+  const pay = p.team('pay', 'Payments', { color: '#f00' });
+  const plat = p.team('plat', 'Platform');
+  const alice = p.person('alice', 'Alice');
+  pay.member(alice);
+  const checkout = p.zone('checkout', { start: '2026-01-05', end: '2026-02-27' });
+  const ui = checkout.zone('ui', { start: '2026-01-05', end: '2026-01-30' }).executor(plat);
+  const api = checkout.zone('api', { start: '2026-02-02', end: '2026-02-20' }).executor(alice);
+  checkout.event('freeze', { at: '2026-02-10' });
+  const search = p.zone('search', { start: '2026-01-05', end: '2026-01-16' }).executor(plat);
+  const rollout = p.zone('rollout', { start: '2026-03-02', end: '2026-03-13' }).executor(pay).executor(plat);
+  p.event('launch', { at: '2026-03-16' });
+  m.relate(ui, api, { kind: 'depends' });
+  m.relate(search, checkout, { kind: 'depends' });
+  m.relate(checkout, rollout, { kind: 'depends' });
+  m.relate(api, search, { kind: 'depends' });
+  return m.toJSON();
+}
+
+const expanded = { checkout: 'expanded' } as const;
+const compile = (json: ReturnType<typeof fixture>, pins: Record<string, 'expanded' | 'collapsed'> = expanded) =>
+  compileView(json, { plane: 'plan', pins });
+const view = (compiled: CompiledView, json: ReturnType<typeof fixture>, opts: PlanViewOptions) =>
+  planView(compiled, json, 'plan', opts);
+
+function allIds(nodes: readonly ViewNode[]): string[] {
+  return nodes.flatMap((n) => [n.id, ...allIds(n.children)]);
+}
+const find = (nodes: readonly ViewNode[], id: string): ViewNode | undefined => {
+  for (const n of nodes) {
+    if (n.id === id) return n;
+    const hit = find(n.children, id);
+    if (hit !== undefined) return hit;
+  }
+  return undefined;
+};
+const ends = (edges: readonly ViewEdge[]) => edges.filter((e) => e.kind === 'depends').map((e) => [e.from, e.to]);
+const edgeId = (c: CompiledView, from: string, to: string): string =>
+  c.edges.find((e) => e.from === from && e.to === to)!.id;
+
+describe('planView', () => {
+  it('ungrouped with nothing hidden, only the roster frames are added', () => {
+    const json = fixture();
+    const compiled = compile(json);
+    const v = view(compiled, json, { grouped: false, hidden: none });
+    expect(v.roster).toEqual([{ team: 'pay', members: ['alice'] }]);
+    expect(v.edges).toBe(compiled.edges);
+    expect(v.lanes).toBeUndefined();
+  });
+
+  it('a plan with people but no teams and nothing unassigned keeps the identity', () => {
+    const m = model('t');
+    const p = m.plan();
+    const bo = p.person('bo', 'Bo');
+    p.zone('z', { start: '2026-01-05', end: '2026-01-16' }).executor(bo);
+    const json = m.toJSON();
+    const compiled = compileView(json, { plane: 'plan', pins: {} });
+    expect(planView(compiled, json, 'plan', { grouped: false, hidden: new Set() })).toBe(compiled);
+  });
+
+  it('hiding drops the hidden rows and their arrows', () => {
+    const json = fixture();
+    const v = view(compile(json), json, { grouped: false, hidden: new Set(['plat']) });
+    const ids = allIds(v.roots);
+    expect(ids).not.toContain('ui');
+    expect(ids).not.toContain('search');
+    expect(ids).toEqual(expect.arrayContaining(['checkout', 'api', 'freeze', 'rollout', 'launch']));
+    expect(ends(v.edges)).toEqual([['checkout', 'rollout']]);
+    expect(ends(v.layoutEdges)).toEqual([['checkout', 'rollout']]);
+    // folded away, a hidden row no longer resolves to the box that held it
+    const folded = compile(json, { checkout: 'collapsed' });
+    expect(folded.anchorOf.get('ui')).toBe('checkout');
+    expect(view(folded, json, { grouped: false, hidden: new Set(['plat']) }).anchorOf.has('ui')).toBe(false);
+    expect(v.edges.some((e) => e.to === 'ui')).toBe(false);
+    expect(v.copies?.size ?? 0).toBe(0);
+    expect(v.lanes).toBeUndefined();
+  });
+
+  it("a folded zone does not bring back a hidden row's arrows", () => {
+    const json = fixture();
+    // `shipped`, an event inside the hidden `ui`, and arrows leaving `checkout`
+    // from both: folded, compileView lifts them onto `checkout` itself.
+    json.nodes.push({
+      id: 'shipped',
+      name: 'Shipped',
+      type: 'plan-event',
+      plane: 'plan',
+      metadata: { at: '2026-01-20' },
+    });
+    json.containment.push({ parent: 'ui', child: 'shipped', plane: 'plan' });
+    json.relations.push(
+      { id: 'ui-launch', from: 'ui', to: 'launch', kind: 'depends' },
+      { id: 'shipped-launch', from: 'shipped', to: 'launch', kind: 'depends' },
+      { id: 'ui-rollout', from: 'ui', to: 'rollout', kind: 'depends' },
+    );
+    const folded = compile(json, { checkout: 'collapsed' });
+    const lifted = folded.edges.filter((e) => e.from === 'checkout');
+    expect(lifted.flatMap((e) => e.constituents.map((r) => r.id))).toEqual(
+      expect.arrayContaining(['ui-launch', 'shipped-launch', 'ui-rollout']),
+    );
+    const hidden = new Set(['plat']);
+    const relationIds = (edges: readonly ViewEdge[]) => edges.flatMap((e) => e.constituents.map((r) => r.id));
+    for (const grouped of [false, true]) {
+      const v = view(folded, json, { grouped, hidden });
+      for (const edges of [v.edges, v.layoutEdges]) {
+        expect(relationIds(edges)).not.toContain('ui-launch');
+        expect(relationIds(edges)).not.toContain('shipped-launch');
+        expect(relationIds(edges)).not.toContain('ui-rollout');
+        expect(edges.every((e) => e.constituents.length > 0)).toBe(true);
+      }
+      // the arrow `checkout` draws of its own survives, without the hidden row's
+      const own = v.edges.filter((e) => e.constituents.some((r) => r.from === 'checkout' && r.to === 'rollout'));
+      expect(own.length).toBeGreaterThan(0);
+    }
+    // nothing is left of checkout -> launch, which only the hidden row drew
+    const v = view(folded, json, { grouped: false, hidden });
+    expect(v.edges.some((e) => e.from === 'checkout' && e.to === 'launch')).toBe(false);
+  });
+
+  it("a shared project is drawn once per lane, each copy keeping that lane's rows", () => {
+    const json = fixture();
+    const v = view(compile(json), json, { grouped: true, hidden: none });
+    const payCo = find(v.roots, planCopyId('pay', 'checkout'))!;
+    const platCo = find(v.roots, planCopyId('plat', 'checkout'))!;
+    expect(v.copies?.get(payCo.id)).toBe('checkout');
+    expect(v.copies?.get(platCo.id)).toBe('checkout');
+    expect(payCo.node).toBe(json.nodes.find((n) => n.id === 'checkout'));
+    expect(payCo.children.map((c) => c.id)).toEqual([planCopyId('pay', 'api'), planCopyId('pay', 'freeze')]);
+    expect(platCo.children.map((c) => c.id)).toEqual([planCopyId('plat', 'ui'), planCopyId('plat', 'freeze')]);
+    expect(v.copies?.get(planCopyId('plat', 'freeze'))).toBe('freeze');
+    // the real zone no longer appears, and no canvas id repeats
+    const ids = allIds(v.roots);
+    expect(ids).not.toContain('checkout');
+    expect(new Set(ids).size).toBe(ids.length);
+    // every zone copy is tinted by planTint, nested ones too
+    const graph = planGraph(json, 'plan');
+    const input = { model: json, graph, teams: planTeams(json, graph, none) };
+    expect(v.tints?.get(payCo.id)).toEqual(planTint(input, 'checkout', 'pay'));
+    expect(v.tints?.get(planCopyId('pay', 'api'))).toEqual(planTint(input, 'api', 'pay'));
+    expect(v.tints?.has(planCopyId('pay', 'freeze'))).toBe(false);
+  });
+
+  it('a folded project stays folded in every lane', () => {
+    const json = fixture();
+    const v = view(compile(json, { checkout: 'collapsed' }), json, { grouped: true, hidden: none });
+    for (const lane of ['pay', 'plat']) {
+      const copy = find(v.roots, planCopyId(lane, 'checkout'))!;
+      expect(copy.state).toBe('collapsed');
+      expect(copy.children).toEqual([]);
+    }
+  });
+
+  it('an arrow is drawn in each lane holding both ends, otherwise once between first copies', () => {
+    const json = fixture();
+    const compiled = compile(json);
+    const v = view(compiled, json, { grouped: true, hidden: none });
+    const c = (lane: string, id: string) => planCopyId(lane, id);
+    const expected = [
+      [c('plat', 'ui'), c('pay', 'api')],
+      [c('plat', 'search'), c('plat', 'checkout')],
+      [c('pay', 'checkout'), c('pay', 'rollout')],
+      [c('plat', 'checkout'), c('plat', 'rollout')],
+      [c('pay', 'api'), c('plat', 'search')],
+    ];
+    expect(ends(v.edges)).toEqual(expected);
+    expect(ends(v.layoutEdges)).toEqual(expected);
+    const rollout = edgeId(compiled, 'checkout', 'rollout');
+    expect(v.copies?.get(planCopyId('pay', rollout))).toBe(rollout);
+    expect(v.copies?.get(planCopyId('plat', rollout))).toBe(rollout);
+    const ids = v.edges.map((e) => e.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    // an actor's role arrow has one end with no copies: it goes to the first copy
+    expect(v.edges.find((e) => e.kind === 'executes' && e.from === 'plat')?.to).toBe(c('plat', 'ui'));
+  });
+
+  it('lane headers come in lane order, and top-level events sit apart from the lanes', () => {
+    const json = fixture();
+    const v = view(compile(json), json, { grouped: true, hidden: none });
+    expect(v.lanes?.map((l) => [l.id, l.lane.key, l.zones])).toEqual([
+      [planCopyId('pay', ''), 'pay', [planCopyId('pay', 'checkout'), planCopyId('pay', 'rollout')]],
+      [
+        planCopyId('plat', ''),
+        'plat',
+        [planCopyId('plat', 'checkout'), planCopyId('plat', 'search'), planCopyId('plat', 'rollout')],
+      ],
+    ]);
+    const header = v.roots.find((r) => r.id === planCopyId('pay', ''))!;
+    expect(header.node).toEqual({ id: header.id, type: PLAN_LANE_TYPE, name: 'Payments', color: '#f00' });
+    expect(v.topEvents).toEqual(['launch']);
+    expect(v.roots.some((r) => r.id === 'launch')).toBe(true);
+  });
+
+  it('inside an opened zone there are no lanes, but hiding applies', () => {
+    const json = fixture();
+    const compiled = compileView(json, { plane: 'plan', root: 'checkout', carry: ['pay', 'plat', 'alice'] });
+    const v = view(compiled, json, { grouped: true, opened: true, hidden: new Set(['plat']) });
+    const ids = allIds(v.roots);
+    expect(ids).toEqual(expect.arrayContaining(['api', 'freeze']));
+    expect(ids).not.toContain('ui');
+    expect(v.edges.some((e) => e.from === 'ui' || e.to === 'ui')).toBe(false);
+    // the stub for the hidden `search` outside the frame goes, with its arrow
+    expect(compiled.externals?.has('__ext__:search')).toBe(true);
+    expect(v.roots.some((r) => r.external === 'search')).toBe(false);
+    expect(v.externals?.has('__ext__:search')).toBe(false);
+    expect(ends(v.edges)).toEqual([]);
+    expect(v.lanes).toBeUndefined();
+    expect(v.copies?.size ?? 0).toBe(0);
+  });
+
+  it('pins the rows it stacks for itself: lane copies grouped, every top-level zone while anything is hidden', () => {
+    const json = fixture();
+    const grouped = view(compile(json), json, { grouped: true, hidden: none });
+    expect(grouped.pinnedRows).toEqual(grouped.lanes?.flatMap((l) => l.zones));
+    // hiding closes the gaps the hidden rows leave, so no top-level row is
+    // drawn at a y of its own; nested rows and events never save one anyway
+    const hiding = view(compile(json), json, { grouped: false, hidden: new Set(['pay']) });
+    expect(hiding.pinnedRows).toEqual(['checkout', 'search', 'rollout']);
+    expect(view(compile(json), json, { grouped: false, hidden: none }).pinnedRows).toBeUndefined();
+    const opened = compileView(json, { plane: 'plan', root: 'checkout', carry: ['pay', 'plat', 'alice'] });
+    expect(view(opened, json, { grouped: false, opened: true, hidden: new Set(['plat']) }).pinnedRows).toBeUndefined();
+  });
+
+  it('actors are never hidden from the view', () => {
+    const json = fixture();
+    const v = view(compile(json), json, { grouped: false, hidden: new Set(['alice', 'pay', 'plat']) });
+    const ids = allIds(v.roots);
+    expect(ids).toEqual(expect.arrayContaining(['alice', 'pay', 'plat']));
+    expect(ids).not.toContain('api');
+    const grouped = view(compile(json), json, { grouped: true, hidden: new Set(['alice']) });
+    expect(allIds(grouped.roots)).toContain('alice');
+  });
+});
+
+describe('the Unassigned roster card', () => {
+  function withUnassigned() {
+    const m = model('u');
+    const p = m.plan();
+    const pay = p.team('pay', 'Payments');
+    p.zone('a', { start: '2026-01-05', end: '2026-01-16' }).executor(pay);
+    p.zone('loose', { start: '2026-01-19', end: '2026-01-30' });
+    return m.toJSON();
+  }
+  const card = (c: CompiledView) => c.roots.find((r) => r.id === PLAN_UNASSIGNED);
+
+  it('is a root leaf, grouped or not, while any work is unassigned', () => {
+    const json = withUnassigned();
+    for (const grouped of [false, true]) {
+      const v = view(compileView(json, { plane: 'plan' }), json, { grouped, hidden: none });
+      expect(card(v)).toMatchObject({ state: 'leaf', node: { type: PLAN_UNASSIGNED_TYPE, name: 'Unassigned' } });
+    }
+  });
+
+  it('stays, with its work gone, while hidden', () => {
+    const json = withUnassigned();
+    const v = view(compileView(json, { plane: 'plan' }), json, { grouped: false, hidden: new Set([PLAN_UNASSIGNED]) });
+    expect(card(v)).toBeDefined();
+    expect(allIds(v.roots)).not.toContain('loose');
+  });
+
+  it('is absent from a plan with no person or team: nothing could be grouped or hidden', () => {
+    const m = model('n');
+    m.plan().zone('loose', { start: '2026-01-19', end: '2026-01-30' });
+    const json = m.toJSON();
+    expect(card(view(compileView(json, { plane: 'plan' }), json, { grouped: false, hidden: none }))).toBeUndefined();
+  });
+
+  it('is absent from a still export (controls: false)', () => {
+    const json = withUnassigned();
+    const v = view(compileView(json, { plane: 'plan' }), json, { grouped: false, hidden: none, controls: false });
+    expect(card(v)).toBeUndefined();
+  });
+
+  it('is absent when everything is assigned, and from an opened zone', () => {
+    const json = fixture();
+    expect(card(view(compile(json), json, { grouped: true, hidden: none }))).toBeUndefined();
+    const loose = withUnassigned();
+    const opened = view(compileView(loose, { plane: 'plan', root: 'loose' }), loose, {
+      grouped: false,
+      opened: true,
+      hidden: none,
+    });
+    expect(card(opened)).toBeUndefined();
+  });
+});

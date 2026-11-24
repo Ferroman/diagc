@@ -10,6 +10,10 @@ import {
   PLAN_ACTOR_TYPES,
   PLAN_EVENT_TYPE,
   PLAN_INTERRUPTS,
+  PLAN_LANE_TYPE,
+  PLAN_TEAM_TYPE,
+  PLAN_UNASSIGNED_TYPE,
+  PLAN_MEMBER_OF,
   PLAN_NOTATION,
   PLAN_ZONE_TYPE,
   SECOND_ORDER_NOTATION,
@@ -23,6 +27,7 @@ import {
   planPeriodsOf,
   planSubtree,
   planSubtreeRange,
+  planView,
   isPlanZone,
   rolesOf,
   TM_NOTATION,
@@ -35,6 +40,8 @@ import {
   type PlanRole,
   type Point,
   type BoxSize,
+  type CompiledView,
+  type PlanViewOptions,
   type ViewEdge,
 } from '@diagc/core/internal';
 import { fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './layout/fishbone-layout';
@@ -63,12 +70,14 @@ export interface NodeChip {
 export type LabelSide = 'left' | 'right';
 
 /** A stretch of a box hatched over — a plan period's days on a bar it
- * interrupts — in px from the box's left edge, with the period's name and colour. */
+ * interrupts — in px from the box's left edge, with the period's name and
+ * colour. A `tint` is washed instead: a team's days on a lane copy of a bar. */
 export interface NodeStripe {
   x: number;
   width: number;
   title: string;
   color?: string;
+  variant?: 'tint';
 }
 
 /** A visual language: default look plus registry/chrome overrides for a plane's notation. */
@@ -114,6 +123,16 @@ export interface NotationProfile {
    * (ViewportState.carry): a plan's people and teams belong to no zone, but an
    * opened zone without the ones holding its roles is a schedule nobody runs */
   drillCarry?: (model: DiagramModel, plane: string | undefined, root: string) => readonly string[];
+  /** the compiled view rewritten for view state the model does not hold: a
+   * plan grouped into team lanes, its hidden teams and people left out (core's
+   * planView). Applied after compileView (useCompiledView); returns the view
+   * itself when there is nothing to do. */
+  regroup?: (
+    compiled: CompiledView,
+    model: DiagramModel,
+    plane: string | undefined,
+    opts: PlanViewOptions,
+  ) => CompiledView;
   /** the canvas offers an element's first threat: the empty threat badge on a
    * node or a flow, and a note's add row. Elsewhere a threat is added in the
    * panel; a badge on every box of a C4 diagram would be noise. */
@@ -133,13 +152,24 @@ export interface NotationProfile {
      * takes its lane's colour) */
     colorOf?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, string>;
     /** small chips in a node's badge row (the plan's role chips); keyed by
-     * node id, one derivation per model like colorOf */
-    chips?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, NodeChip[]>;
+     * node id, one derivation per model like colorOf. A `hidden` actor's are
+     * left out (PlanViewOptions.hidden). */
+    chips?: (
+      model: DiagramModel,
+      plane: string | undefined,
+      hidden?: ReadonlySet<string>,
+    ) => ReadonlyMap<string, NodeChip[]>;
     /** leaf boxes whose name is drawn OUTSIDE the box, on the given side: a
      * box whose width means something (a plan bar's is its dates) and is too
      * narrow for its name. Keyed by node id, one derivation per model like
-     * chips; absent = the name sits inside, as on every other box. */
-    labelSides?: (model: DiagramModel, plane: string | undefined, dayWidth: number) => ReadonlyMap<string, LabelSide>;
+     * chips, and measured with the same chips (`hidden` as there); absent =
+     * the name sits inside, as on every other box. */
+    labelSides?: (
+      model: DiagramModel,
+      plane: string | undefined,
+      dayWidth: number,
+      hidden?: ReadonlySet<string>,
+    ) => ReadonlyMap<string, LabelSide>;
     /** stretches drawn hatched over a box (a plan bar's interrupted days),
      * keyed by node id, one derivation per model like chips; part of the box,
      * so they move and resize with it */
@@ -168,6 +198,12 @@ export interface NotationProfile {
      * zone's or event's displacement as days (`onNodesMoved` deltas). The overlay
      * still never stores a position for it — `fixed` keeps that meaning. */
     draggableWhenFixed?: (n: DiagramNode) => boolean;
+    /** a node the view draws for itself and nothing can act on (a plan's lane
+     * header): never selected, so a click on it reports nothing */
+    inert?: (n: DiagramNode) => boolean;
+    /** a roster card that can be hidden from the picture (the plan's people,
+     * teams and Unassigned): it carries an eye toggle */
+    hidesActors?: (n: DiagramNode) => boolean;
   };
   edge?: {
     marks?: boolean;
@@ -195,6 +231,9 @@ export interface NotationProfile {
   /** x is time, and the view may stretch it: day buttons by the zoom ones, and
    * an opened zone widened to fill the canvas (DiagramViewProps.dayWidth) */
   stretchesTime?: true;
+  /** the view may be drawn in team lanes: a Group by team switch by the zoom
+   * buttons, and the view state it holds (DiagramViewProps.grouped) */
+  groupsByTeam?: true;
 }
 
 const CLD: NotationProfile = {
@@ -443,6 +482,9 @@ function carriedPeriods(
   });
 }
 
+/** a node the plan view draws for itself: a lane header, the Unassigned card */
+const isViewOnly = (n: DiagramNode): boolean => n.type === PLAN_LANE_TYPE || n.type === PLAN_UNASSIGNED_TYPE;
+
 const PLAN: NotationProfile = {
   id: PLAN_NOTATION,
   className: 'dg-notation-plan',
@@ -452,6 +494,8 @@ const PLAN: NotationProfile = {
   layoutReadsPositions: true,
   related: planRelated,
   drillCarry: planDrillCarry,
+  // team lanes and hiding: the viewer's, never the model's
+  regroup: planView,
   node: {
     restsOpen: (n) => n.type === PLAN_ZONE_TYPE,
     leafSize: (n) => (n.type === PLAN_EVENT_TYPE ? { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT } : undefined),
@@ -465,24 +509,37 @@ const PLAN: NotationProfile = {
     // isPlanZone, not a nested-only check: a root zone's Y is free and can
     // overlap a sibling's rect just as readily as a nested one crosses its
     // own parent's.
-    dropTarget: isPlanZone,
+    // A team card receives a person (membership): only an actor may be dropped
+    // on it, which the studio enforces.
+    dropTarget: (n) => isPlanZone(n) || n.type === PLAN_TEAM_TYPE,
     // A zone's or an event's drag is its date move; an actor or a plain box
     // is what a zone receives, so those are what a drag may drop.
-    canDrop: (n) => isPlanActor(n) || (!isPlanZone(n) && !isPlanEvent(n)),
+    canDrop: (n) => isPlanActor(n) || (!isPlanZone(n) && !isPlanEvent(n) && !isViewOnly(n)),
     // An actor is dragged only to be dropped on a zone; it never keeps the
     // position a drag left it at — the roster is a list, not a seating chart.
     snapsBack: isPlanActor,
     // Everything fixed drags, actors included: an actor drags only to be
     // dropped (drop-to-assign) and always snaps back after (see snapsBack
-    // above). A period does not: its days are edited in the source.
-    draggableWhenFixed: (n) => !isPlanPeriod(n),
+    // above). A period does not: its days are edited in the source. Nor does a
+    // lane header: a lane's place is the teams' order.
+    draggableWhenFixed: (n) => !isPlanPeriod(n) && !isViewOnly(n),
+    // a lane header and the Unassigned card are the view's, not the model's:
+    // there is nothing to select (the card's eye still works)
+    inert: isViewOnly,
+    hidesActors: (n) => isPlanActor(n) || n.type === PLAN_UNASSIGNED_TYPE,
   },
   // A dependency's drops cross every row between its two bars: under them it
   // vanishes behind each one, so plan edges are drawn over the bars.
-  // A period's `interrupts` is drawn as the stripe on the bar, never a line.
-  edge: { hidden: (k) => isPlanRole(k) || k === PLAN_INTERRUPTS, endToStart: planArrow, zIndex: ABOVE_BOXES_Z },
+  // A period's `interrupts` is drawn as the stripe on the bar, never a line;
+  // `member-of` is read by grouping, never drawn.
+  edge: {
+    hidden: (k) => isPlanRole(k) || k === PLAN_INTERRUPTS || k === PLAN_MEMBER_OF,
+    endToStart: planArrow,
+    zIndex: ABOVE_BOXES_Z,
+  },
   canvasOverlay: 'time-axis',
   stretchesTime: true,
+  groupsByTeam: true,
 };
 
 /** A UML state machine: states, pseudo-states and transitions. The type vocabulary

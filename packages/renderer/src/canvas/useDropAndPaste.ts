@@ -1,6 +1,8 @@
-import { useEffect, type DragEvent, type MutableRefObject } from 'react';
+import { useEffect, useRef, type DragEvent, type MutableRefObject } from 'react';
 import type { ReactFlowInstance } from '@xyflow/react';
-import { isNoteId } from '../notes/derive-note-nodes';
+import type { CompiledView, DiagramNode } from '@diagc/core/internal';
+import type { NotationProfile } from '../notations';
+import { dropTargetOf } from './copy-ids';
 import { LIBRARY_ENTRY_DND_TYPE, type EditingApi } from './view-types';
 
 export interface DropAndPasteInput {
@@ -9,11 +11,25 @@ export interface DropAndPasteInput {
   reactFlow: ReactFlowInstance;
   /** the canvas wrapper: a paste lands at its centre */
   wrapperRef: MutableRefObject<HTMLDivElement | null>;
+  /** the view on screen: a drop on a lane copy nests under its zone */
+  compiledRef: MutableRefObject<CompiledView>;
+  /** the notation's nodes the view draws for itself (profile.node.inert) */
+  inertRef: MutableRefObject<((n: DiagramNode) => boolean) | undefined>;
 }
 
 export interface DropAndPaste {
   onDragOver: (e: DragEvent<HTMLDivElement>) => void;
   onDrop: (e: DragEvent<HTMLDivElement>) => void;
+}
+
+/** The notation's nodes the view draws for itself (profile.node.inert: a plan's
+ * lane header, its Unassigned card), through a ref kept current each render,
+ * since it is read when a drop lands or the host saves (useLayoutApi), not
+ * when the handlers are made. */
+export function useInertRef(profile: NotationProfile): MutableRefObject<((n: DiagramNode) => boolean) | undefined> {
+  const ref = useRef(profile.node?.inert);
+  ref.current = profile.node?.inert;
+  return ref;
 }
 
 const imageFilesOf = (list: FileList | null | undefined): File[] =>
@@ -67,11 +83,10 @@ export function useDropAndPaste(input: DropAndPasteInput): DropAndPaste {
         : '';
     if (entryId !== undefined && entryId !== '') {
       e.preventDefault();
-      // A drop that landed on a note is a drop on open canvas: a
-      // `note:` id names no model node, and the host writes this straight
-      // through as a containment parent.
-      const hit = droppedOnNodeId(e);
-      const targetNodeId = hit !== undefined && isNoteId(hit) ? undefined : hit;
+      // The host writes the target straight through as a containment parent,
+      // so it must be a model node: a lane copy is its zone, and a drop on a
+      // note, a lane header or the Unassigned card is a drop on open canvas.
+      const targetNodeId = dropTargetOf(input.compiledRef.current, input.inertRef.current, droppedOnNodeId(e));
       edit?.onDropLibraryEntry?.(entryId, reactFlow.screenToFlowPosition({ x: e.clientX, y: e.clientY }), targetNodeId);
       return;
     }

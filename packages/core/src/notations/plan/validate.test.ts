@@ -139,6 +139,25 @@ describe('plan', () => {
   it("a period's end is not before its start", () => {
     expect(codes(planModel([period('f', '2027-01-03', '2026-12-21')]))).toEqual([['plan-span', 'f']]);
   });
+  it('member-of must run from a person to a team', () => {
+    const m = planModel(
+      [
+        { id: 'alice', name: 'Alice', type: 'person' },
+        { id: 'pay', name: 'Payments', type: 'team' },
+        zone('zoneA', '2026-12-01', '2027-01-30'),
+      ],
+      [],
+      [
+        { id: 'ok', from: 'alice', to: 'pay', kind: 'member-of' },
+        { id: 'reversed', from: 'pay', to: 'alice', kind: 'member-of' },
+        { id: 'to-zone', from: 'alice', to: 'zoneA', kind: 'member-of' },
+      ],
+    );
+    expect(codes(m)).toEqual([
+      ['plan-member', 'reversed'],
+      ['plan-member', 'to-zone'],
+    ]);
+  });
   it('interrupts must point at a zone, from a period', () => {
     const m = planModel(
       [

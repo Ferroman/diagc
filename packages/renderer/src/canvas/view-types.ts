@@ -240,6 +240,17 @@ export interface DiagramViewProps {
   /** the day width changed: a day button, an opened zone stretching to fill the
    * canvas (and leaving it), or another diagram resetting it */
   onDayWidthChange?: (width: number) => void;
+  /** a plan drawn in team lanes: controlled when given, as `dayWidth` is;
+   * absent, the view keeps its own (off). View state, never saved. */
+  grouped?: boolean;
+  /** the switch was pressed, or another diagram reset it */
+  onGroupedChange?: (grouped: boolean) => void;
+  /** the actors (team ids, person ids, PLAN_UNASSIGNED) hidden from a plan:
+   * controlled when given; absent, the view keeps its own (none). View state,
+   * never saved. */
+  hiddenActors?: readonly string[];
+  /** an actor was hidden or shown, or another diagram reset them */
+  onHiddenActorsChange?: (ids: readonly string[]) => void;
 }
 
 /** Edit-mode callbacks an editing host (apps/studio) wires to its command
@@ -258,7 +269,9 @@ export interface EditingApi {
    * so a host that never learns the batch form keeps working.
    * `deltas` is each node's displacement from where the layout arranged it,
    * parent-relative — what a notation that derives positions (a plan's dates)
-   * reads instead of the position. */
+   * reads instead of the position. Keys are model ids. A node may have a
+   * delta and no position: a grouped plan's lane row is drawn at its lane's
+   * y, not its own, so it reports how far its days moved and no place to save. */
   onNodesMoved?: (positions: Record<string, Point>, deltas: Record<string, { dx: number; dy: number }>) => void;
   /** a single dragged box was let go over a drop target (profile.node.dropTarget)
    * that is neither in its own subtree nor its current parent. `rel` is the

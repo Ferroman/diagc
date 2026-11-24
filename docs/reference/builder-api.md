@@ -437,13 +437,14 @@ Declares a plan (schedule) plane — always a plane, id `plan` by default, name 
 | `plan.period(id, opts)` | `PeriodBuilder` | A period (`plan-period`): days in which planned work pauses. `opts` as for a zone (**required** `start` and `end`), plus `interrupts?: NodeRef[]`, the zones it pauses. Top-level only. |
 | `period.interrupts(...zones)` | `period` | One `interrupts` relation `period → zone` per zone. A period that interrupts nothing pauses everyone. |
 | `plan.person(id, name?, opts?)` | `NodeRef` | A `person` node on the plan plane. |
-| `plan.team(id, name?, opts?)` | `NodeRef` | A `team` node on the plan plane — an actor like `person`, for a role that belongs to a group rather than one individual. |
+| `plan.team(id, name?, opts?)` | `TeamBuilder` | A `team` node on the plan plane — an actor like `person`, for a role that belongs to a group rather than one individual. |
+| `team.member(...people)` | `team` | One `member-of` relation `person → team` per person. Never drawn; grouping by team reads it. |
 | `zone.zone(id, opts)` | `ZoneBuilder` | A nested zone, contained on the plan plane. |
 | `zone.event(id, opts)` | `NodeRef` | An event inside the zone. |
 | `zone.contains(...refs)` | `zone` | Schedules any nodes inside the zone (containment on the plan plane). |
 | `zone.owner(ref)` / `zone.executor(ref)` / `zone.checker(ref)` | `zone` | A role relation `ref → zone` of kind `owns` / `executes` / `checks`; ids follow the `from->to#n` scheme. |
 
-A `ZoneBuilder` is a `NodeRef`, so `.comment()`, `.link()` and `.threat()` chain on it; so is a `PeriodBuilder`.
+A `ZoneBuilder` is a `NodeRef`, so `.comment()`, `.link()` and `.threat()` chain on it; so are a `PeriodBuilder` and a `TeamBuilder`.
 
 ```ts
 const m = model('launch');

@@ -3,7 +3,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { createIconRegistry } from '@diagc/icons';
 import { createTypeRegistry } from '../registry';
-import { FoldChip } from './NodeChips';
+import { FoldChip, NodeChips } from './NodeChips';
+import { notationProfile } from '../notations';
 import type { DiagramNodeData } from './DiagramNode';
 
 const node = (state: DiagramNodeData['state'], onToggleExpand = vi.fn()): DiagramNodeData => ({
@@ -55,5 +56,15 @@ describe('FoldChip', () => {
     expect(chip.hasAttribute('aria-expanded')).toBe(false);
     fireEvent.click(chip);
     expect(data.onToggleExpand).toHaveBeenCalledWith('g', 'collapsed');
+  });
+});
+
+describe('NodeChips on a roster card', () => {
+  it('draws the eye and no note of other teams: a second team has a badge of its own', () => {
+    const data: DiagramNodeData = { ...node('leaf'), actorEye: { hidden: false, toggle: vi.fn() } };
+    const { container } = render(<NodeChips id="ben" data={data} profile={notationProfile('plan')} focusId={null} />);
+    expect(screen.getByTestId('eye-chip')).toBeTruthy();
+    expect(container.querySelector('[data-testid="also-in"]')).toBeNull();
+    expect(container.textContent).not.toMatch(/also in/i);
   });
 });

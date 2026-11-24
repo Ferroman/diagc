@@ -419,6 +419,7 @@ export const DEFAULT_KIND_STYLES: Record<string, KindStyle> = {
   checks: { legendLabel: 'Checks' },
   // a period → each zone it pauses: drawn as the stripe on the bar, never a line
   interrupts: { legendLabel: 'Interrupts' },
+  'member-of': { legendLabel: 'Member of' },
   // ---- State machine (UML) ----------------------------------------------------
   transition: { legendLabel: 'Transition' },
 };

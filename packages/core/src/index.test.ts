@@ -45,6 +45,7 @@ describe('@diagc/core entry points', () => {
     'TEXT_ALIGNS',
     'THREAT_SEVERITIES',
     'THREAT_STATUSES',
+    'TeamBuilder',
     'ThreatModelBuilder',
     'ZoneBuilder',
     'diagramWarnings',

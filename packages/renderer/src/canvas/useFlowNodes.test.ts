@@ -2,7 +2,7 @@
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { Node } from '@xyflow/react';
-import { compileView, model, type DiagramModel, type ViewNode } from '@diagc/core/internal';
+import { compileView, model, planCopyId, planView, type DiagramModel, type ViewNode } from '@diagc/core/internal';
 import { createIconRegistry } from '@diagc/icons';
 import type { NodeGeometry } from '../layout/layout';
 import { notationProfile } from '../notations';
@@ -45,6 +45,7 @@ function input({ arrangedGeometry, fixed, regionSeparators, ...over }: Flat = {}
     props: { model: json },
     editing: false,
     edit: undefined,
+    actors: undefined,
     notation: {
       profile,
       typeRegistry,
@@ -75,6 +76,23 @@ function input({ arrangedGeometry, fixed, regionSeparators, ...over }: Flat = {}
 }
 
 describe('useFlowNodes', () => {
+  it("washes a grouped plan's copy in its lane's colour, under its zone's own marks", () => {
+    const m = model('lanes');
+    const p = m.plan();
+    const pay = p.team('pay', 'Payments', { color: '#f00' });
+    p.zone('z', { start: '2026-01-05', end: '2026-01-09' }).executor(pay);
+    const json = m.toJSON();
+    const compiled = planView(compileView(json, { plane: 'plan' }), json, 'plan', { grouped: true, hidden: new Set() });
+    const chips = [{ role: 'executes' as const, refId: 'pay', text: 'E·Payments', title: 'Executor: Payments' }];
+    const base = input({ props: { model: json }, compiled });
+    const { result } = renderHook(() =>
+      useFlowNodes({ ...base, notation: { ...base.notation, nodeChips: new Map([['z', chips]]) } }),
+    );
+    const copy = result.current.derivedNodes.find((n) => n.id === planCopyId('pay', 'z'))!.data;
+    expect(copy.chips).toBe(chips);
+    expect(copy.stripes).toEqual([{ x: 0, width: 5 * 20, title: 'Payments', color: '#f00', variant: 'tint' }]);
+  });
+
   it('hands each box its region separator from the layout', () => {
     const { result } = renderHook(() => useFlowNodes(input({ regionSeparators: new Map([['api', 'left' as const]]) })));
     const data = (id: string) => result.current.derivedNodes.find((n) => n.id === id)!.data;
