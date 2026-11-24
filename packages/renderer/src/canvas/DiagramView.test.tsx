@@ -2828,6 +2828,29 @@ describe('plan notation: stretching time', () => {
     }
   });
 
+  it('a diagram that arrives already inside a zone (the studio loading a link) stretches it too', async () => {
+    const width = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1000);
+    try {
+      const m = model('arrives');
+      const z = m.plan().zone('z', { name: 'Z', start: '2026-01-01', end: '2026-01-20' });
+      z.zone('in', { name: 'In', start: '2026-01-02', end: '2026-01-05' });
+      const onDayWidthChange = vi.fn();
+      const { rerender } = render(<DiagramView model={model('first').toJSON()} onDayWidthChange={onDayWidthChange} />);
+      rerender(
+        <DiagramView
+          model={m.toJSON()}
+          plane="plan"
+          notation="plan"
+          enteredPath={['z']}
+          onDayWidthChange={onDayWidthChange}
+        />,
+      );
+      await waitFor(() => expect(onDayWidthChange).toHaveBeenLastCalledWith(45));
+    } finally {
+      width.mockRestore();
+    }
+  });
+
   it('opening another diagram resets the width to 20', async () => {
     const { container, rerender } = render(<DiagramView model={plan('a')} plane="plan" notation="plan" />);
     fireEvent.click(screen.getByRole('button', { name: 'Wider days' }));
