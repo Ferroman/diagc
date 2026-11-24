@@ -1,5 +1,6 @@
 import type { Node } from '@xyflow/react';
-import type { CompiledView, Point } from '@diagc/core/internal';
+import type { CompiledView, DiagramNode, Point } from '@diagc/core/internal';
+import { isNoteId } from '../notes/note-id';
 
 // A grouped plan draws one zone as several boxes, a copy per team lane, each
 // under its own canvas id (CompiledView.copies maps it back). The host only
@@ -53,21 +54,56 @@ export function boxOf(nodes: readonly Node[], id: string): string | undefined {
 
 const NO_ROWS: ReadonlySet<string> = new Set();
 
-/** The lanes' top-level copies: the rows a grouped chart stacks for itself.
- * One zone has one saved y and several such rows, so none of them moves up or
- * down, and none reports a position. Empty ungrouped. */
-export function laneRows(view: Pick<CompiledView, 'lanes'>): ReadonlySet<string> {
-  return view.lanes === undefined ? NO_ROWS : new Set(view.lanes.flatMap((l) => l.zones));
+/** The rows the view stacks for itself (CompiledView.pinnedRows): a grouped
+ * plan's lane copies, or every top-level zone while something is hidden. Such
+ * a row is never drawn at a y of its own, so none moves up or down and none
+ * reports a position. Empty when the view pins nothing. */
+export function pinnedRows(view: Pick<CompiledView, 'pinnedRows'>): ReadonlySet<string> {
+  return view.pinnedRows === undefined ? NO_ROWS : new Set(view.pinnedRows);
+}
+
+/** a node the view draws for itself (the notation's `inert`: a plan's lane
+ * header, its Unassigned card), which no model node stands behind */
+type ViewOnly = ((n: DiagramNode) => boolean) | undefined;
+
+/** The view's own nodes: always roots, so the roots are all there is to ask. */
+function viewOnlyIds(view: Pick<CompiledView, 'roots'>, viewOnly: ViewOnly): ReadonlySet<string> {
+  return viewOnly === undefined ? NO_ROWS : new Set(view.roots.filter((r) => viewOnly(r.node)).map((r) => r.id));
+}
+
+/** The model node a drop on canvas node `hit` nests under: a lane copy's zone,
+ * and nothing for a note (its `note:` id names no node) or a node the view
+ * draws for itself — the host writes this straight through as a containment
+ * parent, so anything else would leave a dangling edge. */
+export function dropTargetOf(
+  view: Pick<CompiledView, 'roots' | 'copies'>,
+  viewOnly: ViewOnly,
+  hit: string | undefined,
+): string | undefined {
+  if (hit === undefined || isNoteId(hit) || viewOnlyIds(view, viewOnly).has(hit)) return undefined;
+  return modelIdOf(view.copies, hit);
+}
+
+/** The canvas ids a layout save leaves out: a drill stub (a placeholder for an
+ * off-frame node), a note (its place is an offset in `layout.notes`), a node
+ * the view draws for itself, and a pinned row (its y is the view's). */
+export function unsavedIds(
+  view: Pick<CompiledView, 'roots' | 'externals' | 'pinnedRows'>,
+  viewOnly: ViewOnly,
+): (id: string) => boolean {
+  const skip = new Set([...viewOnlyIds(view, viewOnly), ...pinnedRows(view)]);
+  return (id) => skip.has(id) || isNoteId(id) || (view.externals?.has(id) ?? false);
 }
 
 type Delta = { dx: number; dy: number };
 
 /**
- * A move report in model ids. A row keeps its displacement on x — a zone's
- * days — and loses its position: its y is the lane's, and writing it would
- * move the zone's own saved row (or give it one it never had). What is inside
- * a row reports its parent-relative place as it would ungrouped. Several
- * copies of one zone in one gesture are one move, the first copy's.
+ * A move report in model ids. A pinned row keeps its displacement on x — a
+ * zone's days — and loses its position: its y is the view's (a lane's, or a
+ * stack with the hidden rows taken out), and writing it would move the zone's
+ * own saved row (or give it one it never had). What is inside a row reports
+ * its parent-relative place as it would otherwise. Several copies of one zone
+ * in one gesture are one move, the first copy's.
  */
 export function modelMoves(
   copies: Copies,
@@ -75,7 +111,7 @@ export function modelMoves(
   positions: Record<string, Point>,
   deltas: Record<string, Delta>,
 ): { positions: Record<string, Point>; deltas: Record<string, Delta> } {
-  if (copies === undefined) return { positions, deltas };
+  if (copies === undefined && rows.size === 0) return { positions, deltas };
   const outPositions: Record<string, Point> = {};
   const outDeltas: Record<string, Delta> = {};
   for (const [id, d] of Object.entries(deltas)) {
@@ -89,9 +125,9 @@ export function modelMoves(
   return { positions: outPositions, deltas: outDeltas };
 }
 
-/** On-screen moves with every row held at its own y (see laneRows): a drag, a
- * nudge or an align on a row moves its days only. The same object back when
- * nothing is a row. */
+/** On-screen moves with every pinned row held at its own y (see pinnedRows): a
+ * drag, a nudge or an align on a row moves its days only. The same object back
+ * when nothing is a row. */
 export function pinRows(
   moves: Record<string, Point>,
   nodes: readonly Node[],

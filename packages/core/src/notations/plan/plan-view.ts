@@ -66,7 +66,16 @@ export function planView(
   if (!group && opts.hidden.size === 0 && !card) return compiled;
   const visible = withoutHidden(compiled, teams.hiddenZones, hiddenBelow(graph, teams.hiddenZones));
   const drawn = group ? groupedView(visible, { model, graph, teams }) : visible;
-  return card ? { ...drawn, roots: [...drawn.roots, unassignedCard()] } : drawn;
+  const pinnedRows = group
+    ? drawn.lanes?.flatMap((l) => l.zones)
+    : opts.hidden.size > 0 && opts.opened !== true
+      ? drawn.roots.filter((r) => isPlanZone(r.node) && !graph.parent.has(r.id)).map((r) => r.id)
+      : undefined;
+  return {
+    ...drawn,
+    ...(card ? { roots: [...drawn.roots, unassignedCard()] } : {}),
+    ...defined({ pinnedRows }),
+  };
 }
 
 /** The Unassigned roster card: a leaf root the roster places last. */

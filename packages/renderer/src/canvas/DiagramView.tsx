@@ -31,7 +31,7 @@ import { useCommitMoves } from './useCommitMoves';
 import { useCompiledView } from './useCompiledView';
 import { drawnDayWidth, savedScale, useCentreDayPan, useDayWidth, useDrillStretch } from './useDayWidth';
 import { useDrillNavigation } from './useDrillNavigation';
-import { useDropAndPaste } from './useDropAndPaste';
+import { useDropAndPaste, useInertRef } from './useDropAndPaste';
 import { useEditRequests } from './useEditRequests';
 import { useFitKey } from './useFitKey';
 import { useFlowEdges } from './useFlowEdges';
@@ -82,6 +82,8 @@ function Inner(props: DiagramViewProps) {
   const teams = useTeamView(props);
   const notation = useNotation(props, days.width, teams.hidden);
   const { profile, typeRegistry } = notation;
+  // the nodes the view draws for itself, which a drop and a save may not name
+  const inertRef = useInertRef(profile);
   const stretches = profile.stretchesTime === true;
   const teamSwitch = teamParts(profile.groupsByTeam === true, teams, chromeless);
   // A palette preset's colour for each node type, over the whole model (type-hues.ts)
@@ -243,7 +245,7 @@ function Inner(props: DiagramViewProps) {
     reactFlow,
     wrapperRef,
   });
-  const drop = useDropAndPaste({ editing, edit, reactFlow, wrapperRef });
+  const drop = useDropAndPaste({ editing, edit, reactFlow, wrapperRef, compiledRef, inertRef });
 
   const notes = useNoteNodes({
     model: props.model,
@@ -335,6 +337,7 @@ function Inner(props: DiagramViewProps) {
     viewShiftRef: frames.viewShiftRef,
     savedFrameRef: frames.savedFrameRef,
     scaleRef,
+    inertRef,
   });
   const edges = useFlowEdges({ props, editing, edit, notation, preset, compiled, layout: viewLayout, moves });
 

@@ -3,7 +3,7 @@ import { applyNodeChanges, type Node, type ReactFlowInstance } from '@xyflow/rea
 import type { CompiledView } from '@diagc/core/internal';
 import { alignBoxes, distributeBoxes, dropDescendants, type AlignMode, type Delta } from './arrange';
 import type { Box } from './box';
-import { laneRows, pinRows } from './copy-ids';
+import { pinnedRows, pinRows } from './copy-ids';
 import { NUDGE_STEP, useNudge, type Positions } from './useNudge';
 
 export interface NudgeAndArrangeInput {
@@ -20,8 +20,8 @@ export interface NudgeAndArrangeInput {
   rfNodesRef: MutableRefObject<Node[]>;
   setRfNodes: Dispatch<SetStateAction<Node[]>>;
   commitMoves: (positions: Positions) => void;
-  /** the view on screen: a grouped plan's lane rows move on x only */
-  compiledRef?: MutableRefObject<Pick<CompiledView, 'lanes'>>;
+  /** the view on screen: a plan's pinned rows (grouped, or hiding) move on x only */
+  compiledRef?: MutableRefObject<Pick<CompiledView, 'pinnedRows'>>;
 }
 
 export interface NudgeAndArrange {
@@ -39,8 +39,9 @@ export interface NudgeAndArrange {
 /** The arrow keys, and align/distribute over the selection. */
 export function useNudgeAndArrange(input: NudgeAndArrangeInput): NudgeAndArrange {
   const { chromeless, gestureCaptured, reactFlow, rfNodes, rfNodesRef, setRfNodes, commitMoves, compiledRef } = input;
-  // what a key or an arrange may move a node to: a lane row keeps its y (copy-ids.ts)
-  const pin = (moves: Positions): Positions => pinRows(moves, rfNodesRef.current, laneRows(compiledRef?.current ?? {}));
+  // what a key or an arrange may move a node to: a pinned row keeps its y (copy-ids.ts)
+  const pin = (moves: Positions): Positions =>
+    pinRows(moves, rfNodesRef.current, pinnedRows(compiledRef?.current ?? {}));
   // Arrow keys (see useNudge). The step follows the snap grid when one is on,
   // so a nudge lands on the same grid a drag would.
   const nudge = useNudge({

@@ -211,6 +211,19 @@ describe('planView', () => {
     expect(v.copies).toBeUndefined();
   });
 
+  it('pins the rows it stacks for itself: lane copies grouped, every top-level zone while anything is hidden', () => {
+    const json = fixture();
+    const grouped = view(compile(json), json, { grouped: true, hidden: none });
+    expect(grouped.pinnedRows).toEqual(grouped.lanes?.flatMap((l) => l.zones));
+    // hiding closes the gaps the hidden rows leave, so no top-level row is
+    // drawn at a y of its own; nested rows and events never save one anyway
+    const hiding = view(compile(json), json, { grouped: false, hidden: new Set(['pay']) });
+    expect(hiding.pinnedRows).toEqual(['checkout', 'search', 'rollout']);
+    expect(view(compile(json), json, { grouped: false, hidden: none }).pinnedRows).toBeUndefined();
+    const opened = compileView(json, { plane: 'plan', root: 'checkout', carry: ['pay', 'plat', 'alice'] });
+    expect(view(opened, json, { grouped: false, opened: true, hidden: new Set(['plat']) }).pinnedRows).toBeUndefined();
+  });
+
   it('actors are never hidden from the view', () => {
     const json = fixture();
     const v = view(compile(json), json, { grouped: false, hidden: new Set(['alice', 'pay', 'plat']) });

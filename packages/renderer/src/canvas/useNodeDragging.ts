@@ -4,7 +4,7 @@ import type { CompiledView, DiagramModel, Point } from '@diagc/core/internal';
 import type { NodeGeometry } from '../layout/layout';
 import { splitNoteDrag } from '../notes/note-drag';
 import type { NotationProfile } from '../notations';
-import { laneRows, modelIdOf, pinRows } from './copy-ids';
+import { pinnedRows, modelIdOf, pinRows } from './copy-ids';
 import { dropOffset, laneDrop, movesLeft, snapBackResets } from './drag-outcome';
 import { withoutMeasuredExpansion } from './expand-parent';
 import { GUIDE_THRESHOLD_PX, snapDragFrame, type Guide, type SnapMemo } from './guides';
@@ -26,8 +26,8 @@ export interface NodeDraggingInput {
   model: DiagramModel;
   plane: string | undefined;
   profile: NotationProfile;
-  /** the view on screen: a grouped plan's copies and lane rows */
-  compiled?: Pick<CompiledView, 'copies' | 'lanes'>;
+  /** the view on screen: a grouped plan's copies, and the rows a plan pins */
+  compiled?: Pick<CompiledView, 'copies' | 'pinnedRows'>;
   reactFlow: ReactFlowInstance;
   /** React Flow's copy of the nodes, kept current in the gesture's own task */
   rfNodesRef: MutableRefObject<Node[]>;
@@ -271,7 +271,7 @@ export function useNodeDragging(input: NodeDraggingInput): NodeDragging {
     const kept = pinRowChanges(
       withoutMeasuredExpansion(snapped.changes, draggingRef.current).filter((c) => c.type !== 'remove'),
       rfNodesRef.current,
-      laneRows(input.compiled ?? {}),
+      pinnedRows(input.compiled ?? {}),
     );
     // Advanced in step with the state, not left to the next render: a
     // gesture's last change and onNodeDragStop arrive in the same task,
@@ -303,8 +303,8 @@ export function useNodeDragging(input: NodeDraggingInput): NodeDragging {
   };
 }
 
-/** A drag's position changes with every lane row held at its y (copy-ids.ts
- * pinRows): while grouped a row moves its days, never up or down. */
+/** A drag's position changes with every pinned row held at its y (copy-ids.ts
+ * pinRows): grouped or hiding, a row moves its days, never up or down. */
 function pinRowChanges(changes: NodeChange[], nodes: readonly Node[], rows: ReadonlySet<string>): NodeChange[] {
   if (rows.size === 0) return changes;
   return changes.map((c) => {

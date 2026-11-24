@@ -97,6 +97,12 @@ export interface CompiledView {
   tints?: ReadonlyMap<string, readonly PlanSpan[]>;
   /** Grouped plan view only: top-level events, the band above the lanes. */
   topEvents?: readonly string[];
+  /** Plan view only: the top-level rows the view stacks for itself, so none
+   * is drawn at a y of its own — a grouped plan's lane copies (one zone, one
+   * saved y, several lanes), and while anything is hidden every top-level
+   * zone (hiding closes the gaps hidden rows leave). Such a row moves by its
+   * days only, and nothing saves its y. Absent: every row is where it is saved. */
+  pinnedRows?: readonly string[];
 }
 
 /** One lane of a grouped plan view. */

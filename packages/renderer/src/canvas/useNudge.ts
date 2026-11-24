@@ -16,7 +16,7 @@ export interface NudgeInput {
   /** persist a burst of moves — the commit every move ends in (useCommitMoves) */
   commit: (positions: Positions) => void;
   /** where a press may take each node, given where it asked to go (a grouped
-   * plan's lane row keeps its y); absent = anywhere */
+   * plan's pinned row keeps its y); absent = anywhere */
   constrain?: (moves: Positions) => Positions;
 }
 

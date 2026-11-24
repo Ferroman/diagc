@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import type { Node } from '@xyflow/react';
-import { boxOf, copiesOf, laneRows, modelIdOf, modelMoves, pinRows, widenToCopies } from './copy-ids';
+import type { DiagramNode, ViewNode } from '@diagc/core/internal';
+import {
+  boxOf,
+  copiesOf,
+  dropTargetOf,
+  modelIdOf,
+  modelMoves,
+  pinnedRows,
+  pinRows,
+  unsavedIds,
+  widenToCopies,
+} from './copy-ids';
 
 const copies = new Map([
   ['pay:checkout', 'checkout'],
@@ -45,12 +56,58 @@ describe('boxOf', () => {
   it('else nothing yet', () => expect(boxOf(nodes, 'new')).toBeUndefined());
 });
 
-describe('laneRows', () => {
-  it("the lanes' top-level copies", () =>
-    expect(
-      laneRows({ lanes: [{ zones: ['pay:checkout'] }, { zones: ['plat:checkout', 'plat:dep'] }] as never }),
-    ).toEqual(new Set(['pay:checkout', 'plat:checkout', 'plat:dep'])));
-  it('ungrouped, none', () => expect(laneRows({}).size).toBe(0));
+describe('pinnedRows', () => {
+  it('the rows the view pins (planView: lane copies, or every top-level zone while hiding)', () =>
+    expect(pinnedRows({ pinnedRows: ['pay:checkout', 'plat:checkout', 'plat:dep'] })).toEqual(
+      new Set(['pay:checkout', 'plat:checkout', 'plat:dep']),
+    ));
+  it('none pinned, none', () => expect(pinnedRows({}).size).toBe(0));
+});
+
+const leaf = (id: string, type?: string): ViewNode =>
+  ({ id, node: { id, name: id, ...(type !== undefined ? { type } : {}) }, children: [], state: 'leaf' }) as never;
+const viewOnly = (n: DiagramNode) => n.type === 'lane' || n.type === 'card';
+const scene = {
+  roots: [leaf('pay:', 'lane'), leaf('pay:checkout'), leaf('card', 'card'), leaf('alice')],
+  copies,
+  pinnedRows: ['pay:checkout'],
+  externals: new Map([['__ext__:x', 'x']]),
+};
+
+describe('dropTargetOf', () => {
+  it('a copy is the zone it copies', () => expect(dropTargetOf(scene, viewOnly, 'plat:ui')).toBe('ui'));
+  it('a node the view draws for itself is no target', () => {
+    expect(dropTargetOf(scene, viewOnly, 'pay:')).toBeUndefined();
+    expect(dropTargetOf(scene, viewOnly, 'card')).toBeUndefined();
+  });
+  it('a note is no target, and open canvas is none', () => {
+    expect(dropTargetOf(scene, viewOnly, 'note:n1')).toBeUndefined();
+    expect(dropTargetOf(scene, viewOnly, undefined)).toBeUndefined();
+  });
+  it('any other node is itself', () => expect(dropTargetOf(scene, viewOnly, 'alice')).toBe('alice'));
+});
+
+describe('unsavedIds', () => {
+  it('drill stubs, notes, view-only nodes and pinned rows are never saved', () => {
+    const skip = unsavedIds(scene, viewOnly);
+    for (const id of ['__ext__:x', 'note:n1', 'pay:', 'card', 'pay:checkout']) expect(skip(id)).toBe(true);
+    for (const id of ['plat:ui', 'alice']) expect(skip(id)).toBe(false);
+  });
+});
+
+describe('modelMoves while hiding (ungrouped, rows pinned)', () => {
+  it('a pinned row keeps its days and loses its position; anything else reports as ever', () => {
+    const out = modelMoves(
+      undefined,
+      new Set(['checkout']),
+      { checkout: { x: 140, y: 300 }, stray: { x: 1, y: 2 } },
+      { checkout: { dx: 140, dy: 12 }, stray: { dx: 1, dy: 2 } },
+    );
+    expect(out).toEqual({
+      positions: { stray: { x: 1, y: 2 } },
+      deltas: { checkout: { dx: 140, dy: 0 }, stray: { dx: 1, dy: 2 } },
+    });
+  });
 });
 
 describe('modelMoves', () => {

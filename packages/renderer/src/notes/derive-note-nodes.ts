@@ -18,6 +18,7 @@ import { modelIdOf } from '../canvas/copy-ids';
 import type { EditingApi } from '../canvas/view-types';
 import type { Registry, TypeStyle } from '../registry';
 import type { NoteData } from './NoteNode';
+import { NOTE_PREFIX } from './note-id';
 import {
   badgeCenter,
   estimateNoteHeight,
@@ -29,12 +30,8 @@ import {
   type Rect,
 } from './note-place';
 
-/** The note node id prefix. An id-based test for the filters that only need to
- * *exclude* notes from an id list; anything that READS the note data channel
- * gates on `node.type === 'note'` instead, because a model node is free to
- * carry an id that starts with `note:` and it would arrive here with box data. */
-export const NOTE_PREFIX = 'note:';
-export const isNoteId = (id: string): boolean => id.startsWith(NOTE_PREFIX);
+// in a module of its own, so the copy-id helpers can read it without a cycle
+export { NOTE_PREFIX, isNoteId } from './note-id';
 
 /** Where a threat-carrying flow's counting badge is drawn, as the edge reports
  * it: flow coordinates, the side of the line it sits on, and the line itself. */

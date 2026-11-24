@@ -4,7 +4,7 @@ import { isActivityBand, type CompiledView, type Point } from '@diagc/core/inter
 import { savedPositions, type Shift } from '../layout/fit-containers';
 import type { NodeGeometry } from '../layout/layout';
 import type { Positions } from './useNudge';
-import { laneRows, modelMoves } from './copy-ids';
+import { pinnedRows, modelMoves } from './copy-ids';
 import { savedX, toSaved } from './saved-frame';
 import type { EditingApi } from './view-types';
 
@@ -24,7 +24,7 @@ export interface CommitMovesInput {
   /** drawn px per saved px on x (a stretched plan's day width; see saved-frame.ts) */
   scaleRef?: MutableRefObject<number>;
   /** the view on screen: a grouped plan's copies are reported as their zones */
-  compiledRef?: MutableRefObject<Pick<CompiledView, 'copies' | 'lanes'>>;
+  compiledRef?: MutableRefObject<Pick<CompiledView, 'copies' | 'pinnedRows'>>;
   setViewPositions: Dispatch<SetStateAction<Record<string, Point>>>;
 }
 
@@ -81,13 +81,14 @@ export function useCommitMoves(input: CommitMovesInput): (onScreen: Positions) =
       // off it at the width it saves in
       const frames = { savedFrameRef, viewShiftRef, ...(scaleRef !== undefined ? { scaleRef } : {}) };
       const onCanvas = Object.fromEntries(Object.entries(drawn).map(([id, p]) => [id, toSaved(frames, id, p)]));
-      // ...and in model ids: a lane copy is its zone, a lane's row reports its
-      // days and no position (copy-ids.ts modelMoves). The identity ungrouped.
+      // ...and in model ids: a lane copy is its zone, a pinned row (grouped, or
+      // hiding) reports its days and no position (copy-ids.ts modelMoves). The
+      // identity when the view pins nothing.
       const view = compiledRef?.current;
       const { positions, deltas } =
         view === undefined
           ? { positions: onCanvas, deltas: canvasDeltas }
-          : modelMoves(view.copies, laneRows(view), onCanvas, canvasDeltas);
+          : modelMoves(view.copies, pinnedRows(view), onCanvas, canvasDeltas);
       if (editing) {
         if (edit?.onNodesMoved !== undefined) edit.onNodesMoved(positions, deltas);
         else for (const [id, pos] of Object.entries(positions)) edit?.onNodeMoved?.(id, pos);
