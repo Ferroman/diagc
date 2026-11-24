@@ -11,6 +11,7 @@ import { computeLod } from './lod';
 import { buildViewTree } from './tree';
 import { resolveEdges } from './edges';
 import { SM_NOTATION } from '../notations/state-machine/state-machine';
+import { PLAN_NOTATION } from '../notations/plan/plan';
 import { scopeToRoot } from './scope';
 import { visibleColumns } from '../columns';
 import type { CompiledView, ViewNode, ViewportState } from './types';
@@ -64,7 +65,10 @@ export function compileView(model: DiagramModel, viewport: ViewportState): Compi
   // shares its positions. Both read the outer model's planes: the drill view's
   // scoped model has none.
   // Transitions are separate arrows, so a state-machine plane keeps parallel ones apart.
-  const separateDirect = activeNotation(model.planes ?? [], viewport.plane, model.notation) === SM_NOTATION;
+  const notation = activeNotation(model.planes ?? [], viewport.plane, model.notation);
+  const separateDirect = notation === SM_NOTATION;
+  // A plan summarises at a fold: a dependency into a folded zone is joined zone to zone.
+  const liftRolledUp = notation === PLAN_NOTATION;
   const drawn = (r: DiagramRelation) => relationOnPlane(r, plane?.id);
   const laidOut = (r: DiagramRelation) => relationLaysOutOn(model, r, plane?.id);
 
@@ -85,10 +89,12 @@ export function compileView(model: DiagramModel, viewport: ViewportState): Compi
       activeLayers,
       includeBase: plane?.baseRelations ?? true,
       separateDirect,
+      liftRolledUp,
     });
     const layoutEdges = resolveEdges(withRelations(scoped.model, laidOut), tree, {
       activeLayers: scoped.model.layers.map((l) => l.id),
       separateDirect,
+      liftRolledUp,
     });
     return { roots: tree.roots, edges, layoutEdges, lod, anchorOf: tree.anchorOf, externals: scoped.externals };
   }
@@ -100,10 +106,12 @@ export function compileView(model: DiagramModel, viewport: ViewportState): Compi
     activeLayers,
     includeBase: plane?.baseRelations ?? true,
     separateDirect,
+    liftRolledUp,
   });
   const layoutEdges = resolveEdges(withRelations(model, laidOut), tree, {
     activeLayers: model.layers.map((l) => l.id),
     separateDirect,
+    liftRolledUp,
   });
   return { roots: tree.roots, edges, layoutEdges, lod, anchorOf: tree.anchorOf };
 }

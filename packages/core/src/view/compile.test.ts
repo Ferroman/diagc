@@ -162,3 +162,32 @@ describe('compileView: parallel transitions', () => {
     expect(v.layoutEdges).toHaveLength(1);
   });
 });
+
+describe('compileView: a plan folds dependencies zone to zone', () => {
+  /** gw ⊃ { stage, us } and db ⊃ { eu, dbus }, with stage → dbus and us → eu */
+  const twoDeps = (plan: boolean) => {
+    const m = model('t');
+    const p = m.plan();
+    const gw = p.zone('gw', { start: '2026-12-01', end: '2026-12-10' });
+    const stage = gw.zone('stage', { start: '2026-12-01', end: '2026-12-03' });
+    const us = gw.zone('us', { start: '2026-12-08', end: '2026-12-10' });
+    const db = p.zone('db', { start: '2026-12-14', end: '2026-12-31' });
+    const eu = db.zone('eu', { start: '2026-12-14', end: '2026-12-20' });
+    const dbus = db.zone('dbus', { start: '2026-12-21', end: '2026-12-31' });
+    m.relate(stage, dbus, { kind: 'depends' });
+    m.relate(us, eu, { kind: 'depends' });
+    const j = m.toJSON();
+    return plan ? j : { ...j, planes: j.planes.map((pl) => ({ ...pl, notation: 'c4' })) };
+  };
+  const viewport = { plane: 'plan', focus: ['gw'] };
+
+  it('one arrow from the open zone into the folded one, not one per row', () => {
+    const v = compileView(twoDeps(true), viewport);
+    expect(v.edges.map((e) => e.id)).toEqual(['gw=>db:']);
+    expect(v.layoutEdges.map((e) => e.id)).toEqual(['gw=>db:']);
+  });
+
+  it('keeps the open rows on any other notation', () => {
+    expect(compileView(twoDeps(false), viewport).edges.map((e) => e.id)).toEqual(['stage=>db:', 'us=>db:']);
+  });
+});
