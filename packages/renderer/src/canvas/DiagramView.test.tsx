@@ -2856,6 +2856,14 @@ describe('plan notation: stretching time', () => {
         (n.getAttribute('data-id') ?? '').endsWith(`:${zone}`),
       );
 
+    it('chromeless, a plan has no eye and no Unassigned card', async () => {
+      const { container } = render(<DiagramView model={hidingPlan()} plane="plan" notation="plan" chrome={false} />);
+      await waitFor(() => expect(rfNode(container, 'bob')).not.toBeNull());
+      expect(container.querySelector('[data-testid="eye-chip"]')).toBeNull();
+      expect(rfNode(container, '__unassigned__')).toBeNull();
+      expect(rfNode(container, 'zu')).not.toBeNull();
+    });
+
     it('the eye on a team card hides its lane and its rows', async () => {
       const { container } = render(<DiagramView model={hidingPlan()} plane="plan" notation="plan" grouped />);
       await waitFor(() => expect(eyeOf(container, 'pay')).toBeTruthy());

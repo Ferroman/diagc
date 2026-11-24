@@ -40,7 +40,11 @@ export function useActorControls(
   profile: NotationProfile,
   model: DiagramModel,
   teams: Pick<TeamView, 'hidden' | 'toggleHidden'>,
+  chromeless = false,
 ): ActorControls | undefined {
   const { hidden, toggleHidden } = teams;
-  return useMemo(() => actorControls(profile, model, hidden, toggleHidden), [profile, model, hidden, toggleHidden]);
+  return useMemo(
+    () => (chromeless ? undefined : actorControls(profile, model, hidden, toggleHidden)),
+    [profile, model, hidden, toggleHidden, chromeless],
+  );
 }

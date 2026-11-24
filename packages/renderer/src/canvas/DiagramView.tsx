@@ -83,7 +83,7 @@ function Inner(props: DiagramViewProps) {
   const notation = useNotation(props, days.width, teams.hidden);
   const { profile, typeRegistry } = notation;
   const stretches = profile.stretchesTime === true;
-  const teamSwitch = teamParts(profile.groupsByTeam === true, teams);
+  const teamSwitch = teamParts(profile.groupsByTeam === true, teams, chromeless);
   // A palette preset's colour for each node type, over the whole model (type-hues.ts)
   const hues = useMemo(() => typeHuesOf(preset, props.model, typeRegistry), [preset, props.model, typeRegistry]);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -260,6 +260,8 @@ function Inner(props: DiagramViewProps) {
     nameOf,
     typeRegistry,
   });
+  // the hook stays unconditional; a still export carries no eye (chromeless)
+  const actors = useActorControls(profile, props.model, teams, chromeless);
   const flow = useFlowNodes({
     props: { ...props, ...(onToggleExpand !== undefined ? { onToggleExpand } : {}) },
     editing,
@@ -276,7 +278,7 @@ function Inner(props: DiagramViewProps) {
     setLabelEdit,
     enterNode,
     noteNodes: notes.noteNodes,
-    actors: useActorControls(profile, props.model, teams),
+    actors,
   });
   const { derivedNodes, setRfNodes, rfNodesRef } = flow;
   widthIsDatesRef.current = (id) =>

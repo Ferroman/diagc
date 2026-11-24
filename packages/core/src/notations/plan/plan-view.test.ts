@@ -248,6 +248,12 @@ describe('the Unassigned roster card', () => {
     expect(allIds(v.roots)).not.toContain('loose');
   });
 
+  it('is absent from a still export (controls: false)', () => {
+    const json = withUnassigned();
+    const v = view(compileView(json, { plane: 'plan' }), json, { grouped: false, hidden: none, controls: false });
+    expect(card(v)).toBeUndefined();
+  });
+
   it('is absent when everything is assigned, and from an opened zone', () => {
     const json = fixture();
     expect(card(view(compile(json), json, { grouped: true, hidden: none }))).toBeUndefined();

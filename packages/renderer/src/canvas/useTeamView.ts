@@ -67,9 +67,9 @@ export function useTeamView(
 /** What the canvas takes from the team view, for a notation that groups by
  * team or not: the compile's grouping (never grouped when it does not), and
  * the corner switch (none when it does not). */
-export function teamParts(offered: boolean, t: TeamView) {
+export function teamParts(offered: boolean, t: TeamView, chromeless = false) {
   return {
-    grouping: { grouped: offered && t.grouped, hidden: t.hidden },
+    grouping: { grouped: offered && t.grouped, hidden: t.hidden, controls: !chromeless },
     switch: offered ? { grouped: t.grouped, toggle: () => t.setGrouped(!t.grouped) } : undefined,
   };
 }

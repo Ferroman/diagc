@@ -23,11 +23,11 @@ export interface CompiledViewInput {
   /** the plan's team lanes and hidden actors (NotationProfile.regroup); absent,
    * ungrouped with nothing hidden. Whether the view is an opened zone's is
    * `drillRoot`'s to say. */
-  grouping?: Pick<PlanViewOptions, 'grouped' | 'hidden'>;
+  grouping?: Pick<PlanViewOptions, 'grouped' | 'hidden' | 'controls'>;
 }
 
 /** ungrouped, nothing hidden: one stable identity, so the memo keeps its input */
-const UNGROUPED: Pick<PlanViewOptions, 'grouped' | 'hidden'> = { grouped: false, hidden: new Set() };
+const UNGROUPED: Pick<PlanViewOptions, 'grouped' | 'hidden' | 'controls'> = { grouped: false, hidden: new Set() };
 
 export interface CompiledViewState {
   compiled: CompiledView;
@@ -104,12 +104,20 @@ export function useCompiledView(input: CompiledViewInput): CompiledViewState {
   // toggle re-runs only this (planTint rebuilds a node map per call), and an
   // unchanged input hands the same view on, which every per-node cache keys
   // its identity on. Inside an opened zone there are no lanes (`opened`).
-  const { grouped, hidden } = grouping;
+  const { grouped, hidden, controls } = grouping;
   const regroup = profile.regroup;
   const opened = drillRoot !== undefined;
   const compiled = useMemo(
-    () => (regroup === undefined ? base : regroup(base, props.model, props.plane, { grouped, hidden, opened })),
-    [regroup, base, props.model, props.plane, grouped, hidden, opened],
+    () =>
+      regroup === undefined
+        ? base
+        : regroup(base, props.model, props.plane, {
+            grouped,
+            hidden,
+            opened,
+            ...(controls === false ? { controls } : {}),
+          }),
+    [regroup, base, props.model, props.plane, grouped, hidden, opened, controls],
   );
   // Render-phase ref, the strokesRef pattern: useLayoutApi's snapshotPositions
   // needs compiled.externals to drop stub ids, but that effect only re-runs on

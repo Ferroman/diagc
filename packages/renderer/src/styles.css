@@ -576,6 +576,7 @@ button.dg-comment-badge:hover {
 .dg-no-chrome .dg-fold,
 .dg-no-chrome .dg-enter,
 .dg-no-chrome .dg-link-badge,
+.dg-no-chrome .dg-eye,
 .dg-no-chrome .dg-quick-add {
   display: none;
 }

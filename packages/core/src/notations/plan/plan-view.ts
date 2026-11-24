@@ -33,6 +33,10 @@ export interface PlanViewOptions {
    * only hiding applies. Said by the caller — a scoped view does not say
    * reliably on its own which zone it was opened on. */
   opened?: boolean;
+  /** the view carries its controls (the Unassigned card, which exists only to
+   * be toggled). A still export (chromeless) sets false: the picture is the
+   * plan and nothing else. Default true. */
+  controls?: boolean;
 }
 
 /**
@@ -57,7 +61,8 @@ export function planView(
   // the card is offered whenever there is unassigned work — hidden or not, so
   // it can be shown again; an opened zone has no use for it unless it is
   // hiding something (hiding still applies there)
-  const card = teams.hasUnassigned && (opts.opened !== true || opts.hidden.has(PLAN_UNASSIGNED));
+  const card =
+    opts.controls !== false && teams.hasUnassigned && (opts.opened !== true || opts.hidden.has(PLAN_UNASSIGNED));
   if (!group && opts.hidden.size === 0 && !card) return compiled;
   const visible = withoutHidden(compiled, teams.hiddenZones, hiddenBelow(graph, teams.hiddenZones));
   const drawn = group ? groupedView(visible, { model, graph, teams }) : visible;
