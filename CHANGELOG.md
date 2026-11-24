@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.18.0](https://github.com/Ferroman/diagc/compare/v1.17.0...v1.18.0) (2026-11-24)
+
+
+### Features
+
+* plan periods that pause the rows they interrupt ([#207](https://github.com/Ferroman/diagc/issues/207)) ([aa29084](https://github.com/Ferroman/diagc/commit/aa2908412b3209cc8c5a6425a42decf0ae3ecb86))
+
 ## [1.17.0](https://github.com/Ferroman/diagc/compare/v1.16.0...v1.17.0) (2026-11-24)
 
 
