@@ -95,6 +95,8 @@ To fix the theme of a page you embed on another site, add `?theme=dark` or `?the
 
 The page opens in its diagram's own [style preset](../reference/model.md#style-presets), and the **Style** picker at the top lets a reader try the others — `sketch`, `neon`, `dos`… — for as long as the page is open; a pick is not remembered, so the author's choice is what the next visit shows. `?style=sketch` in the address fixes the style, as `?theme=` fixes the theme, and hides the picker.
 
+On a plan, `?group=1` opens the page grouped by team, and `hide=ledger,ana` opens it with those teams or people hidden. The page's own **Group by team** button and roster eyes keep the address in step, so a shared link opens the same view.
+
 ![The Style picker redraws a published page as sketch, then neon](../media/pick-a-style.webp)
 
 GIF: [pick-a-style.gif](../media/pick-a-style.gif)

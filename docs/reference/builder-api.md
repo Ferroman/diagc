@@ -438,13 +438,15 @@ Declares a plan (schedule) plane — always a plane, id `plan` by default, name 
 | `period.interrupts(...zones)` | `period` | One `interrupts` relation `period → zone` per zone. A period that interrupts nothing pauses everyone. |
 | `plan.person(id, name?, opts?)` | `NodeRef` | A `person` node on the plan plane. |
 | `plan.team(id, name?, opts?)` | `TeamBuilder` | A `team` node on the plan plane — an actor like `person`, for a role that belongs to a group rather than one individual. |
-| `team.member(...people)` | `team` | One `member-of` relation `person → team` per person. Never drawn; grouping by team reads it. |
+| `team.member(...people)` | `team` | One `member-of` relation `person → team` per person. Not an arrow: the roster draws the team as a frame around its members' badges (a person in several teams has a badge in each), and Group by team reads it to make lanes. |
 | `zone.zone(id, opts)` | `ZoneBuilder` | A nested zone, contained on the plan plane. |
 | `zone.event(id, opts)` | `NodeRef` | An event inside the zone. |
 | `zone.contains(...refs)` | `zone` | Schedules any nodes inside the zone (containment on the plan plane). |
 | `zone.owner(ref)` / `zone.executor(ref)` / `zone.checker(ref)` | `zone` | A role relation `ref → zone` of kind `owns` / `executes` / `checks`; ids follow the `from->to#n` scheme. |
 
 A `ZoneBuilder` is a `NodeRef`, so `.comment()`, `.link()` and `.threat()` chain on it; so are a `PeriodBuilder` and a `TeamBuilder`.
+
+A dependency between zones or events is an ordinary relation: `m.relate(a, b, { kind: 'sync' })`. On a plan it is drawn as a finish-to-start arrow from the end of `a` to the start of `b`. The kinds `owns`, `executes`, `checks`, `interrupts` and `member-of` are never arrows.
 
 ```ts
 const m = model('launch');

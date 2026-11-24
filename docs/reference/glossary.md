@@ -59,7 +59,7 @@ can show several diagrams. See [Compose diagrams](../how-to/compose-diagrams.md)
 ## Lane
 
 In a git branching diagram, the row a branch's commits sit on. In an activity diagram, a
-swimlane for one actor: a column when the flow runs down, a row when it runs across. See [Draw a git branching diagram](../how-to/draw-a-git-branching-diagram.md)
+swimlane for one actor: a column when the flow runs down, a row when it runs across. In a plan grouped by team, the band for one team's work (see [Draw a plan](../how-to/draw-a-plan.md)). See [Draw a git branching diagram](../how-to/draw-a-git-branching-diagram.md)
 and [Draw an activity diagram](../how-to/draw-an-activity-diagram.md).
 
 ## Layer
@@ -173,5 +173,5 @@ A node that is not a mode: initial, final, choice, junction, fork or join bar, h
 ## Zone
 
 In a plan, a date bar that can nest and carries role chips. In a deployment diagram, an
-availability zone or another failure domain. See [Draw a plan](../how-to/draw-a-plan.md)
+availability zone or another failure domain. In a state machine, a tinted area that shows one phase of a process; it means nothing to the machine. See [Draw a plan](../how-to/draw-a-plan.md)
 and [The vocabulary](../how-to/draw-a-deployment-diagram.md#the-vocabulary).
