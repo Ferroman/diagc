@@ -9,7 +9,7 @@ import { dropOffset, laneDrop, movesLeft, snapBackResets } from './drag-outcome'
 import { withoutMeasuredExpansion } from './expand-parent';
 import { GUIDE_THRESHOLD_PX, snapDragFrame, type Guide, type SnapMemo } from './guides';
 import { withDropTarget } from './node-copy';
-import { dropExclusions, dropTargetAt, type DropRect } from './plan-drop';
+import { dropExclusions, dropTargetAt, framesHolding, type DropRect } from './plan-drop';
 import type { Positions } from './useNudge';
 import type { EditingApi } from './view-types';
 
@@ -26,8 +26,8 @@ export interface NodeDraggingInput {
   model: DiagramModel;
   plane: string | undefined;
   profile: NotationProfile;
-  /** the view on screen: a grouped plan's copies, and the rows a plan pins */
-  compiled?: Pick<CompiledView, 'copies' | 'pinnedRows'>;
+  /** the view on screen: a plan's copies, the rows it pins and its roster frames */
+  compiled?: Pick<CompiledView, 'copies' | 'pinnedRows' | 'roster'>;
   reactFlow: ReactFlowInstance;
   /** React Flow's copy of the nodes, kept current in the gesture's own task */
   rfNodesRef: MutableRefObject<Node[]>;
@@ -79,12 +79,11 @@ function dropTargetFor(input: NodeDraggingInput, draggedId: string, point: Point
   const draggedReal = modelIdOf(copies, draggedId);
   const draggedNode = byId.get(draggedReal);
   if (draggedNode === undefined || profile.node?.canDrop?.(draggedNode) !== true) return undefined;
-  const exclude = dropExclusions(
-    input.rfNodesRef.current,
-    draggedId,
-    profile.related?.(model, input.plane, draggedReal) ?? [],
-    copies,
-  );
+  const related = [
+    ...(profile.related?.(model, input.plane, draggedReal) ?? []),
+    ...framesHolding(input.compiled?.roster, copies, draggedReal),
+  ];
+  const exclude = dropExclusions(input.rfNodesRef.current, draggedId, related, copies);
   const isTarget = (id: string): boolean => {
     const n = byId.get(modelIdOf(copies, id));
     return n !== undefined && dropTarget(n);

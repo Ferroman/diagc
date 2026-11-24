@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Node } from '@xyflow/react';
-import { dropExclusions, dropTargetAt, type DropRect } from './plan-drop';
+import { dropExclusions, dropTargetAt, framesHolding, type DropRect } from './plan-drop';
 
 const NONE: ReadonlySet<string> = new Set();
 
@@ -47,5 +47,28 @@ describe('dropExclusions', () => {
 
   it('excludes only itself for a top-level box with no children', () => {
     expect([...dropExclusions(nodes, 'b', [])]).toEqual(['b']);
+  });
+});
+
+describe('framesHolding', () => {
+  // ben is in pay (his real badge) and plat (a copy); ana in pay alone
+  const roster = [
+    { team: 'pay', members: ['ana', 'ben'] },
+    { team: 'plat', members: ['plat-ben', 'cleo'] },
+    { team: 'mob', members: ['dev'] },
+  ];
+  const copies = new Map([
+    ['ben', 'ben'],
+    ['plat-ben', 'ben'],
+  ]);
+
+  it('names every team whose frame holds a badge of the person, real or copy', () => {
+    expect(framesHolding(roster, copies, 'ben')).toEqual(['pay', 'plat']);
+    expect(framesHolding(roster, copies, 'ana')).toEqual(['pay']);
+  });
+
+  it('names none for a person in no frame, or with no roster', () => {
+    expect(framesHolding(roster, copies, 'eve')).toEqual([]);
+    expect(framesHolding(undefined, copies, 'ben')).toEqual([]);
   });
 });

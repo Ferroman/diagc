@@ -234,6 +234,30 @@ describe("a drag of Ben's badge copy acts on Ben", () => {
     expect(errors).not.toHaveBeenCalled();
   });
 
+  // the outline is a promise that a drop does something; a team he is in already would break it
+  describe('while dragged, the outline offers only a team he is not in', () => {
+    /** the drag in flight over `target`'s box: is that box outlined? */
+    const outlinedUnder = async (id: string, target: string) => {
+      await settle(target);
+      const t = absOf(target);
+      const pointer = flow.instance.flowToScreenPosition({ x: t.x + 5, y: t.y + 5 });
+      act(() => void flow.props['onNodeDragStart']?.());
+      const node = flowNode(id)!;
+      act(() => void flow.props['onNodeDrag']!({ clientX: pointer.x, clientY: pointer.y }, node, [node]));
+      return nodeEl(target)!.querySelector('[data-drop-target]') !== null;
+    };
+
+    for (const [badge, own] of [
+      [COPY, 'platform'],
+      ['ben', 'payments'],
+    ] as const)
+      it(`${badge === 'ben' ? 'his real badge' : 'the copy'}: not ${own}, his own; Mobile, yes`, async () => {
+        await mountEdit();
+        expect(await outlinedUnder(badge, own)).toBe(false);
+        expect(await outlinedUnder(badge, 'mobile')).toBe(true);
+      });
+  });
+
   it('dropped on empty canvas, it saves nothing and snaps back', async () => {
     await mountEdit();
     const before = flowNode(COPY)!.position;

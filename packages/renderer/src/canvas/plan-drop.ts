@@ -1,5 +1,5 @@
 import type { Node } from '@xyflow/react';
-import type { Point } from '@diagc/core/internal';
+import type { PlanRosterFrame, Point } from '@diagc/core/internal';
 import { modelIdOf, widenToCopies } from './copy-ids';
 
 /** A drop-target candidate's absolute box, in flow coordinates — what
@@ -81,4 +81,20 @@ export function dropExclusions(
         copies,
         [...exclude].map((id) => modelIdOf(copies, id)),
       );
+}
+
+/**
+ * The teams whose roster frame holds a badge of `modelId` (the real badge or
+ * a copy, CompiledView.copies): the frames a person stands in already. A drop
+ * there would add them to a team they are in, which the studio's `assign`
+ * turns down, so the outline is not offered — added here, in the drop path,
+ * rather than to `planRelated`, which also lights the selection, where a
+ * person's own team is no relation worth lighting.
+ */
+export function framesHolding(
+  roster: readonly PlanRosterFrame[] | undefined,
+  copies: ReadonlyMap<string, string> | undefined,
+  modelId: string,
+): string[] {
+  return (roster ?? []).filter((f) => f.members.some((m) => modelIdOf(copies, m) === modelId)).map((f) => f.team);
 }
