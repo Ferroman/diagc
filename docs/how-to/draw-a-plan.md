@@ -11,7 +11,7 @@ A schedule: zones as date bars that nest, events as milestones, people or teams 
 5. Drop an **Event** for a milestone.
 6. Add people or teams with **Add person** / **Add team** in the Plan panel, then pick them as Owner / Executor / Checker on a zone — the chips `O·`, `E·`, `C·` appear on the bar, one letter per role, hover for the full name. Or drag a person or team from the roster onto a zone to make them its executor in one gesture (a no-op if they already hold a role there); drag any other node onto a zone and it moves into it. Click a chip to change the role or remove the actor.
 
-   To put a person in a team, drag the person's roster card onto the team's card. A person can be in several teams, and shows as a badge in each team's frame. Properties → Plan lists a person's teams, each with a remove button.
+   To put a person in a team, drag the person's badge onto the team's frame (onto the team's card while nobody is in it yet). A person can be in several teams, and shows as a badge in each team's frame. Properties → Plan lists a person's teams, each with a remove button.
 
 7. Schedule a node that lives on another plane (a C4 container, an ER table…) by selecting it and, in Properties → Memberships, adding the zone as a container on the plan plane. It drops into the zone's flow at first; drag it anywhere inside the bar afterwards and it stays exactly there (the bar grows to fit) instead of snapping back into the flow.
 8. Comment on a bar in Properties → Comments and attach resources in Properties → Links — the badge at the bar's corner opens both on the published page.
