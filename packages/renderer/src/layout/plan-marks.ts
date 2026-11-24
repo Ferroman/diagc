@@ -9,19 +9,22 @@ import {
   type PlanSpan,
 } from '@diagc/core/internal';
 import type { LabelSide, NodeStripe } from '../notations';
-import { PLAN_LAYOUT, ZONE_TEXT, nameRowWidth, planChips, planGraphCached } from './plan-layout';
+import { ZONE_TEXT, nameRowWidth, planChips, planGraphCached } from './plan-layout';
 
 // What a plan bar wears beyond its box: the side a name too long for it hangs
 // on, and the stretches a period hatches over it. Derived per model and plane,
 // like the role chips (plan-layout.ts's planChips), and handed to the canvas
 // through the notation's node hooks.
 
-const sidesCache = new WeakMap<DiagramModel, Map<string | undefined, ReadonlyMap<string, LabelSide>>>();
+// keyed by plane and px per day: a stretched bar may fit the name it did not
+type ByScale<T> = Map<string, ReadonlyMap<string, T>>;
+const scaleKey = (plane: string | undefined, dayWidth: number): string => `${plane ?? ''}\u0000${String(dayWidth)}`;
+const sidesCache = new WeakMap<DiagramModel, ByScale<LabelSide>>();
 
 /**
  * The childless bars too short for their name, and the side each one's name is
  * drawn on instead (the notation's `labelSides`). A bar's width is its dates —
- * a one-day bar is DAY wide — so it never grows to fit its name the way a box
+ * a one-day bar is one day wide — so it never grows to fit its name the way a box
  * would: a wider box would end on a later day than the plan says, and stick
  * out of the zone it belongs to. The name goes beside the bar, as Gantt charts
  * do: to the right, or to the left where the right would cross the wall of the
@@ -39,30 +42,35 @@ const sidesCache = new WeakMap<DiagramModel, Map<string | undefined, ReadonlyMap
  * for it there, else the other side if that has room; undefined when no arrow
  * decides (none, or both ways) or neither side fits, and the walls decide. */
 function arrowSide(
-  { leaves, enters }: { leaves: boolean; enters: boolean },
+  { leaves, enters, dayWidth }: { leaves: boolean; enters: boolean; dayWidth: number },
   span: PlanSpan,
   range: PlanSpan | undefined,
   need: number,
 ): LabelSide | undefined {
   if (leaves === enters || range === undefined) return undefined;
   const room = {
-    left: (span.start - range.start) * PLAN_LAYOUT.DAY,
-    right: (range.end - span.end) * PLAN_LAYOUT.DAY,
+    left: (span.start - range.start) * dayWidth,
+    right: (range.end - span.end) * dayWidth,
   };
   const free: LabelSide = leaves ? 'left' : 'right';
   const other: LabelSide = leaves ? 'right' : 'left';
   return room[free] >= need ? free : room[other] >= need ? other : undefined;
 }
 
-export function planLabelSides(model: DiagramModel, plane: string | undefined): ReadonlyMap<string, LabelSide> {
-  let byPlane = sidesCache.get(model);
-  if (byPlane === undefined) {
-    byPlane = new Map();
-    sidesCache.set(model, byPlane);
+export function planLabelSides(
+  model: DiagramModel,
+  plane: string | undefined,
+  dayWidth: number,
+): ReadonlyMap<string, LabelSide> {
+  let byScale = sidesCache.get(model);
+  if (byScale === undefined) {
+    byScale = new Map();
+    sidesCache.set(model, byScale);
   }
-  const cached = byPlane.get(plane);
+  const key = scaleKey(plane, dayWidth);
+  const cached = byScale.get(key);
   if (cached !== undefined) return cached;
-  const { DAY } = PLAN_LAYOUT;
+  const DAY = dayWidth;
   const { PAD_X, BORDER, OUTSIDE_GAP } = ZONE_TEXT;
   const graph = planGraphCached(model, plane);
   const chips = planChips(model, plane);
@@ -77,7 +85,8 @@ export function planLabelSides(model: DiagramModel, plane: string | undefined): 
     const row = nameRowWidth(node.name, chips.get(id));
     if (row + 2 * PAD_X + BORDER <= (span.end - span.start + 1) * DAY) continue;
     const need = row + OUTSIDE_GAP + PAD_X;
-    const onChart = arrowSide({ leaves: leaves.has(id), enters: enters.has(id) }, span, graph.range, need);
+    const ends = { leaves: leaves.has(id), enters: enters.has(id), dayWidth };
+    const onChart = arrowSide(ends, span, graph.range, need);
     if (onChart !== undefined) {
       sides.set(id, onChart);
       continue;
@@ -92,7 +101,7 @@ export function planLabelSides(model: DiagramModel, plane: string | undefined): 
     const left = (span.start - parentSpan.start) * DAY;
     sides.set(id, right >= need ? 'right' : left >= need ? 'left' : right >= left ? 'right' : 'left');
   }
-  byPlane.set(plane, sides);
+  byScale.set(key, sides);
   return sides;
 }
 /** The zones a dependency arrow leaves (`from`) or enters (`to`): that end of
@@ -117,7 +126,7 @@ function arrowEnds(model: DiagramModel, graph: PlanGraph, end: 'from' | 'to'): S
   return ends;
 }
 
-const stripesCache = new WeakMap<DiagramModel, Map<string | undefined, ReadonlyMap<string, NodeStripe[]>>>();
+const stripesCache = new WeakMap<DiagramModel, ByScale<NodeStripe[]>>();
 
 /**
  * Each interrupted zone's stripes: the days of each period that interrupts it
@@ -126,15 +135,20 @@ const stripesCache = new WeakMap<DiagramModel, Map<string | undefined, ReadonlyM
  * its own). A period that does not overlap the bar draws nothing on it; a row
  * inside an interrupted zone is striped only if it is named too.
  */
-export function planStripes(model: DiagramModel, plane: string | undefined): ReadonlyMap<string, NodeStripe[]> {
-  let byPlane = stripesCache.get(model);
-  if (byPlane === undefined) {
-    byPlane = new Map();
-    stripesCache.set(model, byPlane);
+export function planStripes(
+  model: DiagramModel,
+  plane: string | undefined,
+  dayWidth: number,
+): ReadonlyMap<string, NodeStripe[]> {
+  let byScale = stripesCache.get(model);
+  if (byScale === undefined) {
+    byScale = new Map();
+    stripesCache.set(model, byScale);
   }
-  const cached = byPlane.get(plane);
+  const key = scaleKey(plane, dayWidth);
+  const cached = byScale.get(key);
   if (cached !== undefined) return cached;
-  const { DAY } = PLAN_LAYOUT;
+  const DAY = dayWidth;
   const graph = planGraphCached(model, plane);
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
   const stripes = new Map<string, NodeStripe[]>();
@@ -158,6 +172,6 @@ export function planStripes(model: DiagramModel, plane: string | undefined): Rea
     }
     if (own.length > 0) stripes.set(id, own);
   }
-  byPlane.set(plane, stripes);
+  byScale.set(key, stripes);
   return stripes;
 }

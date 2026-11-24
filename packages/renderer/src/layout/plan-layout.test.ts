@@ -55,10 +55,10 @@ describe('planLayout', () => {
     const r = planLayout({ view: view(roadmap()), model: roadmap(), plane: 'plan' });
     const q1 = r.geometry.get('q1')!;
     const later = r.geometry.get('later')!;
-    expect(q1.x).toBe(planX(dayOf('2026-01-05')!, origin));
+    expect(q1.x).toBe(planX(dayOf('2026-01-05')!, origin, DAY));
     expect(q1.width).toBe(days('2026-01-05', '2026-03-27') * DAY);
     expect(q1.y).toBe(0);
-    expect(later.x).toBe(planX(dayOf('2026-04-01')!, origin));
+    expect(later.x).toBe(planX(dayOf('2026-04-01')!, origin, DAY));
     expect(later.y).toBe(q1.height + ROW_GAP); // q1 starts first, though `later` was declared first
     expect(later.height).toBe(BAR_H);
     expect(r.lockedX).toEqual(new Set(['q1', 'later']));
@@ -202,7 +202,7 @@ describe('planLayout', () => {
     const m = roadmap();
     const r = planLayout({ view: view(m), model: m, plane: 'plan' });
     expect(r.geometry.get('kickoff')).toEqual({
-      x: planX(dayOf('2026-01-05')!, origin) + DAY / 2 - EVENT / 2,
+      x: planX(dayOf('2026-01-05')!, origin, DAY) + DAY / 2 - EVENT / 2,
       // centred on the line between the month and week bands: centred in the
       // week band, the diamond and its name sat on the W## label
       y: -(DAY_H + WEEK_H) - EVENT / 2,
@@ -214,7 +214,7 @@ describe('planLayout', () => {
     const rowY = -HEADER_H - ROSTER_GAP - LEAF_SIZE.height;
     // both fit the one row: left to right from the plan's first day (5 Jan,
     // not the 1 Jan origin), roles first (alice owns build), then the rest (bob)
-    const first = planX(dayOf('2026-01-05')!, origin);
+    const first = planX(dayOf('2026-01-05')!, origin, DAY);
     expect(alice).toMatchObject({ x: first, y: rowY, width: LEAF_SIZE.width, height: LEAF_SIZE.height });
     expect(bob).toMatchObject({ x: first + LEAF_SIZE.width + ROSTER_GAP, y: rowY });
     for (const id of ['kickoff', 'alice', 'bob']) expect(r.fixed?.has(id)).toBe(true);
@@ -234,7 +234,7 @@ describe('planLayout', () => {
     const j = plan(true);
     const r = planLayout({ view: view(j), model: j, plane: 'plan' });
     expect(r.geometry.get('freeze')).toEqual({
-      x: planX(dayOf('2026-02-09')!, origin),
+      x: planX(dayOf('2026-02-09')!, origin, DAY),
       y: -(DAY_H + WEEK_H) - EVENT / 2,
       width: 7 * DAY,
       height: EVENT,
@@ -281,7 +281,7 @@ describe('planLayout', () => {
     const chen = p.person('chen', 'Chen');
     const hints = new Map([alice, bob, chen].map((n) => [n.id, { width: 40, height: 20 }]));
     const r = planLayout({ view: view(m.toJSON()), model: m.toJSON(), plane: 'plan', sizeHints: hints });
-    const first = planX(dayOf('2026-11-30')!, origin);
+    const first = planX(dayOf('2026-11-30')!, origin, DAY);
     expect(r.geometry.get('alice')).toMatchObject({ x: first });
     expect(r.geometry.get('bob')).toMatchObject({ x: first + 40 + ROSTER_GAP });
     // 104 + 24 + 40 = 168 > 120: chen wraps, though the plan ends 11 months from the origin
@@ -320,7 +320,7 @@ describe('planLayout', () => {
     const q1 = r.geometry.get('q1')!;
     // under the chart's first day (the earliest zone starts 5 Jan), not the origin
     expect(r.geometry.get('stray')).toMatchObject({
-      x: planX(dayOf('2026-01-05')!, origin),
+      x: planX(dayOf('2026-01-05')!, origin, DAY),
       y: q1.y + q1.height + ROW_GAP,
     });
     expect(r.fixed?.has('stray')).toBe(false);
@@ -339,7 +339,7 @@ describe('planLayout', () => {
     const json = m.toJSON();
     json.nodes.find((n) => n.id === 'bad')!.metadata!.end = '2026-02-01';
     const r = planLayout({ view: view(json), model: json, plane: 'plan' });
-    expect(r.geometry.get('bad')).toMatchObject({ x: planX(dayOf('2026-03-02')!, origin), width: DAY });
+    expect(r.geometry.get('bad')).toMatchObject({ x: planX(dayOf('2026-03-02')!, origin, DAY), width: DAY });
     // and it still sorts after `ok`, by its own start rather than the origin
     expect(r.geometry.get('bad')!.y).toBeGreaterThan(r.geometry.get('ok')!.y);
   });
@@ -452,19 +452,19 @@ describe('planLayout', () => {
     it("draws the zone's rows at their own dates, stacked from the top", () => {
       const { r } = opened();
       const a1 = r.geometry.get('a1')!;
-      expect(a1).toMatchObject({ x: planX(dayOf('2026-01-05')!, o), y: 0 });
-      expect(r.geometry.get('a2')).toMatchObject({ x: planX(dayOf('2026-01-19')!, o), y: a1.height + ROW_GAP });
+      expect(a1).toMatchObject({ x: planX(dayOf('2026-01-05')!, o, DAY), y: 0 });
+      expect(r.geometry.get('a2')).toMatchObject({ x: planX(dayOf('2026-01-19')!, o, DAY), y: a1.height + ROW_GAP });
     });
 
     it('draws a free-form child where it sits in the whole view, against the rows', () => {
       const { r } = opened();
       // the zone's interior, translated: x by the zone's start, y by its title band
-      expect(r.geometry.get('box')).toMatchObject({ x: planX(dayOf('2026-01-05')!, o) + 40, y: 10 });
+      expect(r.geometry.get('box')).toMatchObject({ x: planX(dayOf('2026-01-05')!, o, DAY) + 40, y: 10 });
     });
 
     it("reports the zone's interior origin for each child, so an edit saves what it would in the whole view", () => {
       const { r } = opened();
-      const frame = { x: planX(dayOf('2026-01-05')!, o), y: -TITLE_H };
+      const frame = { x: planX(dayOf('2026-01-05')!, o, DAY), y: -TITLE_H };
       for (const id of ['a1', 'a2', 'box', 'ev']) expect(r.savedFrame?.get(id)).toEqual(frame);
       expect(r.savedFrame?.has('alice') ?? false).toBe(false); // the roster is no zone's
       expect(r.viewShift).toBeUndefined();
@@ -472,14 +472,14 @@ describe('planLayout', () => {
 
     it("puts the zone's event in the header, as a top-level one", () => {
       expect(opened().r.geometry.get('ev')).toMatchObject({
-        x: planX(dayOf('2026-01-14')!, o) + DAY / 2 - EVENT / 2,
+        x: planX(dayOf('2026-01-14')!, o, DAY) + DAY / 2 - EVENT / 2,
         y: -(DAY_H + WEEK_H) - EVENT / 2,
       });
     });
 
     it('lists the actors holding a role in it in the roster, as themselves, from its first day', () => {
       const alice = opened().r.geometry.get('alice')!;
-      expect(alice.x).toBe(planX(dayOf('2026-01-05')!, o));
+      expect(alice.x).toBe(planX(dayOf('2026-01-05')!, o, DAY));
       expect(alice.y).toBe(-HEADER_H - ROSTER_GAP - alice.height);
     });
 
@@ -487,10 +487,54 @@ describe('planLayout', () => {
       const { r } = opened();
       const early = r.geometry.get('__ext__:early')!;
       const late = r.geometry.get('__ext__:late')!;
-      expect(early.x + early.width).toBeLessThan(planX(dayOf('2026-01-05')!, o));
+      expect(early.x + early.width).toBeLessThan(planX(dayOf('2026-01-05')!, o, DAY));
       expect(early.y).toBe(0);
-      expect(late.x).toBeGreaterThan(planX(dayOf('2026-01-31')!, o));
+      expect(late.x).toBeGreaterThan(planX(dayOf('2026-01-31')!, o, DAY));
       expect(late.y).toBe(0);
+    });
+  });
+
+  describe('at another day width', () => {
+    const W = 2 * DAY;
+    it("at 40 px per day a zone's x and width double and an event stays centred on its day", () => {
+      const m = roadmap();
+      const r = planLayout({ view: view(m), model: m, plane: 'plan', dayWidth: W });
+      const q1 = r.geometry.get('q1')!;
+      expect(q1.x).toBe(planX(dayOf('2026-01-05')!, origin, W));
+      expect(q1.width).toBe(days('2026-01-05', '2026-03-27') * W);
+      expect(r.geometry.get('build')!.x).toBe((dayOf('2026-02-02')! - dayOf('2026-01-05')!) * W);
+      expect(r.geometry.get('kickoff')!.x).toBe(planX(dayOf('2026-01-05')!, origin, W) + W / 2 - EVENT / 2);
+      expect(r.geometry.get('m1')!.x).toBe((dayOf('2026-03-02')! - dayOf('2026-02-02')!) * W + W / 2 - EVENT / 2);
+      // text does not stretch: a row's height is the same at any width
+      const at20 = planLayout({ view: view(m), model: m, plane: 'plan' });
+      expect(q1.height).toBe(at20.geometry.get('q1')!.height);
+    });
+
+    it('a saved free-form child keeps its day at 40 px per day', () => {
+      // saved positions are in 20 px-per-day units: x 60 is three days into the bar
+      const m = roadmap();
+      const positions = { api: { x: 60, y: 300 } };
+      const r = planLayout({ view: view(m), model: m, plane: 'plan', positions, dayWidth: W });
+      expect(r.geometry.get('api')).toMatchObject({ x: 120, y: 300 });
+    });
+
+    it("a period's bracket spans its days at 40 px per day", () => {
+      const m = model('p');
+      const p = m.plan();
+      p.zone('z', { start: '2026-02-01', end: '2026-02-28' });
+      p.period('freeze', { start: '2026-02-09', end: '2026-02-15' });
+      const j = m.toJSON();
+      const r = planLayout({ view: view(j), model: j, plane: 'plan', dayWidth: W });
+      expect(r.geometry.get('freeze')).toMatchObject({ x: planX(dayOf('2026-02-09')!, origin, W), width: 7 * W });
+    });
+
+    it('a saved stray keeps its day: drawn at its x scaled, and locked on x so the saved one is not re-applied', () => {
+      const m = roadmap();
+      m.nodes.push({ id: 'stray', name: 'Stray', type: 'service', plane: 'plan' });
+      const positions = { stray: { x: 2000, y: 700 } };
+      const r = planLayout({ view: view(m), model: m, plane: 'plan', positions, dayWidth: W });
+      expect(r.geometry.get('stray')!.x).toBe(4000);
+      expect(r.lockedX?.has('stray')).toBe(true);
     });
   });
 

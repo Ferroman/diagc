@@ -128,7 +128,7 @@ function datelessZoneMove({ g, origin, plane }: MoveScene, { id, pos, outer }: M
     out.push({
       type: 'set-position',
       nodeId: id,
-      x: planX(start, origin),
+      x: planX(start, origin, DAY),
       y: Math.max(0, pos.y),
       ...planeOpt(plane),
     });
@@ -169,7 +169,7 @@ function zoneMove(scene: MoveScene, move: Move, shifted: Set<string>): EditorCom
     out.push({
       type: 'set-position',
       nodeId: id,
-      x: planX(span.start + days, origin),
+      x: planX(span.start + days, origin, DAY),
       y: Math.max(0, pos.y),
       ...planeOpt(plane),
     });

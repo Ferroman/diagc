@@ -46,6 +46,9 @@ export interface NotationLayoutInput {
   positions?: Record<string, Point>;
   /** the drilled container (ViewportState.root): the view is its interior */
   root?: string;
+  /** px per day on a time axis (the plan's), as the view stretches it; absent,
+   * the notation's default */
+  dayWidth?: number;
 }
 
 export interface NodeGeometry {

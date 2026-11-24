@@ -14,7 +14,7 @@ describe('planLabelSides', () => {
     parent.zone('last-day', { name: 'EU prod', start: '2026-12-31', end: '2026-12-31' });
     parent.zone('long', { name: 'Dev + demo', start: '2026-12-01', end: '2026-12-20' });
     p.zone('root-day', { name: 'Imlek / CNY (ID 5-6, SG 6-8 Feb)', start: '2027-02-05', end: '2027-02-08' });
-    const sides = planLabelSides(m.toJSON(), 'plan');
+    const sides = planLabelSides(m.toJSON(), 'plan', DAY);
     expect(sides.get('first-day')).toBe('right');
     expect(sides.get('last-day')).toBe('left'); // to the right is outside its parent
     expect(sides.get('root-day')).toBe('right'); // nothing to stay inside of
@@ -36,7 +36,7 @@ describe('planLabelSides', () => {
     // no room on its right inside db: it hangs out of db's right wall
     const eu = db.zone('eu', { name: 'EU go-live', start: '2026-12-08', end: '2026-12-08' });
     m.relate(stage, eu, { kind: 'depends' });
-    const sides = planLabelSides(m.toJSON(), 'plan');
+    const sides = planLabelSides(m.toJSON(), 'plan', DAY);
     expect(sides.get('stage')).toBe('left');
     // folded, gw stands in for stage at the arrow's start, and db for eu at its end
     expect(sides.get('gw')).toBe('left');
@@ -51,7 +51,7 @@ describe('planLabelSides', () => {
     const first = p.zone('first', { name: 'API gateway 2.4 to 3.0 upgrade', start: '2026-11-30', end: '2026-12-01' });
     const last = p.zone('last', { name: 'Database 15 to 16 upgrade', start: '2026-12-14', end: '2026-12-15' });
     m.relate(first, last, { kind: 'depends' });
-    const sides = planLabelSides(m.toJSON(), 'plan');
+    const sides = planLabelSides(m.toJSON(), 'plan', DAY);
     expect(sides.get('first')).toBe('right');
     expect(sides.get('last')).toBe('left');
   });
@@ -65,7 +65,7 @@ describe('planLabelSides', () => {
     const c = p.zone('c', { name: 'Last step here', start: '2026-12-14', end: '2026-12-14' });
     m.relate(a, mid, { kind: 'depends' });
     m.relate(mid, c, { kind: 'depends' });
-    expect(planLabelSides(m.toJSON(), 'plan').get('mid')).toBe('left'); // its parent's wall is on the right
+    expect(planLabelSides(m.toJSON(), 'plan', DAY).get('mid')).toBe('left'); // its parent's wall is on the right
   });
 
   it('a period is no arrow: the bar it interrupts keeps its name where it was', () => {
@@ -74,7 +74,7 @@ describe('planLabelSides', () => {
     p.event('kickoff', { name: 'Kickoff', at: '2026-11-09' });
     const z = p.zone('z', { name: 'Staging and QA', start: '2026-11-30', end: '2026-11-30' });
     p.period('freeze', { start: '2026-11-30', end: '2026-11-30', interrupts: [z] });
-    expect(planLabelSides(m.toJSON(), 'plan').get('z')).toBe('right');
+    expect(planLabelSides(m.toJSON(), 'plan', DAY).get('z')).toBe('right');
   });
 
   it('a role is no arrow: an owner leaves the name beside the bar', () => {
@@ -82,7 +82,7 @@ describe('planLabelSides', () => {
     const p = m.plan();
     const z = p.zone('z', { name: 'Staging and QA', start: '2026-11-30', end: '2026-11-30' });
     z.owner(p.person('ana', 'Ana'));
-    expect(planLabelSides(m.toJSON(), 'plan').get('z')).toBe('right');
+    expect(planLabelSides(m.toJSON(), 'plan', DAY).get('z')).toBe('right');
   });
 
   it('gives a zone with rows a side too, for when it is folded into a bar', () => {
@@ -94,7 +94,27 @@ describe('planLabelSides', () => {
       start: '2026-03-02',
       end: '2026-03-03',
     });
-    expect(planLabelSides(m.toJSON(), 'plan').get('short')).toBe('right');
+    expect(planLabelSides(m.toJSON(), 'plan', DAY).get('short')).toBe('right');
+  });
+});
+
+describe('planLabelSides at another day width', () => {
+  function narrow() {
+    const m = model('wide');
+    m.plan().zone('stage', { name: 'Staging and QA', start: '2026-11-30', end: '2026-12-02' });
+    return m.toJSON();
+  }
+  it('a name that does not fit three days at 20 px per day fits them at 60', () => {
+    const m = narrow();
+    expect(planLabelSides(m, 'plan', DAY).get('stage')).toBeDefined();
+    expect(planLabelSides(m, 'plan', 3 * DAY).has('stage')).toBe(false);
+  });
+  it('the cache answers per width', () => {
+    const m = narrow();
+    const at60 = planLabelSides(m, 'plan', 3 * DAY);
+    const at20 = planLabelSides(m, 'plan', DAY);
+    expect(at60).not.toBe(at20);
+    expect(planLabelSides(m, 'plan', 3 * DAY)).toBe(at60);
   });
 });
 
@@ -113,7 +133,7 @@ describe('planStripes', () => {
       interrupts: [temporal, late, early],
       color: '#999999',
     });
-    const stripes = planStripes(m.toJSON(), 'plan');
+    const stripes = planStripes(m.toJSON(), 'plan', DAY);
     expect(stripes.get('temporal')).toEqual([
       { x: 14 * DAY, width: 14 * DAY, title: 'Holiday change freeze', color: '#999999' },
     ]);
@@ -123,5 +143,15 @@ describe('planStripes', () => {
     expect(stripes.has('early')).toBe(false);
     // not interrupted, though the freeze falls in its days
     expect(stripes.has('quiet')).toBe(false);
+  });
+
+  it("a stripe's x and width scale with the day width", () => {
+    const m = model('freeze40');
+    const p = m.plan();
+    const z = p.zone('z', { name: 'Z', start: '2026-12-07', end: '2027-01-19' });
+    p.period('freeze', { name: 'Freeze', start: '2026-12-21', end: '2027-01-03', interrupts: [z] });
+    const json = m.toJSON();
+    expect(planStripes(json, 'plan', 2 * DAY).get('z')).toEqual([{ x: 28 * DAY, width: 28 * DAY, title: 'Freeze' }]);
+    expect(planStripes(json, 'plan', DAY).get('z')).toEqual([{ x: 14 * DAY, width: 14 * DAY, title: 'Freeze' }]);
   });
 });
