@@ -504,17 +504,11 @@ describe('resolveEdges: liftRolledUp', () => {
   });
 
   it('both open: each row keeps its own arrow', () => {
-    expect(run(rows(), { gw: 'expanded', db: 'expanded' }, true).map((e) => e.id)).toEqual([
-      'stage=>dbus:',
-      'us=>eu:',
-    ]);
+    expect(run(rows(), { gw: 'expanded', db: 'expanded' }, true).map((e) => e.id)).toEqual(['stage=>dbus:', 'us=>eu:']);
   });
 
   it('without the flag a rolled-up arrow keeps its open end, as in every other notation', () => {
-    expect(run(rows(), { gw: 'expanded', db: 'collapsed' }).map((e) => e.id)).toEqual([
-      'stage=>db:',
-      'us=>db:',
-    ]);
+    expect(run(rows(), { gw: 'expanded', db: 'collapsed' }).map((e) => e.id)).toEqual(['stage=>db:', 'us=>db:']);
   });
 
   it('lifts a deep row to the one beside the folded zone, not to the top', () => {

@@ -22,7 +22,10 @@ describe('planArrow', () => {
   });
 
   it('an open zone (a tall box) is left and entered at its title row, not its middle', () => {
-    const { from, to } = planArrow({ x: 0, y: 0, width: 100, height: 200 }, { x: 300, y: 300, width: 100, height: 160 });
+    const { from, to } = planArrow(
+      { x: 0, y: 0, width: 100, height: 200 },
+      { x: 300, y: 300, width: 100, height: 160 },
+    );
     expect(from).toEqual({ x: 100, y: PLAN_LAYOUT.BAR_H / 2 });
     expect(to).toEqual({ x: 300, y: 300 + PLAN_LAYOUT.BAR_H / 2 });
   });
