@@ -42,6 +42,18 @@ describe('planRoster', () => {
     expect(v.roots.filter((r) => r.id === planCopyId('platform', 'ben'))).toHaveLength(1);
   });
 
+  it("maps a copied person's real badge to itself, ahead of the copy: both are drawn", () => {
+    for (const grouped of [false, true]) {
+      const people = [...(view({ grouped }).copies ?? [])].filter(([, id]) => id === 'ben');
+      expect(people).toEqual([
+        ['ben', 'ben'],
+        [planCopyId('platform', 'ben'), 'ben'],
+      ]);
+    }
+    // a person drawn once is no key: an id absent from the map is its own
+    expect(view({ grouped: false }).copies?.has('ana')).toBe(false);
+  });
+
   it('keeps the same frames grouped, beside the lane copies', () => {
     const v = view({ grouped: true });
     expect(v.roster?.map((f) => f.team)).toEqual(['payments', 'platform', 'mobile']);

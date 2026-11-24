@@ -271,6 +271,26 @@ describe("Ben's badges", () => {
     expect(await litAfterClicking('ben')).toEqual(viaCopy);
   });
 
+  // the real node is drawn too, so a rename on one badge must open on that
+  // badge alone: two editors would steal each other's focus and both close
+  for (const badge of ['ben', COPY])
+    it(`a double-click on ${badge === 'ben' ? 'his real badge' : 'the copy'} opens one name editor, on it, and it stays open`, async () => {
+      await mountEdit();
+      fireEvent.doubleClick(nodeEl(badge)!);
+      await waitFor(() => expect(nodeEl(badge)!.querySelector('.dg-label-input')).not.toBeNull());
+      await act(async () => {});
+      expect(document.querySelectorAll('.dg-label-input')).toHaveLength(1);
+      expect(nodeEl(badge)!.querySelector('.dg-label-input')).toBe(document.activeElement);
+    });
+
+  it("a host asking for Ben's box gets his real badge", async () => {
+    await mountEdit();
+    await settle('ben');
+    const b = view.props!.layoutApiRef!.current!.nodeBounds('ben')!;
+    expect({ x: b.x, y: b.y }).toEqual(absOf('ben'));
+    expect(absOf('ben')).not.toEqual(absOf(COPY));
+  });
+
   it('a selected frame stays behind its badges', async () => {
     await mountEdit();
     fireEvent.click(nodeEl('platform')!);

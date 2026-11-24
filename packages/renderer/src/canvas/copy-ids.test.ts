@@ -37,6 +37,15 @@ describe('copiesOf', () => {
   });
 });
 
+describe('copiesOf a roster person (the real badge maps to itself)', () => {
+  const badges = new Map([
+    ['ben', 'ben'],
+    ['__lane__:plat:ben', 'ben'],
+  ]);
+  it('every badge, the real one first', () => expect(copiesOf(badges, 'ben')).toEqual(['ben', '__lane__:plat:ben']));
+  it('the real badge reports as itself', () => expect(modelIdOf(badges, 'ben')).toBe('ben'));
+});
+
 describe('widenToCopies', () => {
   it('each id stands, with every copy of it beside', () =>
     expect(widenToCopies(copies, ['checkout', 'alice'])).toEqual(

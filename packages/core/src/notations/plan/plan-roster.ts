@@ -11,9 +11,10 @@ import { planIndex } from './teams';
  *
  * A person in several teams has one real node, in the first of their teams in
  * model order, and a badge copy in each other team (its own canvas id, mapped
- * back through `copies`) — a node cannot sit inside two frames. Only teams and
- * people that are roots of this view count, so a view that does not draw them
- * (a drilled zone) frames nothing. A team with no member stays a plain card.
+ * back through `copies`) — a node cannot sit inside two frames. Unlike a lane
+ * copy's zone, the real node is drawn as well, so `copies` maps it to itself.
+ * Only teams and people that are roots of this view count, so a view that does
+ * not draw them (a drilled zone) frames nothing. A team with no member stays a plain card.
  * Returns `view` itself when there is no frame.
  */
 export function planRoster(view: CompiledView, model: DiagramModel): CompiledView {
@@ -34,6 +35,10 @@ export function planRoster(view: CompiledView, model: DiagramModel): CompiledVie
         members.get(team)!.push(person.id);
         return;
       }
+      // the real badge is drawn too, so it maps to itself, ahead of its
+      // copies: every canvas id drawing the person, the real one first, is
+      // what the map's inverse then gives (a rename, a focus, a host's bounds)
+      if (i === 1) copies.set(person.id, person.id);
       const id = planCopyId(team, person.id);
       copies.set(id, person.id);
       copyRoots.push({ ...person, id });

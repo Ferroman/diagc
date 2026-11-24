@@ -29,8 +29,9 @@ function inverseOf(copies: ReadonlyMap<string, string>): ReadonlyMap<string, rea
   return out;
 }
 
-/** Every canvas id drawing `modelId`, in lane order; the id itself when it has
- * no copies (an actor, an ungrouped view). */
+/** Every canvas id drawing `modelId`, in order: a zone's lane copies, or a
+ * roster person's badges with the real one first (planRoster maps it to
+ * itself, since it is drawn too); the id itself when it has no copies. */
 export function copiesOf(copies: Copies, modelId: string): string[] {
   const all = copies === undefined ? undefined : inverseOf(copies).get(modelId);
   return all === undefined ? [modelId] : [...all];

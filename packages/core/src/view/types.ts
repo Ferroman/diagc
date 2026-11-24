@@ -85,10 +85,14 @@ export interface CompiledView {
   anchorOf: ReadonlyMap<string, string>;
   /** drill view only: stub node id -> the real off-frame node it represents. */
   externals?: Map<string, string>;
-  /** Grouped plan view only (`planView`): canvas id -> model id for every lane
-   * copy — zones, the events and free-form children inside them, and the
-   * per-lane arrows (mapped to the arrow they copy). An id absent here is its
-   * own model id. Look ids up here; never parse a copy id. */
+  /** Plan view only (`planView`): canvas id -> model id for every copy. A
+   * grouped view's lane copies — zones, the events and free-form children
+   * inside them, and the per-lane arrows (mapped to the arrow they copy) — and,
+   * grouped or not, a roster person's badge in each team after their first
+   * (planRoster), whose real badge is drawn too and so maps to itself. An id
+   * absent here is its own model id; a key here is not always a copy, and a
+   * map is no sign of grouping (read `lanes`). Look ids up here; never parse a
+   * copy id. */
   copies?: ReadonlyMap<string, string>;
   /** Grouped plan view only: the lanes in order — the header node's id, the
    * lane, and its top-level zone copies in their ungrouped order. */
