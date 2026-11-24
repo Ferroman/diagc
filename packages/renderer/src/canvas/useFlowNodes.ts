@@ -15,6 +15,7 @@ import type { StylePreset } from '../sketch/stylePresets';
 import type { TypeHues } from './type-hues';
 import { toRfNode } from './adapter';
 import { buildNodeDataCached, type NodeDataContext } from './build-data';
+import { planTintStripes } from '../layout/plan-marks';
 import { diffNodeClasses, withDiffClass } from './diff-marks';
 import { nodeFrameProps, type NodeFrameContext } from './node-frame';
 import type { NodeGeometry } from '../layout/layout';
@@ -103,6 +104,12 @@ export function useFlowNodes(input: FlowNodesInput): FlowNodes {
   // callbacks placed in it are stable: a fresh arrow per memo run would rebuild
   // every node's data whenever an input the builder does not compare changed.
   const endLabelEdit = useCallback(() => setLabelEdit(null), [setLabelEdit]);
+  // A grouped plan's team tints, in px at the drawn day width: per view, as
+  // the copies they wash are (CompiledView.tints; none ungrouped).
+  const tints = useMemo(
+    () => (compiled.tints === undefined ? undefined : planTintStripes(compiled, props.model, dayWidth)),
+    [compiled, props.model, dayWidth],
+  );
   const nodeDataCtx = useMemo<NodeDataContext>(
     () => ({
       metaKeys: input.metaKeys,
@@ -135,6 +142,8 @@ export function useFlowNodes(input: FlowNodesInput): FlowNodes {
       isAlwaysExpanded,
       labelSides,
       stripes,
+      copies: compiled.copies,
+      tints,
       dayWidth,
     }),
     [
@@ -168,6 +177,8 @@ export function useFlowNodes(input: FlowNodesInput): FlowNodes {
       isAlwaysExpanded,
       labelSides,
       stripes,
+      compiled.copies,
+      tints,
       dayWidth,
     ],
   );

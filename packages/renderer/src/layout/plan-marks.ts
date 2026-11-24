@@ -5,9 +5,12 @@ import {
   periodSpanOf,
   planPeriodsOf,
   spanOf,
+  type CompiledView,
   type DiagramModel,
   type PlanGraph,
+  type PlanLane,
   type PlanSpan,
+  type ViewNode,
 } from '@diagc/core/internal';
 import type { LabelSide, NodeStripe } from '../notations';
 import { ZONE_TEXT, nameRowWidth, planChips, planGraphCached } from './plan-layout';
@@ -20,6 +23,9 @@ import { ZONE_TEXT, nameRowWidth, planChips, planGraphCached } from './plan-layo
 // keyed by plane and px per day: a stretched bar may fit the name it did not
 type ByScale<T> = Map<string, ReadonlyMap<string, T>>;
 const scaleKey = (plane: string | undefined, dayWidth: number): string => `${plane ?? ''}\u0000${String(dayWidth)}`;
+// and by the hidden actors, whose chips a name row is measured without (in id
+// order, so two sets of the same ids share an entry)
+const hiddenKey = (hidden: ReadonlySet<string> | undefined): string => [...(hidden ?? [])].sort().join('\u0001');
 const sidesCache = new WeakMap<DiagramModel, ByScale<LabelSide>>();
 
 /**
@@ -62,19 +68,20 @@ export function planLabelSides(
   model: DiagramModel,
   plane: string | undefined,
   dayWidth: number,
+  hidden?: ReadonlySet<string>,
 ): ReadonlyMap<string, LabelSide> {
   let byScale = sidesCache.get(model);
   if (byScale === undefined) {
     byScale = new Map();
     sidesCache.set(model, byScale);
   }
-  const key = scaleKey(plane, dayWidth);
+  const key = `${scaleKey(plane, dayWidth)}\u0000${hiddenKey(hidden)}`;
   const cached = byScale.get(key);
   if (cached !== undefined) return cached;
   const DAY = dayWidth;
   const { PAD_X, BORDER, OUTSIDE_GAP } = ZONE_TEXT;
   const graph = planGraphCached(model, plane);
-  const chips = planChips(model, plane);
+  const chips = planChips(model, plane, hidden);
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
   const leaves = arrowEnds(model, graph, 'from');
   const enters = arrowEnds(model, graph, 'to');
@@ -175,4 +182,60 @@ export function planStripes(
   }
   byScale.set(key, stripes);
   return stripes;
+}
+
+/** Each top-level copy's lane, given to every copy inside it as well. */
+function lanesOfCopies(view: CompiledView): Map<string, PlanLane> {
+  const out = new Map<string, PlanLane>();
+  const laneOfTop = new Map((view.lanes ?? []).flatMap((l) => l.zones.map((z) => [z, l.lane] as const)));
+  const walk = (n: ViewNode, lane: PlanLane): void => {
+    out.set(n.id, lane);
+    for (const c of n.children) walk(c, lane);
+  };
+  for (const r of view.roots) {
+    const lane = laneOfTop.get(r.id);
+    if (lane !== undefined) walk(r, lane);
+  }
+  return out;
+}
+
+/**
+ * A grouped view's team tints (CompiledView.tints) as stripes: on each zone
+ * copy, the days its lane's team works on it, washed in the team's colour and
+ * titled with its name, in px from the copy's left edge (its zone's start)
+ * and clipped to it. Pure; keyed by copy id, so the caller memoises it per
+ * view. Ungrouped there are none.
+ */
+export function planTintStripes(
+  view: CompiledView,
+  model: DiagramModel,
+  dayWidth: number,
+): ReadonlyMap<string, NodeStripe[]> {
+  const out = new Map<string, NodeStripe[]>();
+  const { tints, copies } = view;
+  if (tints === undefined || copies === undefined) return out;
+  const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
+  const laneOf = lanesOfCopies(view);
+  for (const [id, spans] of tints) {
+    const lane = laneOf.get(id);
+    const node = byId.get(copies.get(id) ?? id);
+    const bar = node === undefined ? undefined : spanOf(node);
+    if (lane === undefined || bar === undefined) continue;
+    const own = spans.flatMap((s): NodeStripe[] => {
+      const start = Math.max(s.start, bar.start);
+      const end = Math.min(s.end, bar.end);
+      if (end < start) return [];
+      return [
+        {
+          x: (start - bar.start) * dayWidth,
+          width: (end - start + 1) * dayWidth,
+          title: lane.name,
+          ...(lane.color !== undefined ? { color: lane.color } : {}),
+          variant: 'tint',
+        },
+      ];
+    });
+    if (own.length > 0) out.set(id, own);
+  }
+  return out;
 }

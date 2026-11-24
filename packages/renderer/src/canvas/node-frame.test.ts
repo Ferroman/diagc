@@ -114,6 +114,11 @@ describe('nodeFrameProps: size', () => {
     expect(nodeFrameProps(period, geo, undefined, ctx({ profile: owned })).style).toEqual(size);
   });
 
+  it("sizes a grouped plan's lane header from the layout: it spans the chart's days", () => {
+    const header = viewNode({ type: 'plan-lane' });
+    expect(nodeFrameProps(header, geo, undefined, ctx({ profile: owned })).style).toEqual(size);
+  });
+
   it('floors an ordinary box at the width elk laid out, and leaves its height to CSS', () => {
     const frame = nodeFrameProps(viewNode(), geo, undefined, ctx());
     expect(frame.style).toEqual({ minWidth: 140 });

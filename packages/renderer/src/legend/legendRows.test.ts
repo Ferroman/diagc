@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compileView, model, type DiagramModel } from '@diagc/core/internal';
+import { compileView, model, planView, type DiagramModel } from '@diagc/core/internal';
 import { createKindRegistry, createTypeRegistry } from '../registry';
 import { legendRows, type LegendInput } from './legendRows';
 
@@ -271,6 +271,17 @@ describe('legendRows', () => {
     m.node('a1', { type: 'activity-note' });
     const r = rows(m.toJSON(), { config: { show: ['types'] } });
     expect(r.map((x) => x.label)).toEqual(['activity-note']);
+  });
+
+  it("lists no row for a grouped plan's lane headers: they are the view's, not a type of the model", () => {
+    const m = model('lanes');
+    const p = m.plan();
+    p.zone('z', { start: '2026-01-05', end: '2026-01-09' }).executor(p.team('pay', 'Payments'));
+    const json = m.toJSON();
+    const compiled = planView(compileView(json, { plane: 'plan' }), json, 'plan', { grouped: true, hidden: new Set() });
+    const r = rows(json, { config: { show: ['types'] }, compiled });
+    expect(r.map((x) => x.label)).not.toContain('plan-lane');
+    expect(r.length).toBeGreaterThan(0);
   });
 
   it('renames a derived row in place instead of appending', () => {

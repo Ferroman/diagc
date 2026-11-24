@@ -1,6 +1,7 @@
 import {
   FISHBONE_TYPES,
   isActivityChrome,
+  PLAN_LANE_TYPE,
   PLAN_PERIOD_TYPE,
   PLAN_ZONE_TYPE,
   runsToPlainText,
@@ -38,8 +39,14 @@ export const FORCED_SIZE_SHAPES: ReadonlySet<string> = new Set([
  * `(end − start + 1) × DAY` — that span cannot round-trip through a
  * CSS-natural, label-hugging width, and the studio's resize reads the drawn
  * width back into `end`, so the wrapper must carry the layout's width exactly.
- * A `plan-period` too: its bracket spans its days and has no size of its own. */
-export const LAYOUT_SIZED_TYPES: ReadonlySet<string> = new Set([...FISHBONE_TYPES, PLAN_ZONE_TYPE, PLAN_PERIOD_TYPE]);
+ * A `plan-period` too: its bracket spans its days and has no size of its own;
+ * and a grouped plan's lane header, a band across the chart's days. */
+export const LAYOUT_SIZED_TYPES: ReadonlySet<string> = new Set([
+  ...FISHBONE_TYPES,
+  PLAN_ZONE_TYPE,
+  PLAN_PERIOD_TYPE,
+  PLAN_LANE_TYPE,
+]);
 
 /**
  * Deterministic (no-DOM) footprint of an ordinary box node — the branch of

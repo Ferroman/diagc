@@ -138,6 +138,25 @@ describe('buildNodeData', () => {
     expect(buildNodeData(viewNode({ id: 'n2' }), ctx).stripes).toBeUndefined();
   });
 
+  it("a lane copy wears its zone's chips, side and period stripes, with its own tint under them", () => {
+    const chips = [{ role: 'owns' as const, refId: 'a', text: 'O·A', title: 'Owner: A' }];
+    const period = { x: 40, width: 60, title: 'Freeze' };
+    const tint = { x: 0, width: 80, title: 'Payments', variant: 'tint' as const };
+    const ctx = nodeCtx({
+      copies: new Map([['c1', 'n1']]),
+      nodeChips: new Map([['n1', chips]]),
+      labelSides: new Map([['n1', 'left' as const]]),
+      stripes: new Map([['n1', [period]]]),
+      tints: new Map([['c1', [tint]]]),
+    });
+    const copy = buildNodeData(viewNode({ id: 'c1' }), ctx);
+    expect(copy.chips).toBe(chips);
+    expect(copy.labelSide).toBe('left');
+    expect(copy.stripes).toEqual([tint, period]);
+    // the zone itself, ungrouped, has no tint
+    expect(buildNodeData(viewNode(), ctx).stripes).toEqual([period]);
+  });
+
   it('marks external stubs', () => {
     expect(buildNodeData(viewNode({ external: 'real-id' }), nodeCtx()).external).toBe(true);
   });
@@ -757,6 +776,8 @@ describe('the data caches compare every context field', () => {
     isAlwaysExpanded: { isAlwaysExpanded: () => false },
     labelSides: { labelSides: new Map() },
     stripes: { stripes: new Map() },
+    copies: { copies: new Map() },
+    tints: { tints: new Map() },
     dayWidth: { dayWidth: 40 },
   };
   it.each(Object.entries(nodeVariants))('rebuilds the node data when only %s changes', (_field, over) => {

@@ -5,6 +5,7 @@ import {
   GIT_STAGE_TYPE,
   isActivityBand,
   PLAN_EVENT_TYPE,
+  PLAN_LANE_TYPE,
   PLAN_PERIOD_TYPE,
   SM_MACHINE_TYPE,
   SM_REGION_TYPE,
@@ -25,6 +26,7 @@ import { GroupBody } from './GroupBody';
 import { ImageBody } from './ImageBody';
 import { MachineFrameBody } from './MachineFrameBody';
 import { PlanEventBody } from './PlanEventBody';
+import { PlanLaneBody } from './PlanLaneBody';
 import { PlanPeriodBody } from './PlanPeriodBody';
 import { RegionBody } from './RegionBody';
 import { SilhouetteBody } from './SilhouetteBody';
@@ -53,6 +55,7 @@ export const NODE_BODIES: readonly BodyRule[] = [
   { match: (data, _profile, style) => style.shape === 'circle' && data.state === 'leaf', Body: CommitBody },
   { match: (data) => data.typeId === PLAN_EVENT_TYPE && data.state === 'leaf', Body: PlanEventBody },
   { match: (data) => data.typeId === PLAN_PERIOD_TYPE, Body: PlanPeriodBody },
+  { match: (data) => data.typeId === PLAN_LANE_TYPE, Body: PlanLaneBody },
   { match: (data) => data.shape !== undefined && data.state === 'leaf', Body: SilhouetteBody },
   // A cornerBadge type's image is container chrome, not the node's body: its
   // leaf keeps the typed-box look (inline thumb) so a group placed before it

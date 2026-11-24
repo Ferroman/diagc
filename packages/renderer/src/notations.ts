@@ -10,6 +10,7 @@ import {
   PLAN_ACTOR_TYPES,
   PLAN_EVENT_TYPE,
   PLAN_INTERRUPTS,
+  PLAN_LANE_TYPE,
   PLAN_MEMBER_OF,
   PLAN_NOTATION,
   PLAN_ZONE_TYPE,
@@ -24,6 +25,7 @@ import {
   planPeriodsOf,
   planSubtree,
   planSubtreeRange,
+  planView,
   isPlanZone,
   rolesOf,
   TM_NOTATION,
@@ -36,6 +38,8 @@ import {
   type PlanRole,
   type Point,
   type BoxSize,
+  type CompiledView,
+  type PlanViewOptions,
   type ViewEdge,
 } from '@diagc/core/internal';
 import { fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './layout/fishbone-layout';
@@ -64,12 +68,14 @@ export interface NodeChip {
 export type LabelSide = 'left' | 'right';
 
 /** A stretch of a box hatched over — a plan period's days on a bar it
- * interrupts — in px from the box's left edge, with the period's name and colour. */
+ * interrupts — in px from the box's left edge, with the period's name and
+ * colour. A `tint` is washed instead: a team's days on a lane copy of a bar. */
 export interface NodeStripe {
   x: number;
   width: number;
   title: string;
   color?: string;
+  variant?: 'tint';
 }
 
 /** A visual language: default look plus registry/chrome overrides for a plane's notation. */
@@ -115,6 +121,16 @@ export interface NotationProfile {
    * (ViewportState.carry): a plan's people and teams belong to no zone, but an
    * opened zone without the ones holding its roles is a schedule nobody runs */
   drillCarry?: (model: DiagramModel, plane: string | undefined, root: string) => readonly string[];
+  /** the compiled view rewritten for view state the model does not hold: a
+   * plan grouped into team lanes, its hidden teams and people left out (core's
+   * planView). Applied after compileView (useCompiledView); returns the view
+   * itself when there is nothing to do. */
+  regroup?: (
+    compiled: CompiledView,
+    model: DiagramModel,
+    plane: string | undefined,
+    opts: PlanViewOptions,
+  ) => CompiledView;
   /** the canvas offers an element's first threat: the empty threat badge on a
    * node or a flow, and a note's add row. Elsewhere a threat is added in the
    * panel; a badge on every box of a C4 diagram would be noise. */
@@ -134,13 +150,24 @@ export interface NotationProfile {
      * takes its lane's colour) */
     colorOf?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, string>;
     /** small chips in a node's badge row (the plan's role chips); keyed by
-     * node id, one derivation per model like colorOf */
-    chips?: (model: DiagramModel, plane: string | undefined) => ReadonlyMap<string, NodeChip[]>;
+     * node id, one derivation per model like colorOf. A `hidden` actor's are
+     * left out (PlanViewOptions.hidden). */
+    chips?: (
+      model: DiagramModel,
+      plane: string | undefined,
+      hidden?: ReadonlySet<string>,
+    ) => ReadonlyMap<string, NodeChip[]>;
     /** leaf boxes whose name is drawn OUTSIDE the box, on the given side: a
      * box whose width means something (a plan bar's is its dates) and is too
      * narrow for its name. Keyed by node id, one derivation per model like
-     * chips; absent = the name sits inside, as on every other box. */
-    labelSides?: (model: DiagramModel, plane: string | undefined, dayWidth: number) => ReadonlyMap<string, LabelSide>;
+     * chips, and measured with the same chips (`hidden` as there); absent =
+     * the name sits inside, as on every other box. */
+    labelSides?: (
+      model: DiagramModel,
+      plane: string | undefined,
+      dayWidth: number,
+      hidden?: ReadonlySet<string>,
+    ) => ReadonlyMap<string, LabelSide>;
     /** stretches drawn hatched over a box (a plan bar's interrupted days),
      * keyed by node id, one derivation per model like chips; part of the box,
      * so they move and resize with it */
@@ -453,6 +480,8 @@ const PLAN: NotationProfile = {
   layoutReadsPositions: true,
   related: planRelated,
   drillCarry: planDrillCarry,
+  // team lanes and hiding: the viewer's, never the model's
+  regroup: planView,
   node: {
     restsOpen: (n) => n.type === PLAN_ZONE_TYPE,
     leafSize: (n) => (n.type === PLAN_EVENT_TYPE ? { width: PLAN_LAYOUT.EVENT, height: PLAN_LAYOUT.EVENT } : undefined),
@@ -475,8 +504,9 @@ const PLAN: NotationProfile = {
     snapsBack: isPlanActor,
     // Everything fixed drags, actors included: an actor drags only to be
     // dropped (drop-to-assign) and always snaps back after (see snapsBack
-    // above). A period does not: its days are edited in the source.
-    draggableWhenFixed: (n) => !isPlanPeriod(n),
+    // above). A period does not: its days are edited in the source. Nor does a
+    // lane header: a lane's place is the teams' order.
+    draggableWhenFixed: (n) => !isPlanPeriod(n) && n.type !== PLAN_LANE_TYPE,
   },
   // A dependency's drops cross every row between its two bars: under them it
   // vanishes behind each one, so plan edges are drawn over the bars.

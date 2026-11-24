@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useRef, type MutableRefObject } from 'react';
-import { compileView, type CompiledView, type DiagramModel, type ViewNode } from '@diagc/core/internal';
+import {
+  compileView,
+  type CompiledView,
+  type DiagramModel,
+  type PlanViewOptions,
+  type ViewNode,
+} from '@diagc/core/internal';
 import type { NotationProfile } from '../notations';
 import type { Registry, TypeStyle } from '../registry';
 import { neverFolds } from './useNotation';
@@ -14,7 +20,14 @@ export interface CompiledViewInput {
   drillRoot: string | undefined;
   /** what is on screen: the plane-switch mapping in useDrillNavigation reads it */
   visibleRef: MutableRefObject<string[]>;
+  /** the plan's team lanes and hidden actors (NotationProfile.regroup); absent,
+   * ungrouped with nothing hidden. Whether the view is an opened zone's is
+   * `drillRoot`'s to say. */
+  grouping?: Pick<PlanViewOptions, 'grouped' | 'hidden'>;
 }
+
+/** ungrouped, nothing hidden: one stable identity, so the memo keeps its input */
+const UNGROUPED: Pick<PlanViewOptions, 'grouped' | 'hidden'> = { grouped: false, hidden: new Set() };
 
 export interface CompiledViewState {
   compiled: CompiledView;
@@ -55,7 +68,7 @@ export function restingPins(
 
 /** What is drawn: the view compiled from the model, the pins, the layers and the drill. */
 export function useCompiledView(input: CompiledViewInput): CompiledViewState {
-  const { props, profile, typeRegistry, focus, drillRoot, visibleRef } = input;
+  const { props, profile, typeRegistry, focus, drillRoot, visibleRef, grouping = UNGROUPED } = input;
   // The host's own pins still feed the chips, so nothing else changes.
   const effectivePins = useMemo(
     () => restingPins(props.model, profile, typeRegistry, props.pins),
@@ -69,7 +82,7 @@ export function useCompiledView(input: CompiledViewInput): CompiledViewState {
     [drillRoot, profile, props.model, props.plane],
   );
 
-  const compiled = useMemo(() => {
+  const base = useMemo(() => {
     const raw = compileView(props.model, {
       // drilled → `root` drives visibility; otherwise `focus` (pins + the plane
       // sheet-flip). Identical for view and edit — only affordances differ.
@@ -87,6 +100,17 @@ export function useCompiledView(input: CompiledViewInput): CompiledViewState {
     if (hidden === undefined || !raw.edges.some((e) => hidden(e.kind))) return raw;
     return { ...raw, edges: raw.edges.filter((e) => !hidden(e.kind)) };
   }, [props.model, props.plane, focus, drillRoot, carry, effectivePins, props.activeLayers, profile]);
+  // Lanes and hiding run on the compiled view, in a memo of their own: a
+  // toggle re-runs only this (planTint rebuilds a node map per call), and an
+  // unchanged input hands the same view on, which every per-node cache keys
+  // its identity on. Inside an opened zone there are no lanes (`opened`).
+  const { grouped, hidden } = grouping;
+  const regroup = profile.regroup;
+  const opened = drillRoot !== undefined;
+  const compiled = useMemo(
+    () => (regroup === undefined ? base : regroup(base, props.model, props.plane, { grouped, hidden, opened })),
+    [regroup, base, props.model, props.plane, grouped, hidden, opened],
+  );
   // Render-phase ref, the strokesRef pattern: useLayoutApi's snapshotPositions
   // needs compiled.externals to drop stub ids, but that effect only re-runs on
   // [layoutApiRef, reactFlow] — so it reads `compiled` through a ref kept

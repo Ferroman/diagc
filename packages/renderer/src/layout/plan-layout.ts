@@ -5,6 +5,7 @@ import {
   isPlanActor,
   isPlanEvent,
   isPlanZone,
+  PLAN_LANE_TYPE,
   PLAN_NOTATION,
   PLAN_ROLES,
   isPlanPeriod,
@@ -17,6 +18,7 @@ import {
   type BoxSize,
   type DiagramModel,
   type DiagramNode,
+  type PlanChildren,
   type PlanGraph,
   type PlanSpan,
   type PlanRole,
@@ -26,6 +28,7 @@ import {
 import type { NodeChip } from '../notations';
 import { textWidth, wrapText } from './box-size';
 import type { LayoutResult, NodeGeometry, NotationLayoutInput } from './layout';
+import { placeLanes, viewKids } from './plan-lanes';
 
 /** The schedule's fixed geometry. `DAY` is the default scale (px per calendar
  * day) and the unit saved positions are kept in; the view can stretch time to
@@ -33,7 +36,8 @@ import type { LayoutResult, NodeGeometry, NotationLayoutInput } from './layout';
  * the rest are the strip, row and column sizes every expectation derives from.
  * `ROSTER_GAP` is both the roster's horizontal card spacing and the vertical
  * gap between its last row and the header; `ROW_GAP` (shared with a zone's own
- * child rows) spaces the roster's rows from each other. */
+ * child rows) spaces the roster's rows from each other. `LANE_H` is a grouped
+ * chart's lane header row (plan-lanes.ts). */
 const MONTH_H = 22;
 const WEEK_H = 22;
 const DAY_H = 30;
@@ -56,6 +60,7 @@ export const PLAN_LAYOUT = {
   DAY_H,
   HEADER_H: MONTH_H + WEEK_H + DAY_H,
   ROSTER_GAP: 24,
+  LANE_H: 24,
 } as const;
 
 /** What a zone's text is estimated with, read off styles.css: a zone with rows
@@ -117,10 +122,11 @@ const scaledX = (x: number, dayWidth: number): number => (x * dayWidth) / PLAN_L
 /** x of the chart's first day: where the roster and the strays line up. The
  * origin is 1 January, so a plan opening in November would otherwise leave
  * them most of a year's canvas to the left of the bars. 0 with nothing dated. */
-const chartLeft = (run: PlanRun): number => (run.range !== undefined ? planX(run.range.start, run.origin, run.day) : 0);
+export const chartLeft = (run: PlanRun): number =>
+  run.range !== undefined ? planX(run.range.start, run.origin, run.day) : 0;
 
 /** One plan arrangement under way: what it reads, and the maps every step fills. */
-interface PlanRun {
+export interface PlanRun {
   graph: PlanGraph;
   /** the origin day: 1 January of the earliest year */
   origin: number;
@@ -141,6 +147,12 @@ interface PlanRun {
   positions: Record<string, Point> | undefined;
   sizeHints: ReadonlyMap<string, BoxSize> | undefined;
   byId: ReadonlyMap<string, DiagramNode>;
+  /** the model id a canvas id stands for: a lane copy's zone, else itself */
+  realOf: (id: string) => string;
+  /** a zone's rows, events and free-form children by canvas id: a lane copy's
+   * are its view children (only its own lane's rows), any other zone's the
+   * plan graph's — which `shown` then filters, as a fold or a layer hides them */
+  kidsOf: (id: string) => PlanChildren;
   /** the role chips per zone, which share a zone's title line */
   chips: ReadonlyMap<string, NodeChip[]>;
   geometry: Map<string, NodeGeometry>;
@@ -150,9 +162,13 @@ interface PlanRun {
   viewShift: Map<string, number>;
 }
 
-function planRun({ view, model, plane, sizeHints, positions, root, dayWidth }: NotationLayoutInput): PlanRun {
+const NO_KIDS: PlanChildren = { zones: [], events: [], others: [] };
+
+function planRun(input: NotationLayoutInput): PlanRun {
+  const { view, model, plane, sizeHints, positions, root, dayWidth } = input;
   const graph = planGraphCached(model, plane);
   const stubs = view.externals ?? new Map<string, string>();
+  const copies = view.copies ?? new Map<string, string>();
   const shown = new Set<string>();
   const collapsed = new Set<string>();
   const walk = (n: ViewNode): void => {
@@ -161,6 +177,7 @@ function planRun({ view, model, plane, sizeHints, positions, root, dayWidth }: N
     n.children.forEach(walk);
   };
   view.roots.forEach(walk);
+  const copyKids = viewKids(view);
   return {
     graph,
     origin: graph.origin ?? 0,
@@ -173,12 +190,17 @@ function planRun({ view, model, plane, sizeHints, positions, root, dayWidth }: N
     collapsed,
     positions,
     sizeHints,
-    // a stub is in the drilled view, not the model: it is looked up like any node
+    // a stub is in the drilled view, not the model, and so is a lane header:
+    // each is looked up like any node
     byId: new Map([
       ...model.nodes.map((n) => [n.id, n] as const),
-      ...view.roots.filter((r) => stubs.has(r.id)).map((r) => [r.id, r.node] as const),
+      ...view.roots
+        .filter((r) => stubs.has(r.id) || r.node.type === PLAN_LANE_TYPE)
+        .map((r) => [r.id, r.node] as const),
     ]),
-    chips: planChips(model, plane),
+    realOf: (id) => copies.get(id) ?? id,
+    kidsOf: (id) => copyKids.get(id) ?? graph.children.get(id) ?? NO_KIDS,
+    chips: planChips(model, plane, input.hidden),
     geometry: new Map(),
     fixed: new Set(),
     lockedX: new Set(),
@@ -186,7 +208,9 @@ function planRun({ view, model, plane, sizeHints, positions, root, dayWidth }: N
   };
 }
 
-const hint = (run: PlanRun, id: string): BoxSize => run.sizeHints?.get(id) ?? LEAF_SIZE;
+// a copy is measured like its zone until the canvas has measured it itself
+const hint = (run: PlanRun, id: string): BoxSize =>
+  run.sizeHints?.get(id) ?? run.sizeHints?.get(run.realOf(id)) ?? LEAF_SIZE;
 
 /** short/long labels per role — the chip's `O`/`E`/`C` initial and the role
  * chip menu's item text (see RoleChipMenu). */
@@ -200,8 +224,14 @@ export const ROLE_LABEL: Record<PlanRole, { initial: string; title: string }> = 
  * word of the name), titled `Owner: Alice Ng`, in the actor's colour. Reads
  * the relation's `from` node whatever its type — a person or a team, alike.
  * The badge row draws them (the notation's `chips`); the layout measures
- * them, since they share a line with the zone's name. */
-export function planChips(model: DiagramModel, plane: string | undefined): ReadonlyMap<string, NodeChip[]> {
+ * them, since they share a line with the zone's name. A `hidden` actor has
+ * none: hidden means out of the picture, and the name row is measured
+ * without it. */
+export function planChips(
+  model: DiagramModel,
+  plane: string | undefined,
+  hidden?: ReadonlySet<string>,
+): ReadonlyMap<string, NodeChip[]> {
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
   const out = new Map<string, NodeChip[]>();
   for (const id of planGraphCached(model, plane).zones) {
@@ -210,7 +240,7 @@ export function planChips(model: DiagramModel, plane: string | undefined): Reado
     for (const role of PLAN_ROLES) {
       for (const actorId of roles[role]) {
         const actor = byId.get(actorId);
-        if (actor === undefined) continue;
+        if (actor === undefined || hidden?.has(actorId) === true) continue;
         const first = actor.name.trim().split(/\s+/)[0] ?? actor.id;
         chips.push({
           role,
@@ -258,7 +288,7 @@ function titleBand(name: string, chips: readonly NodeChip[] | undefined, width: 
   return Math.max(PLAN_LAYOUT.TITLE_H, 2 * PAD_Y + text + gap);
 }
 
-const nodeOf = (run: PlanRun, id: string): DiagramNode => run.byId.get(id)!;
+const nodeOf = (run: PlanRun, id: string): DiagramNode => run.byId.get(run.realOf(id))!;
 
 /** Where a zone's bar begins. `spanOf` gives up on a reversed or malformed
  * span — a validation finding (`plan-span`, `plan-date`) the save reports —
@@ -267,23 +297,23 @@ const nodeOf = (run: PlanRun, id: string): DiagramNode => run.byId.get(id)!;
  * precede Start, dragging every nested zone and event with it. The layout's
  * job here is to leave the bar where the user can see and fix it. */
 const anchorOf = (run: PlanRun, n: DiagramNode): number => spanOf(n)?.start ?? dayOf(n.metadata?.start) ?? run.origin;
-const startOf = (run: PlanRun, id: string): number => anchorOf(run, nodeOf(run, id));
-const byStart = (run: PlanRun, ids: readonly string[]): string[] =>
+export const startOf = (run: PlanRun, id: string): number => anchorOf(run, nodeOf(run, id));
+export const byStart = (run: PlanRun, ids: readonly string[]): string[] =>
   ids.filter((id) => run.shown.has(id)).sort((a, b) => startOf(run, a) - startOf(run, b));
 
 /** lays out a zone's interior (children parent-relative) and returns its size */
-function layZone(run: PlanRun, id: string): BoxSize {
+export function layZone(run: PlanRun, id: string): BoxSize {
   const { BAR_H, TITLE_H, PAD, ROW_GAP, EVENT } = PLAN_LAYOUT;
   const { geometry, fixed, day: DAY } = run;
   const span = spanOf(nodeOf(run, id));
   const start = anchorOf(run, nodeOf(run, id));
   const width = span === undefined ? DAY : (span.end - span.start + 1) * DAY;
-  const kids = run.graph.children.get(id) ?? { zones: [], events: [], others: [] };
+  const kids = run.kidsOf(id);
   const zones = byStart(run, kids.zones);
   const others = kids.others.filter((c) => run.shown.has(c));
   const events = kids.events.filter((c) => run.shown.has(c));
   if (zones.length + others.length + events.length === 0) return { width, height: BAR_H };
-  const band = titleBand(nodeOf(run, id).name, run.chips.get(id), width);
+  const band = titleBand(nodeOf(run, id).name, run.chips.get(run.realOf(id)), width);
   let y = band;
   for (const c of zones) {
     const size = layZone(run, c);
@@ -297,10 +327,11 @@ function layZone(run: PlanRun, id: string): BoxSize {
   // belongs to (a since-shrunk zone, a stale drag) — and takes no flow slot.
   // Nothing else in `others` reads `positions`: a zone or event is never
   // free-form, and neither is a person (positions never even reaches those).
+  // A lane copy's child sits where the real one was saved.
   let posBottom: number | undefined;
   const flowed: string[] = [];
   for (const c of others) {
-    const pos = run.positions?.[c];
+    const pos = run.positions?.[run.realOf(c)];
     if (pos === undefined) {
       flowed.push(c);
       continue;
@@ -374,7 +405,7 @@ function foldedAway(run: PlanRun, id: string, height: number): number {
  * each zone moves up by what the folds wholly above it gave back. A zone beside
  * a folded one — sharing its lane, a little lower — is not below it, and stays
  * put rather than rising into the header. */
-function placeRootZones(run: PlanRun, roots: readonly string[]): number {
+export function placeRootZones(run: PlanRun, roots: readonly string[]): number {
   const rootZones = byStart(
     run,
     roots.filter((id) => isPlanZone(nodeOf(run, id))),
@@ -580,7 +611,12 @@ export function planLayout(input: NotationLayoutInput): LayoutResult {
   // a stub keeps its stand-in's type, but not its dates: never a row or a header event
   const own = roots.filter((id) => !run.stubs.has(id));
   const opened = run.root !== undefined && run.byId.has(run.root) && isPlanZone(nodeOf(run, run.root));
-  const y = opened ? placeOpenedZone(run, run.root!, own) : placeRootZones(run, own);
+  const lanes = input.view.lanes;
+  const y = opened
+    ? placeOpenedZone(run, run.root!, own)
+    : lanes !== undefined
+      ? placeLanes(run, lanes)
+      : placeRootZones(run, own);
   if (!opened) placeRootEvents(run, own);
   placePeriods(run, own);
   placeRoster(run, roots);

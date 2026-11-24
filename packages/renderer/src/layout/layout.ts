@@ -49,6 +49,9 @@ export interface NotationLayoutInput {
   /** px per day on a time axis (the plan's), as the view stretches it; absent,
    * the notation's default */
   dayWidth?: number;
+  /** the plan's hidden actors (PlanViewOptions.hidden): their chips are not
+   * drawn, so a title band is measured without them; absent, none */
+  hidden?: ReadonlySet<string>;
 }
 
 export interface NodeGeometry {

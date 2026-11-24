@@ -86,6 +86,13 @@ export interface NodeDataContext {
   /** hatched stretches per node id (profile.node.stripes): a plan bar's
    * interrupted days, drawn folded or open alike */
   stripes?: ReadonlyMap<string, NodeStripe[]>;
+  /** a grouped plan's lane copies: canvas id -> the model id it copies
+   * (CompiledView.copies). The notation's chips, sides and stripes are the
+   * model's, keyed by model id, so a copy reads them through this. */
+  copies?: ReadonlyMap<string, string>;
+  /** a grouped plan's team tints per copy id (plan-marks planTintStripes),
+   * drawn under the copy's period stripes */
+  tints?: ReadonlyMap<string, NodeStripe[]>;
   /** px per day (a plan's): an x-resized bar is never narrower than one day */
   dayWidth?: number;
   /** a container the notation never folds (useNotation's isAlwaysExpanded):
@@ -248,7 +255,7 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
     notation: ctx.notation,
     threats: threats.total > 0 ? threats : undefined,
     annotations: nodeAnnotations(n),
-    chips: ctx.nodeChips?.get(n.id),
+    chips: ctx.nodeChips?.get(ctx.copies?.get(n.id) ?? n.id),
     ...(n.node.type === SM_STATE_TYPE ? { behaviors: behaviorLines(n.node), composite: n.state !== 'leaf' } : {}),
     ...(n.node.type === SM_ZONE_TYPE && zoneNoteOf(n.node) !== undefined ? { zoneNote: zoneNoteOf(n.node) } : {}),
   };
@@ -272,10 +279,14 @@ export function buildNodeData(n: ViewNode, ctx: NodeDataContext): DiagramNodeDat
 function bindNotationMarks(data: DiagramNodeData, n: ViewNode, ctx: NodeDataContext): void {
   const separator = ctx.regionSeparators?.get(n.id);
   if (separator !== undefined) data.regionSeparator = separator;
-  const stripes = ctx.stripes?.get(n.id);
+  // a lane copy is its zone's bar: the zone's marks, plus its lane's tint
+  const real = ctx.copies?.get(n.id) ?? n.id;
+  const periods = ctx.stripes?.get(real);
+  const tints = ctx.tints?.get(n.id);
+  const stripes = tints === undefined ? periods : [...tints, ...(periods ?? [])];
   if (stripes !== undefined) data.stripes = stripes;
   if (n.state !== 'expanded') {
-    const labelSide = ctx.labelSides?.get(n.id);
+    const labelSide = ctx.labelSides?.get(real);
     if (labelSide !== undefined) data.labelSide = labelSide;
   } else if (ctx.isAlwaysExpanded?.(n.id) === true) {
     data.neverFolds = true;
@@ -507,6 +518,8 @@ const NODE_CTX_FIELDS = [
   'isAlwaysExpanded',
   'labelSides',
   'stripes',
+  'copies',
+  'tints',
   'dayWidth',
 ] as const;
 const _nodeCtxFields: SameKeys<keyof NodeDataContext, (typeof NODE_CTX_FIELDS)[number]> = true;

@@ -5,6 +5,7 @@ import {
   compileView,
   dayOf,
   model,
+  planView,
   type CompiledView,
   type DiagramModel,
 } from '@diagc/core/internal';
@@ -539,10 +540,13 @@ describe('planLayout', () => {
 });
 
 /** The plan example starter (.diagrams/src/examples/plan/starter.diagram.ts), as
- * a fixture: people, a team, roles, nested rows, a zone event, a top-level one. */
-function starter(): DiagramModel {
+ * a fixture: people, a team, roles, nested rows, a zone event, a top-level one;
+ * `early` adds an earlier zone than any, dana's. */
+function starter(early = false): DiagramModel {
   const m = model('launch-plan', { name: 'Launch plan' });
   const plan = m.plan();
+  if (early)
+    plan.zone('early', { name: 'Early', start: '2025-12-01', end: '2025-12-12' }).executor(plan.person('dana', 'Dana'));
   const alice = plan.person('alice', 'Alice Ng', { color: '#2f6fed' });
   const bob = plan.person('bob', 'Bob Lee', { color: '#b08ad9' });
   const chen = plan.person('chen', 'Chen Wu', { color: '#3a9d5d' });
@@ -610,5 +614,30 @@ describe('planLayout, pinned', () => {
       lockedX build discovery rollout
       viewShift rollout:-100"
     `);
+  });
+});
+
+describe('planLayout, hiding', () => {
+  it('hiding the earliest zone moves no other bar', () => {
+    const m = starter(true);
+    const all = planLayout({ view: view(m), model: m, plane: 'plan' });
+    expect(all.geometry.has('early')).toBe(true);
+    const hidden = new Set(['dana']);
+    const some = planLayout({
+      view: planView(view(m), m, 'plan', { grouped: false, hidden }),
+      model: m,
+      plane: 'plan',
+      hidden,
+    });
+    expect(some.geometry.has('early')).toBe(false);
+    for (const [id, g] of some.geometry) expect([id, g.x]).toEqual([id, all.geometry.get(id)!.x]);
+    // grouped too: every top-level copy keeps its zone's x
+    const lanes = planView(view(m), m, 'plan', { grouped: true, hidden });
+    const grouped = planLayout({ view: lanes, model: m, plane: 'plan', hidden });
+    const tops = (lanes.lanes ?? []).flatMap((l) => l.zones);
+    expect(tops.length).toBeGreaterThan(0);
+    for (const copy of tops) {
+      expect([copy, grouped.geometry.get(copy)!.x]).toEqual([copy, all.geometry.get(lanes.copies!.get(copy)!)!.x]);
+    }
   });
 });

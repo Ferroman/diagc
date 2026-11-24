@@ -268,11 +268,12 @@ describe('withBoxSizes', () => {
 });
 
 describe('LAYOUT_SIZED_TYPES', () => {
-  it('names exactly the fishbone types, the plan zone and the plan period, which their layout sizes', () => {
+  it('names exactly the fishbone types, the plan zone, period and lane header, which their layout sizes', () => {
     expect([...LAYOUT_SIZED_TYPES].sort()).toEqual([
       'fb-category',
       'fb-cause',
       'fb-effect',
+      'plan-lane',
       'plan-period',
       'plan-zone',
     ]);

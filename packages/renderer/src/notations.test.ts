@@ -6,9 +6,11 @@ import {
   NODE_TYPES,
   NOTATION_NODE_TYPES,
   NOTATION_RELATION_KINDS,
+  PLAN_LANE_TYPE,
   PLAN_PERSON_TYPE,
   PLAN_TEAM_TYPE,
   PLAN_ZONE_TYPE,
+  planView,
   RELATION_KINDS,
 } from '@diagc/core/internal';
 import { BONE_PALETTE, fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './layout/fishbone-layout';
@@ -262,6 +264,16 @@ describe('plan profile', () => {
     const drags = notationProfile('plan').node!.draggableWhenFixed!;
     expect(drags({ id: 'f', name: 'F', type: 'plan-period' })).toBe(false);
     expect(drags({ id: 'e', name: 'E', type: 'plan-event' })).toBe(true);
+  });
+
+  it("a lane header is not dragged: a lane's place is the teams' order", () => {
+    const drags = notationProfile('plan').node!.draggableWhenFixed!;
+    expect(drags({ id: 'h', name: 'Payments', type: PLAN_LANE_TYPE })).toBe(false);
+  });
+
+  it('regroups a compiled view with core planView', () => {
+    expect(notationProfile('plan').regroup).toBe(planView);
+    expect(notationProfile('c4').regroup).toBeUndefined();
   });
 
   it('owns the layout and the header, rests zones open, sizes events, hides the role kinds', () => {
