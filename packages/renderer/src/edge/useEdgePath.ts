@@ -34,6 +34,9 @@ export interface EdgePath {
   curve: EdgeCurve;
   /** where a bundle's joined label sits */
   label: Point;
+  /** drawn as the notation's own path (a plan's finish-to-start arrow), which
+   * has no side to fix: the fixed-side dots stay off */
+  elbowed: boolean;
   /** the spot elk reserved for the label (nothing else is routed through it),
    * moved onto the route as drawn; only while the route is drawn. A self-loop's
    * spot is above its crown. */
@@ -66,7 +69,7 @@ export function useEdgePath(
         : path,
     [data?.stylePreset, path, id],
   );
-  return { path, renderPath, curve, label, labelSpot };
+  return { path, renderPath, curve, label, labelSpot, elbowed: elbow !== undefined && !anchors.selfLoop };
 }
 
 /** the radius of an elbow's corners: rounded enough to read as one line
@@ -75,14 +78,18 @@ const ELBOW_CORNER = 4;
 
 // A notation's own path (a plan's finish-to-start arrow), from both boxes as
 // drawn, so it needs both ends measured; before that, and for a relation whose
-// author set a shape, the edge floats as any other.
+// author set a shape or a side, the edge floats as any other.
 function elbowOf(
   anchors: EdgeAnchors,
   data: DiagramEdgeData | undefined,
   profile: NotationProfile,
-): Omit<EdgePath, 'renderPath'> | undefined {
+): Omit<EdgePath, 'renderPath' | 'elbowed'> | undefined {
   const elbow = profile.edge?.elbow;
-  if (elbow === undefined || !anchors.measured || data?.relStyle?.shape !== undefined) return undefined;
+  const rel = data?.relStyle;
+  // what the author fixed by hand wins: a shape, or a side (set before the
+  // notation drew its own path, or in the JSON)
+  const authored = rel?.shape !== undefined || rel?.fromSide !== undefined || rel?.toSide !== undefined;
+  if (elbow === undefined || !anchors.measured || authored) return undefined;
   if (anchors.source === undefined || anchors.target === undefined) return undefined;
   const typeOf = (end: EndBox) => (end.node.data as { typeId?: string }).typeId;
   const drawn = elbow(
@@ -123,7 +130,11 @@ const stands = (box: EndBox | undefined, at: Point | undefined): boolean =>
   Math.abs(box.node.internals.positionAbsolute.x - at.x) < 0.5 &&
   Math.abs(box.node.internals.positionAbsolute.y - at.y) < 0.5;
 
-function routedPath(route: Point[], anchors: EdgeAnchors, data: DiagramEdgeData): Omit<EdgePath, 'renderPath'> {
+function routedPath(
+  route: Point[],
+  anchors: EdgeAnchors,
+  data: DiagramEdgeData,
+): Omit<EdgePath, 'renderPath' | 'elbowed'> {
   // The ends land on the boxes as DRAWN (measured), not as estimated — where
   // "the box" of a captioned icon includes the caption hanging under it: elk
   // was told about that strip (SizeHint.reserveBottom) and starts the line
@@ -144,7 +155,7 @@ function routedPath(route: Point[], anchors: EdgeAnchors, data: DiagramEdgeData)
 // A self-loop has no route (the layout leaves it out) and no facing side to
 // float to, so it is a loop standing out of the box. Its label rides beyond the
 // loop's crown, which is also where a bundle's joined label sits.
-function loopedPath(anchors: EdgeAnchors, data: DiagramEdgeData | undefined): Omit<EdgePath, 'renderPath'> {
+function loopedPath(anchors: EdgeAnchors, data: DiagramEdgeData | undefined): Omit<EdgePath, 'renderPath' | 'elbowed'> {
   const direction = data?.selfLoop?.direction ?? 'RIGHT';
   const index = data?.selfLoop?.index ?? 0;
   // unmeasured (first frame): the loop stands on the handle point
@@ -158,7 +169,7 @@ function floatingPath(
   anchors: EdgeAnchors,
   data: DiagramEdgeData | undefined,
   profile: NotationProfile,
-): Omit<EdgePath, 'renderPath'> {
+): Omit<EdgePath, 'renderPath' | 'elbowed'> {
   const rel = data?.relStyle;
   const shape = rel?.shape ?? 'curved';
   const params: EdgePathParams = {

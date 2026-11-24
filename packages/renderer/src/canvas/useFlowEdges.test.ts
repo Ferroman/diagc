@@ -60,8 +60,13 @@ describe('useFlowEdges', () => {
       ),
     );
     const z = result.current.rfEdges[0]!.zIndex!;
-    // a bar is drawn at React Flow's default 0 (an open zone at -1); a note at 2
-    expect(z).toBeGreaterThan(0);
+    // React Flow stacks a child at `parentZ >= childZ ? parentZ + 1 : childZ`
+    // (@xyflow/system adoptUserNodes), and a node wins a tie with an edge: a
+    // bar inside open zones four deep (each open zone at -1) still sits under
+    const OPEN = -1;
+    let deepest = OPEN;
+    for (const child of [OPEN, OPEN, OPEN, 0]) deepest = deepest >= child ? deepest + 1 : child;
+    expect(z).toBeGreaterThan(deepest);
     expect(z).toBeLessThan(
       toRfNoteNode({ id: 'n', position: { x: 0, y: 0 }, data: {} as never, draggable: false }).zIndex!,
     );

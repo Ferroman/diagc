@@ -2,10 +2,14 @@ import { PLAN_EVENT_TYPE, PLAN_ZONE_TYPE, type Point } from '@diagc/core/interna
 import { PLAN_LAYOUT } from '../layout/plan-layout';
 import type { NodeGeometry } from '../layout/layout';
 
-/** how far inside the first bar's end the arrow leaves it, and how far before
- * the dependent bar's start it turns into it: clear of the corner, short
- * enough to read as that bar's end and that bar's start */
+/** how far before the dependent bar's start the arrow turns into it: clear of
+ * the corner, short enough to read as that bar's start */
 export const ELBOW_STUB = 8;
+/** how far inside the first bar's end the arrow leaves it: clear of the
+ * comments badge hanging off that corner (an 18px pill at `bottom/right:
+ * -6px`, the note's opener) and of the 10px hit band either side of the line,
+ * which would otherwise take the badge's clicks */
+export const ELBOW_INSET = 24;
 
 /** one end of an edge: its box as drawn (absolute) and its node type */
 export type ElbowEnd = NodeGeometry & { type?: string };
@@ -40,7 +44,7 @@ export function planElbow(source: ElbowEnd, target: ElbowEnd): { points: Point[]
   const down = ty >= rowY(source);
   const edgeY = down ? source.y + source.height : source.y;
   const gapY = down ? edgeY + ROW_GAP / 2 : edgeY - ROW_GAP / 2;
-  const out = source.x + source.width - Math.min(ELBOW_STUB, source.width / 2);
+  const out = source.x + source.width - Math.min(ELBOW_INSET, source.width / 2);
   const into = tx - ELBOW_STUB;
   return {
     points: [

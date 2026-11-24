@@ -942,6 +942,17 @@ describe('DiagramEdge between measured nodes', () => {
     expect(pathOf(edgeBetween(nodes, {}))).toBe(FLOATING_PATH);
   });
 
+  it('a plan arrow offers no fixed-side dots (it has no side to fix); a side fixed earlier floats the edge, as a shape does', () => {
+    const zone = { typeId: 'plan-zone' };
+    const nodes = [box('a', 0, 0, undefined, zone), box('b', 300, 100, undefined, zone)];
+    const dots = { notation: 'plan' as const, onSetSide: vi.fn(), fixedSideDotsShown: true };
+    expect(edgeBetween(nodes, dots).container.querySelector('.dg-edge-pin')).toBeNull();
+    cleanup();
+    const fixed = edgeBetween(nodes, { ...dots, relStyle: { fromSide: 'bottom' } });
+    expect(fixed.container.querySelectorAll('.dg-edge-pin')).toHaveLength(2);
+    expect(pathOf(fixed)).toMatch(/ C/);
+  });
+
   it('leaves and meets each box on the border facing the other, not at the handles React Flow passed', () => {
     expect(pathOf(edgeBetween([box('a', 0, 0), box('b', 300, 0)], {}))).toBe('M100,20 C200,20 200,20 300,20');
   });

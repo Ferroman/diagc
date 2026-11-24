@@ -34,6 +34,7 @@ import {
 } from '@diagc/core/internal';
 import { fishboneEdgeColor, fishboneLayout, fishboneNodeColors } from './layout/fishbone-layout';
 import { GIT_LAYOUT, gitEdgeColor, gitLayout, gitNodeColors } from './layout/git-layout';
+import { ABOVE_BOXES_Z } from './canvas/stacking';
 import { planElbow, type ElbowEnd } from './edge/plan-elbow';
 import type { LayoutResult, NotationLayoutInput } from './layout/layout';
 import { PLAN_LAYOUT, planChips, planGraphCached, planLabelSides, planLayout } from './layout/plan-layout';
@@ -164,9 +165,9 @@ export interface NotationProfile {
      * no shape and this returns one: a plan's finish-to-start arrow between
      * two dated rows (edge/plan-elbow.ts) */
     elbow?: (source: ElbowEnd, target: ElbowEnd) => { points: Point[]; label: Point } | undefined;
-    /** React Flow's stacking order for every edge: above 0 draws them over the
-     * boxes (a box sits at 0, an open container at -1), and it must stay under
-     * a note (2, canvas/adapter.ts). Unset = React Flow's own, under the boxes. */
+    /** React Flow's stacking order for every edge: ABOVE_BOXES_Z draws them
+     * over the boxes however deep they nest, under the notes (canvas/adapter.ts).
+     * Unset = React Flow's own, under the boxes. */
     zIndex?: number;
   };
   /** what the notation draws above the diagram */
@@ -428,7 +429,7 @@ const PLAN: NotationProfile = {
   },
   // A dependency's drops cross every row between its two bars: under them it
   // vanishes behind each one, so plan edges are drawn over the bars.
-  edge: { hidden: isPlanRole, elbow: planElbow, zIndex: 1 },
+  edge: { hidden: isPlanRole, elbow: planElbow, zIndex: ABOVE_BOXES_Z },
   canvasOverlay: 'time-axis',
 };
 
