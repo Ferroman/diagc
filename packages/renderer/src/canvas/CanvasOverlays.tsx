@@ -19,6 +19,8 @@ export interface CanvasOverlaysProps {
   placed: boolean;
   flowDirection: LayoutDirection;
   today: string | null | undefined;
+  /** px per day on the time axis */
+  dayWidth: number;
   /** the loop badges to draw, when they are shown */
   loopEdges: LoopEdgeInput[] | null;
   rough: StylePreset['rough'];
@@ -41,6 +43,7 @@ export function CanvasOverlays(props: CanvasOverlaysProps): ReactElement | null 
           model={props.model}
           plane={props.plane}
           today={props.today}
+          dayWidth={props.dayWidth}
           {...(props.drillRoot !== undefined ? { root: props.drillRoot } : {})}
         />
       )}

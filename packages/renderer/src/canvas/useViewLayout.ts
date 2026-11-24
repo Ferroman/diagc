@@ -44,6 +44,8 @@ export interface ViewLayoutInput {
   viewPositions: Record<string, Point>;
   /** the drilled container, handed to a notation's own layout */
   drillRoot?: string | undefined;
+  /** px per day, handed to a notation that stretches time (undefined otherwise) */
+  dayWidth?: number | undefined;
 }
 
 export interface ViewLayout {
@@ -212,6 +214,7 @@ interface LayoutRunInput {
   partitions: ReadonlyMap<string, number> | undefined;
   layoutPositions: Record<string, Point> | undefined;
   drillRoot: string | undefined;
+  dayWidth: number | undefined;
 }
 
 type LayoutRun = Pick<
@@ -248,6 +251,7 @@ function useLayoutRun(run: LayoutRunInput): LayoutRun {
               sizeHints: run.sizes,
               positions: run.layoutPositions,
               ...(run.drillRoot !== undefined ? { root: run.drillRoot } : {}),
+              ...(run.dayWidth !== undefined ? { dayWidth: run.dayWidth } : {}),
             }),
           )
         : layoutView(
@@ -294,6 +298,7 @@ function useLayoutRun(run: LayoutRunInput): LayoutRun {
     run.partitions,
     run.layoutPositions,
     run.drillRoot,
+    run.dayWidth,
   ]);
 
   return { geometry, geometryRef, routes, labelSpots, fixed, lockedX, viewShift, savedFrame, settledFor };
@@ -448,6 +453,7 @@ export function useViewLayout(input: ViewLayoutInput): ViewLayout {
       partitions,
       layoutPositions,
       drillRoot: input.drillRoot,
+      dayWidth: input.dayWidth,
     },
   );
 

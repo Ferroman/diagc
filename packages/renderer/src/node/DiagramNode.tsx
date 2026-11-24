@@ -131,6 +131,8 @@ export interface DiagramNodeData {
   /** with onResize: the notation resizes this node on x only, from either
    * side (a zone's width is its dates) */
   resizeAxis?: 'x';
+  /** the narrowest an x-resize may make the box: a plan bar's one day */
+  resizeMin?: number;
   /** this node is the drop target under the pointer during a single-node
    * drag that could land on it (see EditingApi.onDropInto) — draws the
    * notation's drag-over outline. Like `selected`, but on `data`: useNodeDragging

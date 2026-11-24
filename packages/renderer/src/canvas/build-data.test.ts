@@ -757,6 +757,7 @@ describe('the data caches compare every context field', () => {
     isAlwaysExpanded: { isAlwaysExpanded: () => false },
     labelSides: { labelSides: new Map() },
     stripes: { stripes: new Map() },
+    dayWidth: { dayWidth: 40 },
   };
   it.each(Object.entries(nodeVariants))('rebuilds the node data when only %s changes', (_field, over) => {
     const n = viewNode();

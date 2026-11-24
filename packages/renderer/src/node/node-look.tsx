@@ -87,14 +87,14 @@ export function XResizer({ id, data, selected }: { id: string; data: DiagramNode
       <NodeResizeControl
         position="left"
         resizeDirection="horizontal"
-        minWidth={PLAN_LAYOUT.DAY}
+        minWidth={data.resizeMin ?? PLAN_LAYOUT.DAY}
         className="dg-x-resize"
         onResizeEnd={end}
       />
       <NodeResizeControl
         position="right"
         resizeDirection="horizontal"
-        minWidth={PLAN_LAYOUT.DAY}
+        minWidth={data.resizeMin ?? PLAN_LAYOUT.DAY}
         className="dg-x-resize"
         onResizeEnd={end}
       />

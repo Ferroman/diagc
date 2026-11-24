@@ -28,6 +28,7 @@ import { useCanvasClicks } from './useCanvasClicks';
 import { useCanvasCommands } from './useCanvasCommands';
 import { useCommitMoves } from './useCommitMoves';
 import { useCompiledView } from './useCompiledView';
+import { useCentreDayPan, useDayWidth } from './useDayWidth';
 import { useDrillNavigation } from './useDrillNavigation';
 import { useDropAndPaste } from './useDropAndPaste';
 import { useEditRequests } from './useEditRequests';
@@ -70,8 +71,10 @@ function Inner(props: DiagramViewProps) {
   const chromeless = props.chrome === false;
   const preset = useMemo(() => stylePreset(props.styleId), [props.styleId]);
   const icons = useMemo(() => props.icons ?? createIconRegistry(), [props.icons]);
-  const notation = useNotation(props);
+  const days = useDayWidth(props);
+  const notation = useNotation(props, days.width);
   const { profile, typeRegistry } = notation;
+  const stretches = profile.stretchesTime === true;
   // A palette preset's colour for each node type, over the whole model (type-hues.ts)
   const hues = useMemo(() => typeHuesOf(preset, props.model, typeRegistry), [preset, props.model, typeRegistry]);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -182,7 +185,9 @@ function Inner(props: DiagramViewProps) {
     ignoreSavedPositions: props.ignoreSavedPositions,
     viewPositions: moves.viewPositions,
     drillRoot,
+    dayWidth: stretches ? days.width : undefined,
   });
+  useCentreDayPan({ days, geometry: viewLayout.geometry, reactFlow, wrapperRef });
   const frames = useMoveFrames(compiled, viewLayout);
   // a resize is reported at the saved position, as a move is (saved-frame.ts);
   // the refs are stable, so this changes only with `edit`
@@ -422,6 +427,7 @@ function Inner(props: DiagramViewProps) {
                 keyHints={props.keyHints}
                 builtinKeys={props.builtinKeys}
                 colorMode={props.colorMode}
+                {...(stretches ? { days: { width: days.width, step: days.step } } : {})}
                 onToggleTheme={props.onToggleTheme}
               />
             )}
@@ -433,6 +439,7 @@ function Inner(props: DiagramViewProps) {
               placed={viewLayout.placedGeometry !== null}
               flowDirection={viewLayout.flowDirection}
               today={props.today}
+              dayWidth={days.width}
               loopEdges={loops.showLoops ? loops.loopEdges : null}
               rough={preset.rough}
               loopNodeFilter={editing ? null : loops.selectedNode}

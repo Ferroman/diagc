@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import type { DiagramNode } from '@diagc/core/internal';
+import { PLAN_LAYOUT } from '../layout/plan-layout';
 import { notationProfile, type NotationProfile } from '../notations';
 import { createKindRegistry, createTypeRegistry, type KindStyle, type Registry, type TypeStyle } from '../registry';
 import type { NodeDataContext } from './build-data';
@@ -21,6 +22,8 @@ export interface Notation {
   labelSides: NodeDataContext['labelSides'];
   /** hatched stretches over boxes (a plan bar's interrupted days) */
   stripes: NodeDataContext['stripes'];
+  /** px per day, for a notation that stretches time (else unused) */
+  dayWidth: number;
 }
 
 /** A container the notation never folds: git lanes are rows, not boxes with an inside. */
@@ -34,6 +37,7 @@ export function neverFolds(node: DiagramNode, profile: NotationProfile, typeRegi
 /** The notation the canvas draws in, its registries, and what it derives for this model and plane. */
 export function useNotation(
   props: Pick<DiagramViewProps, 'notation' | 'typeRegistry' | 'kindRegistry' | 'model' | 'plane'>,
+  dayWidth: number = PLAN_LAYOUT.DAY,
 ): Notation {
   const profile = useMemo(() => notationProfile(props.notation), [props.notation]);
   const typeRegistry = useMemo(
@@ -62,10 +66,24 @@ export function useNotation(
   );
   // Derived the same way as nodeColors: id-keyed, one derivation per model/plane.
   const nodeChips = useMemo(() => profile.node?.chips?.(props.model, props.plane), [profile, props.model, props.plane]);
+  // both measure in px, so a stretch re-derives them (a wider bar may fit its name)
   const labelSides = useMemo(
-    () => profile.node?.labelSides?.(props.model, props.plane),
-    [profile, props.model, props.plane],
+    () => profile.node?.labelSides?.(props.model, props.plane, dayWidth),
+    [profile, props.model, props.plane, dayWidth],
   );
-  const stripes = useMemo(() => profile.node?.stripes?.(props.model, props.plane), [profile, props.model, props.plane]);
-  return { profile, typeRegistry, kindRegistry, isAlwaysExpanded, nodeColors, nodeChips, labelSides, stripes };
+  const stripes = useMemo(
+    () => profile.node?.stripes?.(props.model, props.plane, dayWidth),
+    [profile, props.model, props.plane, dayWidth],
+  );
+  return {
+    profile,
+    typeRegistry,
+    kindRegistry,
+    isAlwaysExpanded,
+    nodeColors,
+    nodeChips,
+    labelSides,
+    stripes,
+    dayWidth,
+  };
 }

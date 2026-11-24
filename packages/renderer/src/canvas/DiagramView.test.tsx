@@ -2744,6 +2744,58 @@ describe('plan notation', () => {
   });
 });
 
+describe('plan notation: stretching time', () => {
+  function plan(id = 'p') {
+    const m = model(id);
+    const p = m.plan();
+    p.zone('q', { name: 'Q1', start: '2026-01-05', end: '2026-01-30' });
+    p.zone('dep', { name: 'Dep', start: '2026-02-02', end: '2026-02-06' });
+    return m.toJSON();
+  }
+  const widthOf = (container: HTMLElement, id: string, px: number) =>
+    waitFor(() => {
+      const el = container.querySelector<HTMLElement>(`.react-flow__node[data-id="${id}"]`);
+      expect(el?.style.width).toBe(`${px}px`);
+    });
+
+  it('a plan offers Narrower and Wider days; Wider re-lays a zone at 30 px per day', async () => {
+    const { container } = render(<DiagramView model={plan()} plane="plan" notation="plan" />);
+    await widthOf(container, 'dep', 5 * 20);
+    expect(screen.getByRole('button', { name: 'Narrower days' })).toHaveProperty('disabled', true);
+    fireEvent.click(screen.getByRole('button', { name: 'Wider days' }));
+    await widthOf(container, 'dep', 5 * 30);
+    expect(screen.getByRole('button', { name: 'Narrower days' })).toHaveProperty('disabled', false);
+  });
+
+  it('a non-plan diagram and a chromeless plan offer no day control', () => {
+    const { unmount } = render(<DiagramView model={model('c').toJSON()} />);
+    expect(screen.queryByRole('button', { name: 'Wider days' })).toBeNull();
+    unmount();
+    render(<DiagramView model={plan()} plane="plan" notation="plan" chrome={false} />);
+    expect(screen.queryByRole('button', { name: 'Wider days' })).toBeNull();
+  });
+
+  it('controlled: the dayWidth prop drives the layout and a click reports the next step', async () => {
+    const onDayWidthChange = vi.fn();
+    const { container } = render(
+      <DiagramView model={plan()} plane="plan" notation="plan" dayWidth={40} onDayWidthChange={onDayWidthChange} />,
+    );
+    await widthOf(container, 'dep', 5 * 40);
+    fireEvent.click(screen.getByRole('button', { name: 'Wider days' }));
+    expect(onDayWidthChange).toHaveBeenLastCalledWith(60);
+    // the host owns it: nothing moves until the prop does
+    await widthOf(container, 'dep', 5 * 40);
+  });
+
+  it('opening another diagram resets the width to 20', async () => {
+    const { container, rerender } = render(<DiagramView model={plan('a')} plane="plan" notation="plan" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Wider days' }));
+    await widthOf(container, 'dep', 5 * 30);
+    rerender(<DiagramView model={plan('b')} plane="plan" notation="plan" />);
+    await widthOf(container, 'dep', 5 * 20);
+  });
+});
+
 describe('plan notation: selecting an actor lights up its zones, and a zone its actors', () => {
   // alice owns `owned` only; bob executes `other` only — no relation of any
   // kind joins the two zones, so the only thing that could connect them
