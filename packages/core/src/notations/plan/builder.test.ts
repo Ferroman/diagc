@@ -101,6 +101,21 @@ describe('plan', () => {
     p.team('growth', 'Growth', { plane: 'arch' });
   });
 
+  it('a team lists its members, one member-of relation per person', () => {
+    const m = model('p');
+    const plan = m.plan();
+    const alice = plan.person('alice');
+    const bob = plan.person('bob');
+    const pay = plan.team('pay', 'Payments');
+    pay.member(alice, bob);
+    const json = m.toJSON();
+    expect(json.relations.map((r) => [r.from, r.to, r.kind])).toEqual([
+      ['alice', 'pay', 'member-of'],
+      ['bob', 'pay', 'member-of'],
+    ]);
+    expect(validate(json)).toEqual([]);
+  });
+
   it('a period carries its dates and one interrupts relation per row', () => {
     const m = model('p');
     const p = m.plan();

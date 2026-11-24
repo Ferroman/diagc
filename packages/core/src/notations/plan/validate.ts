@@ -4,6 +4,9 @@ import { notationPlane } from '../../planes';
 import { report, type Ctx } from '../../validate/context';
 import {
   PLAN_INTERRUPTS,
+  PLAN_MEMBER_OF,
+  PLAN_PERSON_TYPE,
+  PLAN_TEAM_TYPE,
   PLAN_NOTATION,
   atOf,
   dayOf,
@@ -37,6 +40,7 @@ export function validatePlan(ctx: Ctx): void {
   if (where === undefined) return;
   checkRoleTargets(ctx, byId);
   checkInterrupts(ctx, byId);
+  checkMembers(ctx, byId);
 }
 
 /** a zone or a period has a real start and end, in order; an event a real `at` */
@@ -129,6 +133,24 @@ function checkInterrupts(ctx: Ctx, byId: ReadonlyMap<string, DiagramNode>): void
       issues,
       'plan-interrupts',
       `Relation '${r.id}' (interrupts) must run from a plan-period to a plan-zone; '${r.from}' is ${from.type ?? 'untyped'}, '${r.to}' is ${to.type ?? 'untyped'}`,
+      r.id,
+    );
+  }
+}
+
+/** under the plan notation, `member-of` runs from a person to a team */
+function checkMembers(ctx: Ctx, byId: ReadonlyMap<string, DiagramNode>): void {
+  const { issues, model } = ctx;
+  for (const r of model.relations) {
+    if (r.kind !== PLAN_MEMBER_OF) continue;
+    const from = byId.get(r.from);
+    const to = byId.get(r.to);
+    if (from === undefined || to === undefined) continue; // dangling ends are validateRelations' finding
+    if (from.type === PLAN_PERSON_TYPE && to.type === PLAN_TEAM_TYPE) continue;
+    report(
+      issues,
+      'plan-member',
+      `Relation '${r.id}' (member-of) must run from a person to a team; '${r.from}' is ${from.type ?? 'untyped'}, '${r.to}' is ${to.type ?? 'untyped'}`,
       r.id,
     );
   }

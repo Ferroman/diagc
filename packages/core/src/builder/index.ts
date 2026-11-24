@@ -27,6 +27,7 @@ export {
   PlanBuilder,
   ZoneBuilder,
   PeriodBuilder,
+  TeamBuilder,
   type ZoneOpts,
   type EventOpts,
   type PeriodOpts,

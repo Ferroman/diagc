@@ -4,6 +4,7 @@ import { defined } from '../../util';
 import {
   PLAN_EVENT_TYPE,
   PLAN_INTERRUPTS,
+  PLAN_MEMBER_OF,
   PLAN_PERIOD_TYPE,
   PLAN_PERSON_TYPE,
   PLAN_TEAM_TYPE,
@@ -106,6 +107,23 @@ export class PeriodBuilder extends NodeRef {
   }
 }
 
+/** A team: a NodeRef (so comment/link compose) that can name its members.
+ * Membership is a relation person -> team, the way `interrupts` is period -> zone. */
+export class TeamBuilder extends NodeRef {
+  constructor(
+    id: string,
+    private readonly m: ModelBuilder,
+  ) {
+    super(id, m);
+  }
+
+  /** the people on this team: one `member-of` relation each */
+  member(...people: NodeRef[]): this {
+    for (const p of people) this.m.addRelation(p, this, { kind: PLAN_MEMBER_OF });
+    return this;
+  }
+}
+
 /** Root-level plan helpers; see ZoneBuilder for the nested ones. */
 export class PlanBuilder {
   constructor(
@@ -141,12 +159,13 @@ export class PlanBuilder {
   }
   /** a team to hand roles to, same deal as `person` — an actor that holds a
    * role but is never an individual. Same forced-plane guard. */
-  team(id: string, name?: string, opts: Omit<ElementOpts, 'plane'> = {}): NodeRef {
-    return this.m.node(id, {
+  team(id: string, name?: string, opts: Omit<ElementOpts, 'plane'> = {}): TeamBuilder {
+    this.m.node(id, {
       type: PLAN_TEAM_TYPE,
       plane: this.plane,
       ...defined({ name }),
       ...opts,
     });
+    return new TeamBuilder(id, this.m);
   }
 }

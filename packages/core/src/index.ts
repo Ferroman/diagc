@@ -45,6 +45,7 @@ export {
   PlanBuilder,
   ZoneBuilder,
   PeriodBuilder,
+  TeamBuilder,
   SmElementRef,
   SmRegionRef,
   SmScope,

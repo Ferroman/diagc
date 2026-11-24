@@ -18,6 +18,9 @@ export const PLAN_EVENT_TYPE = 'plan-event' as const;
 export const PLAN_PERIOD_TYPE = 'plan-period' as const;
 /** The relation kind from a period to each zone it pauses. Never an arrow. */
 export const PLAN_INTERRUPTS = 'interrupts' as const;
+/** The relation kind from a person to the team they belong to. Never an arrow:
+ * it is what grouping the chart by team reads. */
+export const PLAN_MEMBER_OF = 'member-of' as const;
 /** The type a person carries. Deliberately the generic `person` type, not a
  * `plan-person` of its own — a person is an ordinary node the plan merely
  * reads, and keeps its pill on every other notation. It is named here because

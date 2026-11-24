@@ -250,6 +250,10 @@ describe('plan profile', () => {
     expect(carry.filter((id) => !['alice'].includes(id))).toEqual(['on-a1', 'everyone']);
   });
 
+  it('member-of is never drawn as an edge', () => {
+    expect(notationProfile('plan').edge?.hidden?.('member-of')).toBe(true);
+  });
+
   it('interrupts is never drawn as an edge', () => {
     expect(notationProfile('plan').edge?.hidden?.('interrupts')).toBe(true);
   });

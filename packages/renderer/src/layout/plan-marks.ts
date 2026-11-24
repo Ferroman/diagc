@@ -1,5 +1,6 @@
 import {
   PLAN_INTERRUPTS,
+  PLAN_MEMBER_OF,
   isPlanRole,
   periodSpanOf,
   planPeriodsOf,
@@ -116,7 +117,7 @@ function arrowEnds(model: DiagramModel, graph: PlanGraph, end: 'from' | 'to'): S
     return chain;
   };
   for (const r of model.relations) {
-    if (isPlanRole(r.kind) || r.kind === PLAN_INTERRUPTS) continue;
+    if (isPlanRole(r.kind) || r.kind === PLAN_INTERRUPTS || r.kind === PLAN_MEMBER_OF) continue;
     const holdsOther = new Set(upFrom(end === 'from' ? r.to : r.from));
     for (const id of upFrom(r[end])) {
       if (holdsOther.has(id)) break;

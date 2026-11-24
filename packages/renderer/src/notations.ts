@@ -10,6 +10,7 @@ import {
   PLAN_ACTOR_TYPES,
   PLAN_EVENT_TYPE,
   PLAN_INTERRUPTS,
+  PLAN_MEMBER_OF,
   PLAN_NOTATION,
   PLAN_ZONE_TYPE,
   SECOND_ORDER_NOTATION,
@@ -479,8 +480,13 @@ const PLAN: NotationProfile = {
   },
   // A dependency's drops cross every row between its two bars: under them it
   // vanishes behind each one, so plan edges are drawn over the bars.
-  // A period's `interrupts` is drawn as the stripe on the bar, never a line.
-  edge: { hidden: (k) => isPlanRole(k) || k === PLAN_INTERRUPTS, endToStart: planArrow, zIndex: ABOVE_BOXES_Z },
+  // A period's `interrupts` is drawn as the stripe on the bar, never a line;
+  // `member-of` is read by grouping, never drawn.
+  edge: {
+    hidden: (k) => isPlanRole(k) || k === PLAN_INTERRUPTS || k === PLAN_MEMBER_OF,
+    endToStart: planArrow,
+    zIndex: ABOVE_BOXES_Z,
+  },
   canvasOverlay: 'time-axis',
   stretchesTime: true,
 };

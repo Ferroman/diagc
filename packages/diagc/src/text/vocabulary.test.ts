@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_KIND_STYLES, DEFAULT_TYPE_STYLES, type ShapeId } from '../../../renderer/src/registry';
-import { KIND_LOOKS, kindLook, neverFolds, subtitleOf, TYPE_LOOKS, typeLook, type TextShape } from './vocabulary';
+import {
+  KIND_LOOKS,
+  hidesKind,
+  kindLook,
+  neverFolds,
+  subtitleOf,
+  TYPE_LOOKS,
+  typeLook,
+  type TextShape,
+} from './vocabulary';
 
 // The CLI cannot import the renderer, so the text renderer keeps its own table of how
 // each type and kind looks; these tests hold the two together. The map from the
@@ -95,6 +104,13 @@ describe('the kind table', () => {
 
   it('draws git links as the git notation does: dashed, without heads', () => {
     expect(kindLook({ kind: 'commit' }, 'git-graph')).toEqual({ line: 'dashed', end: 'none' });
+  });
+});
+
+describe('hidesKind', () => {
+  it('hides member-of in a plan only', () => {
+    expect(hidesKind('member-of', 'plan')).toBe(true);
+    expect(hidesKind('member-of', undefined)).toBe(false);
   });
 });
 

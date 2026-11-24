@@ -455,7 +455,7 @@ A plane with `notation: 'plan'` is a schedule: a calendar runs left to right and
 | `person` | the ordinary pill | An individual actor. Listed in a roster strip above the header (left to right, wrapping into further rows); attached to zones by role relations, never containment. |
 | `team` | the ordinary pill, a `users` icon | A group actor — same deal as `person`, drawn in the same roster and holding roles the same way, for when a role belongs to a team rather than one individual. |
 
-Relation kinds `owns`, `executes`, `checks` — drawn **from the actor (a person or a team) to the zone**, never as arrows: each becomes a chip on the zone (`O·Alice`, `E·Bob`, `C·Chen`; hover for the full name). Kind `interrupts` runs **from a period to a zone** and is never an arrow either: it is the hatch on the bar. Any other kind between zones (`sync`, …) draws as a dependency arrow.
+Relation kinds `owns`, `executes`, `checks` — drawn **from the actor (a person or a team) to the zone**, never as arrows: each becomes a chip on the zone (`O·Alice`, `E·Bob`, `C·Chen`; hover for the full name). Kind `interrupts` runs **from a period to a zone** and is never an arrow either: it is the hatch on the bar. Kind `member-of` runs **from a person to a team** and is never an arrow either: it is what grouping by team reads. Any other kind between zones (`sync`, …) draws as a dependency arrow.
 
 | Metadata key | On | Value |
 | --- | --- | --- |
@@ -596,6 +596,7 @@ The compiler prints them, and the notation's panel lists them.
 | `plan-nested` | A zone or event contained in a zone (on the plan plane) lies outside that zone's span. |
 | `plan-role-target` | On a plan, a relation of kind `owns` / `executes` / `checks` points at something that is not a `plan-zone`. |
 | `plan-interrupts` | On a plan, a relation of kind `interrupts` does not run from a `plan-period` to a `plan-zone`. |
+| `plan-member` | On a plan, a relation of kind `member-of` does not run from a `person` to a `team`. |
 | `invalid-threats` | `threats` is not a list, or an entry is not an object. The per-threat checks below are skipped for that element. |
 | `threat-id` | A threat has no `id`, or repeats one already used on the same element. |
 | `threat-title` | A threat has no `title`. |
