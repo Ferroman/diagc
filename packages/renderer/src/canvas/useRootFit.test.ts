@@ -57,19 +57,35 @@ describe('useRootFit', () => {
   });
 
   it('a plan-zone drill waits for the layout at the width it stretches to, then fits the width, not both axes', () => {
+    // React Flow's own nodes still hold the LAST scene when the new one has
+    // settled (a whole plan, a year wide): the fit measures the arranged boxes
     const reactFlow = {
       fitView: vi.fn(),
       setViewport: vi.fn(),
       getNodes: () => [],
-      getNodesBounds: () => ({ x: 100, y: -50, width: 500, height: 2000 }),
+      getNodesBounds: () => ({ x: 0, y: -300, width: 20000, height: 900 }),
     } as unknown as ReactFlowInstance;
+    const opened = compileView(
+      {
+        ...model('o').toJSON(),
+        nodes: [
+          { id: 'a', name: 'A' },
+          { id: 'b', name: 'B' },
+        ],
+      },
+      {},
+    );
+    const arranged = new Map([
+      ['a', { x: 100, y: -50, width: 200, height: 40 }],
+      ['b', { x: 400, y: 100, width: 200, height: 1900 }],
+    ]);
     const pendingRootFitRef = { current: 'glide' as RootFit | null };
     const { rerender } = renderHook(
       ({ settledWidth }: { settledWidth: number }) =>
         useRootFit({
           pendingRootFitRef,
-          compiled,
-          layout: { arrangedGeometry: laidOut, settledFor: compiled, settledWidth },
+          compiled: opened,
+          layout: { arrangedGeometry: arranged, settledFor: opened, settledWidth },
           reactFlow,
           dayWidth: 45,
           widthFit: { canvas: () => ({ width: 1000, height: 600 }) },
@@ -80,7 +96,7 @@ describe('useRootFit', () => {
     rerender({ settledWidth: 45 });
     expect(reactFlow.fitView).not.toHaveBeenCalled();
     expect(reactFlow.setViewport).toHaveBeenCalledWith(
-      widthFitViewport({ x: 100, y: -50, width: 500, height: 2000 }, 1000),
+      widthFitViewport({ x: 100, y: -50, width: 500, height: 2050 }, 1000),
       {
         duration: 500,
       },
@@ -94,11 +110,11 @@ describe('widthFitViewport', () => {
     expect(vp.zoom).toBe(1);
     expect(vp.x).toBe((1000 - 500) / 2 - 100);
     // the header sits above every box (y = -HEADER_H): the top is whichever is higher
-    expect(vp.y).toBe(24 + PLAN_LAYOUT.HEADER_H);
+    expect(vp.y).toBe(56 + PLAN_LAYOUT.HEADER_H); // clear of the breadcrumb
   });
   it('zooms out for a zone wider than the canvas', () => {
     const vp = widthFitViewport({ x: 0, y: -200, width: 1904, height: 100 }, 1000);
     expect(vp.zoom).toBe(0.5);
-    expect(vp.y).toBe(24 + 200 * 0.5);
+    expect(vp.y).toBe(56 + 200 * 0.5);
   });
 });

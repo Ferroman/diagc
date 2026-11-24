@@ -1,6 +1,7 @@
 import { useEffect, type MutableRefObject } from 'react';
 import type { ReactFlowInstance, Rect, Viewport } from '@xyflow/react';
 import type { CompiledView } from '@diagc/core/internal';
+import type { NodeGeometry } from '../layout/layout';
 import { PLAN_LAYOUT } from '../layout/plan-layout';
 import type { RootFit } from './useDrillNavigation';
 import type { ViewLayout } from './useViewLayout';
@@ -20,8 +21,30 @@ export interface RootFitInput {
   widthFit?: { canvas: () => { width: number; height: number } };
 }
 
-/** the room kept around a width fit, in screen px */
+/** The box around the scene's top-level boxes, as arranged (each holds its
+ * own children). Not React Flow's nodes: when the scene settles they can still
+ * be the last scene's — a whole plan, a year wide — which `fitView` survives
+ * only because it waits for them; a viewport set at once does not. */
+function rootBounds(compiled: CompiledView, arranged: ReadonlyMap<string, NodeGeometry>): Rect | undefined {
+  let box: { x0: number; y0: number; x1: number; y1: number } | undefined;
+  for (const r of compiled.roots) {
+    const g = arranged.get(r.id);
+    if (g === undefined) continue;
+    box = {
+      x0: Math.min(box?.x0 ?? g.x, g.x),
+      y0: Math.min(box?.y0 ?? g.y, g.y),
+      x1: Math.max(box?.x1 ?? g.x + g.width, g.x + g.width),
+      y1: Math.max(box?.y1 ?? g.y + g.height, g.y + g.height),
+    };
+  }
+  return box === undefined ? undefined : { x: box.x0, y: box.y0, width: box.x1 - box.x0, height: box.y1 - box.y0 };
+}
+
+/** the room kept either side of a width fit, in screen px */
 const FIT_PAD = 24;
+/** the room above it: the breadcrumb of the opened zone sits there, and at 24
+ * it covered the roster's first card */
+const FIT_TOP = 56;
 
 /** The viewport that fits `bounds`' width into the canvas at zoom 1 at most,
  * centred, with the top in view: the header's (y = -HEADER_H) or the highest
@@ -29,7 +52,7 @@ const FIT_PAD = 24;
 export function widthFitViewport(bounds: Rect, canvasWidth: number): Viewport {
   const zoom = Math.min(1, (canvasWidth - 2 * FIT_PAD) / bounds.width);
   const top = Math.min(bounds.y, -PLAN_LAYOUT.HEADER_H);
-  return { x: (canvasWidth - bounds.width * zoom) / 2 - bounds.x * zoom, y: FIT_PAD - top * zoom, zoom };
+  return { x: (canvasWidth - bounds.width * zoom) / 2 - bounds.x * zoom, y: FIT_TOP - top * zoom, zoom };
 }
 
 /**
@@ -54,7 +77,8 @@ export function useRootFit(input: RootFitInput): void {
     if (input.dayWidth !== undefined && input.layout.settledWidth !== input.dayWidth) return;
     pendingRootFitRef.current = null;
     if (input.widthFit !== undefined) {
-      const bounds = reactFlow.getNodesBounds(reactFlow.getNodes());
+      const bounds = rootBounds(compiled, arrangedGeometry);
+      if (bounds === undefined) return;
       const vp = widthFitViewport(bounds, input.widthFit.canvas().width);
       void reactFlow.setViewport(vp, fit === 'glide' ? { duration: 500 } : undefined);
       return;

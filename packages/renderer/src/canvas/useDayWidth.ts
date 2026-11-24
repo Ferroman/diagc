@@ -138,7 +138,9 @@ export interface OpenedZoneStretchInput {
  */
 export function useOpenedZoneStretch(input: OpenedZoneStretchInput): number {
   const { days, path, model, plane, stretches } = input;
-  const seen = useRef({ path, modelId: model.id });
+  // seen as the top level at first, so a view that mounts inside a zone (a deep
+  // link, a reload) stretches it as an open would
+  const seen = useRef<{ path: readonly string[]; modelId: string }>({ path: [], modelId: model.id });
   const before = useRef<number[]>([]);
   const pending = useRef<number | null>(null);
   if (seen.current.modelId !== model.id) {

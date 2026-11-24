@@ -111,6 +111,20 @@ describe('useOpenedZoneStretch', () => {
     expect(result.current.intended).toBe(45);
   });
 
+  it('a view opened straight into a zone (a deep link) stretches it, and leaving gives back the default', () => {
+    const { result, rerender } = renderHook(
+      ({ path }: { path: string[] }) => {
+        const days = useDayWidth({ model: json });
+        useOpenedZoneStretch({ days, path, model: json, plane: 'plan', stretches: true, canvasWidth: () => 1000 });
+        return days;
+      },
+      { initialProps: { path: ['z'] } },
+    );
+    expect(result.current.width).toBe(45);
+    rerender({ path: [] });
+    expect(result.current.width).toBe(20);
+  });
+
   it('going deeper stretches again, and coming back out restores each level in turn', () => {
     const { result, rerender } = setup();
     rerender({ path: ['z'] });
