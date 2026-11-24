@@ -62,18 +62,21 @@ interface LaidUnit {
   count: number;
 }
 
+/** the eye chip's width (styles.css .dg-eye: a 12px glyph, 2px padding a
+ * side), on a frame's header row and on every card's title row alike */
+export const EYE_W = 16;
+
 // The frame's header row (styles.css .dg-roster-frame-header): the team's 16px
-// icon, its 600 12px name and the eye's 16px, 6px apart, padded FRAME_PAD a
-// side — so a frame never draws narrower than its own name.
+// icon, its 600 12px name and the eye, 6px apart, padded FRAME_PAD a side — so
+// a frame never draws narrower than its own name.
 const HEADER_ICON = 16;
-const HEADER_EYE = 16;
 const HEADER_GAP = 6;
 const HEADER_PX = 12;
 const HEADER_BOLD = 1.08;
 
 const headerWidth = (name: string): number =>
   Math.ceil(
-    2 * PLAN_LAYOUT.FRAME_PAD + HEADER_ICON + textWidth(name, HEADER_PX) * HEADER_BOLD + HEADER_EYE + 2 * HEADER_GAP,
+    2 * PLAN_LAYOUT.FRAME_PAD + HEADER_ICON + textWidth(name, HEADER_PX) * HEADER_BOLD + EYE_W + 2 * HEADER_GAP,
   );
 
 /**
@@ -82,7 +85,8 @@ const headerWidth = (name: string): number =>
  * a frame hugs its badges and a card beside it lines up with them; it keeps
  * at least its hinted width, the room it has always had. A roster with no
  * frame takes the hint alone, so a plan without teams lays out as it did. A
- * card with a size hint of its own is taken at that.
+ * card with a size hint of its own is taken at that. Every card draws its eye
+ * in the title row (the Unassigned card too), save in a still export.
  */
 function cardSize(run: PlanRun, id: string, framed: boolean): BoxSize {
   const size = hint(run, id);
@@ -97,6 +101,7 @@ function cardSize(run: PlanRun, id: string, framed: boolean): BoxSize {
     hasIcon: actor,
     shape: 'pill',
     subtitle: actor ? (node.type ?? '') : '',
+    rowChrome: run.chromeless ? 0 : EYE_W,
   });
   return { width: Math.max(size.width, drawn.width), height: drawn.height };
 }

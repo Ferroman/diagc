@@ -90,6 +90,9 @@ export interface BoxSizeInput {
   /** set for a folded container: its hidden-descendant count, drawn as a badge
    * beside the fold/pin chrome */
   collapsedCount?: number;
+  /** px of further chrome in the title row's badges span — a plan roster
+   * card's eye — which a label too long for the box's minimum pushes outward */
+  rowChrome?: number;
   /** how many lines the label is drawn on, `name` being the widest (a wrapped
    * name); absent = one */
   lines?: number;
@@ -201,6 +204,7 @@ export function estimateBoxSize(input: BoxSizeInput): BoxSize {
   // empty) badges span — so one gap trails the label even on a bare box
   let title = textWidth(input.name, label.px) + ROW_GAP;
   if (input.hasIcon === true) title += ICON + ROW_GAP;
+  title += input.rowChrome ?? 0;
   if (input.collapsedCount !== undefined) {
     title += ROW_GAP + COUNT_PAD + String(input.collapsedCount).length * COUNT_CHAR + ROW_GAP + FOLD_CHROME;
   }

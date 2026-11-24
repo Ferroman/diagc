@@ -52,6 +52,9 @@ export interface NotationLayoutInput {
   /** the plan's hidden actors (PlanViewOptions.hidden): their chips are not
    * drawn, so a title band is measured without them; absent, none */
   hidden?: ReadonlySet<string>;
+  /** a still export (DiagramView's `chrome={false}`): the affordances are not
+   * drawn, so a plan's roster cards are measured without their eye */
+  chromeless?: boolean;
 }
 
 export interface NodeGeometry {

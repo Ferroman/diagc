@@ -210,6 +210,7 @@ function Inner(props: DiagramViewProps) {
     drillRoot,
     dayWidth: stretches ? days.width : undefined,
     hidden: teams.hidden,
+    chromeless,
   });
   useCentreDayPan({ days, settledWidth: viewLayout.settledWidth, reactFlow, wrapperRef });
   // the width the boxes on screen are drawn at, once their layout has landed

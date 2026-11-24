@@ -77,6 +77,26 @@ describe('useViewLayout', () => {
     expect(hints.get('box')).toBeUndefined(); // single-line plain leaf keeps the default
   });
 
+  it("tells a notation's own layout when the view is a still export, and lays out again when that changes", async () => {
+    const seen = vi.fn();
+    const profile: NotationProfile = {
+      id: 'default',
+      layout: (input) => {
+        seen(input.chromeless);
+        return { geometry: GEOMETRY, routes: new Map(), labelSpots: new Map(), algorithm: 'notation' };
+      },
+    };
+    const m = fixture();
+    const { rerender } = renderHook((p: ViewLayoutInput) => useViewLayout(p), {
+      initialProps: inputFor(m, { profile }),
+    });
+    await waitFor(() => expect(seen).toHaveBeenCalledTimes(1));
+    expect(seen).toHaveBeenLastCalledWith(undefined);
+    rerender(inputFor(m, { profile, chromeless: true }));
+    await waitFor(() => expect(seen).toHaveBeenCalledTimes(2));
+    expect(seen).toHaveBeenLastCalledWith(true);
+  });
+
   it('an explicit overlay resize wins over the image default in the hints', async () => {
     const spy = vi.fn();
     const m = fixture();

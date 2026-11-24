@@ -126,6 +126,8 @@ export interface PlanRun {
   stubs: ReadonlyMap<string, string>;
   /** the opened zone, when the view is one zone's interior */
   root: string | undefined;
+  /** a still export: no card draws its eye (NotationLayoutInput.chromeless) */
+  chromeless: boolean;
   /** an opened zone's children → its interior origin (LayoutResult.savedFrame) */
   savedFrame: Map<string, Point>;
   /** what the VIEW shows (layers can hide what the plane's containment holds) */
@@ -173,6 +175,7 @@ function planRun(input: NotationLayoutInput): PlanRun {
     range: root === undefined ? graph.range : (planSubtreeRange(graph, model, root) ?? graph.range),
     stubs,
     root,
+    chromeless: input.chromeless === true,
     savedFrame: new Map(),
     shown,
     collapsed,

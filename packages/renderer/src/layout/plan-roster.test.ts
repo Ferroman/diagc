@@ -10,8 +10,9 @@ import {
   type DiagramModel,
 } from '@diagc/core/internal';
 import type { NodeGeometry } from './layout';
+import { estimateBoxSize } from './box-size';
 import { PLAN_LAYOUT, planLayout } from './plan-layout';
-import { rosterOrder } from './plan-roster';
+import { EYE_W, rosterOrder } from './plan-roster';
 
 const { FRAME_PAD, FRAME_HEADER, HEADER_H } = PLAN_LAYOUT;
 
@@ -151,6 +152,44 @@ describe('the roster frames', () => {
     // nothing in the roster reaches down into the chart's header
     const roster = [...view.roots.map((r) => r.id)].filter((id) => id !== 'z');
     for (const id of roster) expect(g(id).y + g(id).height, id).toBeLessThanOrEqual(-HEADER_H);
+  });
+
+  describe('a long-named badge', () => {
+    const NAME = 'Jonathan Whitfield-B'; // 20 characters, past the 160px floor
+    function longNamed(): DiagramModel {
+      const m = model('long');
+      const p = m.plan();
+      p.zone('z', { start: '2026-01-05', end: '2026-03-27' });
+      const jo = p.person('jo', NAME);
+      p.team('t', 'Team').member(jo, p.person('al', 'Al'));
+      return m.toJSON();
+    }
+    const layLong = (chromeless: boolean) => {
+      const m = longNamed();
+      const view = planOf(m, false);
+      const geometry = planLayout({ view, model: m, plane: 'plan', chromeless }).geometry;
+      const drawn = estimateBoxSize({
+        name: NAME,
+        hasIcon: true,
+        shape: 'pill',
+        subtitle: m.nodes.find((n) => n.id === 'jo')!.type!,
+      });
+      return { g: (id: string): NodeGeometry => geometry.get(id)!, drawn };
+    };
+
+    it('has room for its eye on the title row, inside its frame', () => {
+      const { g, drawn } = layLong(false);
+      expect(drawn.width).toBeGreaterThan(160);
+      expect(g('jo').width).toBeGreaterThanOrEqual(drawn.width + EYE_W);
+      expect(inFrame(g('t'), g('jo'))).toBe(true);
+      expect(overlap(g('jo'), g('al'))).toBe(false);
+    });
+
+    it('chromeless (no eye drawn), is sized as its title row alone', () => {
+      const { g, drawn } = layLong(true);
+      expect(g('jo').width).toBe(drawn.width);
+      expect(inFrame(g('t'), g('jo'))).toBe(true);
+    });
   });
 
   it('a frame wraps against the count, with nothing dated to measure it by', () => {
