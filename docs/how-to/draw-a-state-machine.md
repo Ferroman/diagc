@@ -12,6 +12,7 @@ Show how one thing moves through its modes: states, the transitions between them
 4. Select a state to give it `entry`, `exit` and `do` behaviours, or an internal transition such as `remind [overdue] / email`.
 5. Add a region to a state to make it orthogonal. A second region sits beside the first across the flow (to its right when the machine runs top to bottom), with a dashed line between them. Add an entry or exit point to a composite for a transition that crosses its border.
 6. Double-click a composite state to unfold it. Every composite rests folded.
+7. To show phases, press **Add zone** in the state-machine panel, or drop a **Zone** from the Library, and drop states into it. Select a state and set Properties → **Kind** to ok, failed or waiting to colour it green, red or amber.
 
 ![Tab adds the next state joined by a transition, then a transition gets a guard and an effect](../media/draw-a-state-machine.webp)
 
