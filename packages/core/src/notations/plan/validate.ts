@@ -2,7 +2,18 @@ import type { DiagramNode } from '../../types';
 import { isIsoDate } from '../../dates';
 import { notationPlane } from '../../planes';
 import { report, type Ctx } from '../../validate/context';
-import { PLAN_NOTATION, atOf, dayOf, isPlanEvent, isPlanRole, isPlanZone, planGraph, spanOf } from './plan';
+import {
+  PLAN_INTERRUPTS,
+  PLAN_NOTATION,
+  atOf,
+  dayOf,
+  isPlanEvent,
+  isPlanPeriod,
+  isPlanRole,
+  isPlanZone,
+  planGraph,
+  spanOf,
+} from './plan';
 
 /**
  * Plan conventions. Dates are checked wherever they are (a plan-zone on any
@@ -25,9 +36,10 @@ export function validatePlan(ctx: Ctx): void {
   if (model.nodes.some((n) => isPlanZone(n) || isPlanEvent(n))) checkNesting(ctx, where?.plane?.id, byId);
   if (where === undefined) return;
   checkRoleTargets(ctx, byId);
+  checkInterrupts(ctx, byId);
 }
 
-/** a zone has a real start and end, in order; an event a real `at` */
+/** a zone or a period has a real start and end, in order; an event a real `at` */
 function checkDates(ctx: Ctx): void {
   const { issues, model } = ctx;
   const dateOr = (node: DiagramNode, key: 'start' | 'end' | 'at'): number | undefined => {
@@ -48,7 +60,7 @@ function checkDates(ctx: Ctx): void {
     return dayOf(raw);
   };
   for (const n of model.nodes) {
-    if (isPlanZone(n)) {
+    if (isPlanZone(n) || isPlanPeriod(n)) {
       const start = dateOr(n, 'start');
       const end = dateOr(n, 'end');
       if (start !== undefined && end !== undefined && end < start) {
@@ -101,5 +113,23 @@ function checkRoleTargets(ctx: Ctx, byId: ReadonlyMap<string, DiagramNode>): voi
         r.id,
       );
     }
+  }
+}
+
+/** under the plan notation, `interrupts` runs from a period to a zone */
+function checkInterrupts(ctx: Ctx, byId: ReadonlyMap<string, DiagramNode>): void {
+  const { issues, model } = ctx;
+  for (const r of model.relations) {
+    if (r.kind !== PLAN_INTERRUPTS) continue;
+    const from = byId.get(r.from);
+    const to = byId.get(r.to);
+    if (from === undefined || to === undefined) continue; // dangling ends are validateRelations' finding
+    if (isPlanPeriod(from) && isPlanZone(to)) continue;
+    report(
+      issues,
+      'plan-interrupts',
+      `Relation '${r.id}' (interrupts) must run from a plan-period to a plan-zone; '${r.from}' is ${from.type ?? 'untyped'}, '${r.to}' is ${to.type ?? 'untyped'}`,
+      r.id,
+    );
   }
 }

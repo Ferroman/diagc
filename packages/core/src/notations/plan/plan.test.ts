@@ -4,8 +4,13 @@ import {
   PLAN_ACTOR_TYPES,
   PLAN_EVENT_TYPE,
   PLAN_ROLES,
+  PLAN_INTERRUPTS,
+  PLAN_PERIOD_TYPE,
   PLAN_ZONE_TYPE,
   atOf,
+  isPlanPeriod,
+  periodSpanOf,
+  planPeriodsOf,
   dayOf,
   isPlanActor,
   isPlanRole,
@@ -205,5 +210,48 @@ describe('planGraph', () => {
     const g = planGraph(json, 'plan');
     expect(planSubtreeRange(g, json, 'a')).toEqual({ start: dayOf('2026-01-01'), end: dayOf('2026-01-31') });
     expect(planSubtreeRange(g, json, 'a1')).toEqual({ start: dayOf('2026-01-05'), end: dayOf('2026-01-10') });
+  });
+});
+
+describe('periods', () => {
+  function withFreeze() {
+    const m = model('p');
+    const p = m.plan();
+    const temporal = p.zone('temporal', { start: '2026-12-07', end: '2027-01-19' });
+    const secrets = p.zone('secrets', { start: '2026-12-14', end: '2027-01-12' });
+    p.zone('other', { start: '2026-12-01', end: '2026-12-05' });
+    p.period('freeze', { start: '2026-12-21', end: '2027-01-03', interrupts: [temporal, secrets] });
+    p.period('offsite', { start: '2027-02-08', end: '2027-02-10' });
+    return m.toJSON();
+  }
+
+  it('a period is its own type, with an inclusive span like a zone; interrupts is its relation kind', () => {
+    const freeze: DiagramNode = {
+      id: 'f',
+      name: 'F',
+      type: PLAN_PERIOD_TYPE,
+      metadata: { start: '2026-12-21', end: '2027-01-03' },
+    };
+    expect(PLAN_INTERRUPTS).toBe('interrupts');
+    expect(isPlanPeriod(freeze)).toBe(true);
+    expect(isPlanPeriod(zone({ start: '2026-12-21', end: '2027-01-03' }))).toBe(false);
+    expect(periodSpanOf(freeze)).toEqual({ start: dayOf('2026-12-21'), end: dayOf('2027-01-03') });
+    expect(periodSpanOf(zone({ start: '2026-12-21', end: '2027-01-03' }))).toBeUndefined();
+    // a zone's span is a zone's: a period is never dragged or nested as one
+    expect(spanOf(freeze)).toBeUndefined();
+  });
+
+  it('periods are listed and widen the range', () => {
+    const g = planGraph(withFreeze(), 'plan');
+    expect(g.periods).toEqual(['freeze', 'offsite']);
+    expect(g.zones).toEqual(['temporal', 'secrets', 'other']);
+    // the offsite, after every zone, moves the end
+    expect(g.range).toEqual({ start: dayOf('2026-12-01'), end: dayOf('2027-02-10') });
+  });
+
+  it('planPeriodsOf lists the periods that interrupt a zone', () => {
+    const m = withFreeze();
+    expect(planPeriodsOf(m, 'temporal')).toEqual(['freeze']);
+    expect(planPeriodsOf(m, 'other')).toEqual([]);
   });
 });

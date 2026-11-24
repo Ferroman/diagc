@@ -12,6 +12,12 @@ export const PLAN_NOTATION = 'plan' as const;
  * sits inside a zone is scheduled in it. */
 export const PLAN_ZONE_TYPE = 'plan-zone' as const;
 export const PLAN_EVENT_TYPE = 'plan-event' as const;
+/** A period: a stretch of days in which planned work pauses (a holiday freeze,
+ * an offsite). Not work itself, so not a zone: it takes no row and changes no
+ * date. It pauses the zones it `interrupts`, or, interrupting none, everyone. */
+export const PLAN_PERIOD_TYPE = 'plan-period' as const;
+/** The relation kind from a period to each zone it pauses. Never an arrow. */
+export const PLAN_INTERRUPTS = 'interrupts' as const;
 /** The type a person carries. Deliberately the generic `person` type, not a
  * `plan-person` of its own — a person is an ordinary node the plan merely
  * reads, and keeps its pill on every other notation. It is named here because
@@ -32,6 +38,7 @@ export const PLAN_TYPES: ReadonlySet<string> = new Set([PLAN_ZONE_TYPE, PLAN_EVE
 export const PLAN_ACTOR_TYPES: ReadonlySet<string> = new Set([PLAN_PERSON_TYPE, PLAN_TEAM_TYPE]);
 export const isPlanZone = (n: DiagramNode): boolean => n.type === PLAN_ZONE_TYPE;
 export const isPlanEvent = (n: DiagramNode): boolean => n.type === PLAN_EVENT_TYPE;
+export const isPlanPeriod = (n: DiagramNode): boolean => n.type === PLAN_PERIOD_TYPE;
 export const isPlanActor = (n: DiagramNode): boolean => n.type !== undefined && PLAN_ACTOR_TYPES.has(n.type);
 
 /** Actors (people or teams) attach to a zone through a RELATION of one of
@@ -66,7 +73,17 @@ export interface PlanSpan {
  * (`plan-missing`, `plan-date`, `plan-span`); here it just means "nothing to
  * draw". */
 export function spanOf(node: DiagramNode): PlanSpan | undefined {
-  if (!isPlanZone(node)) return undefined;
+  return isPlanZone(node) ? datesOf(node) : undefined;
+}
+
+/** A period's span, read as a zone's (inclusive days, `start`/`end`). Separate
+ * from `spanOf`, whose callers mean "a zone": a period is never dragged,
+ * nested or scheduled into like one. */
+export function periodSpanOf(node: DiagramNode): PlanSpan | undefined {
+  return isPlanPeriod(node) ? datesOf(node) : undefined;
+}
+
+function datesOf(node: DiagramNode): PlanSpan | undefined {
   const start = dayOf(node.metadata?.start);
   const end = dayOf(node.metadata?.end);
   return start === undefined || end === undefined || end < start ? undefined : { start, end };
@@ -82,6 +99,11 @@ export interface PlanRoles {
   owns: string[];
   executes: string[];
   checks: string[];
+}
+
+/** The periods that interrupt a zone, in declaration order of their relations. */
+export function planPeriodsOf(model: DiagramModel, zoneId: string): string[] {
+  return model.relations.filter((r) => r.to === zoneId && r.kind === PLAN_INTERRUPTS).map((r) => r.from);
 }
 
 /** People per role for one zone, from the role relations that point INTO it,
@@ -104,6 +126,8 @@ export interface PlanGraph {
   /** zone ids in declaration order (visible on the plane) */
   zones: string[];
   events: string[];
+  /** period ids in declaration order (visible on the plane) */
+  periods: string[];
   /** every actor (person or team) holding a role — a role relation into a
    * visible zone — in declaration order, deduplicated */
   actors: string[];
@@ -137,18 +161,19 @@ export interface PlanGraph {
 export function planGraph(model: DiagramModel, plane?: string): PlanGraph {
   const byId = new Map(model.nodes.map((n) => [n.id, n] as const));
   const hierarchy = buildHierarchy(model, plane);
-  const { zones, events } = zonesAndEvents(model, hierarchy);
+  const { zones, events, periods } = zonesAndEvents(model, hierarchy);
   const zoneSet = new Set(zones);
   const parent = new Map<string, string>();
   for (const [id, parents] of hierarchy.parentsOf) {
     const zoneParent = parents.find((p) => zoneSet.has(p));
     if (zoneParent !== undefined) parent.set(id, zoneParent);
   }
-  const range = rangeOf(zones, events, byId);
+  const range = rangeOf(zones, events, byId, periods);
   const origin = range === undefined ? undefined : dayOf(`${isoOf(range.start).slice(0, 4)}-01-01`);
   return {
     zones,
     events,
+    periods,
     actors: actorsOf(model, zoneSet, byId),
     parent,
     children: childrenByZone(hierarchy, zones, parent, byId),
@@ -156,20 +181,25 @@ export function planGraph(model: DiagramModel, plane?: string): PlanGraph {
   };
 }
 
-/** The zones and events visible on the plane, in declaration order. */
-function zonesAndEvents(model: DiagramModel, hierarchy: HierarchyIndex): { zones: string[]; events: string[] } {
+/** The zones, events and periods visible on the plane, in declaration order. */
+function zonesAndEvents(
+  model: DiagramModel,
+  hierarchy: HierarchyIndex,
+): { zones: string[]; events: string[]; periods: string[] } {
   // buildHierarchy seeds parentsOf (to []) for every visible node, so this is
   // exactly "is this node visible on the plane", including shared nodes with
   // no containment there (they surface as roots, not as absent).
   const visible = (id: string): boolean => hierarchy.parentsOf.has(id);
   const zones: string[] = [];
   const events: string[] = [];
+  const periods: string[] = [];
   for (const n of model.nodes) {
     if (!visible(n.id)) continue;
     if (isPlanZone(n)) zones.push(n.id);
     else if (isPlanEvent(n)) events.push(n.id);
+    else if (isPlanPeriod(n)) periods.push(n.id);
   }
-  return { zones, events };
+  return { zones, events, periods };
 }
 
 // Per zone, its hierarchy.childrenOf list keeps that zone's own containment-edge
@@ -207,11 +237,13 @@ function actorsOf(model: DiagramModel, zoneSet: ReadonlySet<string>, byId: Reado
   return actors;
 }
 
-/** The earliest start or date and the latest end or date; undefined when nothing is dated. */
+/** The earliest start or date and the latest end or date; undefined when nothing
+ * is dated. Periods count: a freeze after every zone still has its days drawn. */
 function rangeOf(
   zones: readonly string[],
   events: readonly string[],
   byId: ReadonlyMap<string, DiagramNode>,
+  periods: readonly string[] = [],
 ): PlanSpan | undefined {
   let range: PlanSpan | undefined;
   const widen = (start: number, end: number): void => {
@@ -225,6 +257,10 @@ function rangeOf(
   for (const e of events) {
     const at = atOf(byId.get(e)!);
     if (at !== undefined) widen(at, at);
+  }
+  for (const p of periods) {
+    const s = periodSpanOf(byId.get(p)!);
+    if (s !== undefined) widen(s.start, s.end);
   }
   return range;
 }

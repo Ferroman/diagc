@@ -23,7 +23,14 @@ export { ActivityBuilder, ActivityScope, LaneRef, RegionRef, type ActivityElemen
 export { ConsequenceRef, SecondOrderBuilder, type ConsequenceOpts } from '../notations/second-order/builder';
 export { FishboneBuilder, CategoryRef, CauseRef, type FishboneOpts } from '../notations/fishbone/builder';
 export { ThreatModelBuilder, FlowRef } from '../notations/threat-model/builder';
-export { PlanBuilder, ZoneBuilder, type ZoneOpts, type EventOpts } from '../notations/plan/builder';
+export {
+  PlanBuilder,
+  ZoneBuilder,
+  PeriodBuilder,
+  type ZoneOpts,
+  type EventOpts,
+  type PeriodOpts,
+} from '../notations/plan/builder';
 export {
   SmElementRef,
   SmRegionRef,

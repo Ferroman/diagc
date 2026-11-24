@@ -77,6 +77,7 @@ export interface ValidationIssue {
     | 'plan-span'
     | 'plan-nested'
     | 'plan-role-target'
+    | 'plan-interrupts'
     | 'sm-region-parent'
     | 'sm-zone-parent'
     | 'sm-region-siblings'

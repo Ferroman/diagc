@@ -1,13 +1,26 @@
 import { NodeRef, type ElementOpts, type NodeOpts } from '../../builder/node-ref';
 import type { ModelBuilder } from '../../builder/model-builder';
 import { defined } from '../../util';
-import { PLAN_EVENT_TYPE, PLAN_PERSON_TYPE, PLAN_TEAM_TYPE, PLAN_ZONE_TYPE, type PlanRole } from './plan';
+import {
+  PLAN_EVENT_TYPE,
+  PLAN_INTERRUPTS,
+  PLAN_PERIOD_TYPE,
+  PLAN_PERSON_TYPE,
+  PLAN_TEAM_TYPE,
+  PLAN_ZONE_TYPE,
+  type PlanRole,
+} from './plan';
 
 /** A zone's node options: the two dates are required, `type`/`plane`/`metadata`
  * are the builder's. */
 export interface ZoneOpts extends Omit<NodeOpts, 'type' | 'metadata' | 'plane'> {
   start: string;
   end: string;
+}
+/** A period's options: a zone's, plus the zones it pauses (more with
+ * `.interrupts()`). None: it pauses everyone. */
+export interface PeriodOpts extends ZoneOpts {
+  interrupts?: NodeRef[];
 }
 export interface EventOpts extends Omit<NodeOpts, 'type' | 'metadata' | 'plane'> {
   at: string;
@@ -76,6 +89,23 @@ function planEvent(m: ModelBuilder, plane: string, id: string, opts: EventOpts):
   return m.node(id, { type: PLAN_EVENT_TYPE, plane, metadata: { at }, ...rest });
 }
 
+/** A period: a NodeRef (so comment/link compose) that can name more zones it
+ * pauses. Top-level only — it is a stretch of the calendar, not part of a zone. */
+export class PeriodBuilder extends NodeRef {
+  constructor(
+    id: string,
+    private readonly m: ModelBuilder,
+  ) {
+    super(id, m);
+  }
+
+  /** the zones this period pauses: one `interrupts` relation each */
+  interrupts(...zones: NodeRef[]): this {
+    for (const z of zones) this.m.addRelation(this, z, { kind: PLAN_INTERRUPTS });
+    return this;
+  }
+}
+
 /** Root-level plan helpers; see ZoneBuilder for the nested ones. */
 export class PlanBuilder {
   constructor(
@@ -86,6 +116,12 @@ export class PlanBuilder {
   /** a top-level zone */
   zone(id: string, opts: ZoneOpts): ZoneBuilder {
     return planZone(this.m, this.plane, id, opts);
+  }
+  /** a stretch of days that pauses the zones it `interrupts`, or everyone */
+  period(id: string, opts: PeriodOpts): PeriodBuilder {
+    const { start, end, interrupts = [], ...rest } = opts;
+    this.m.node(id, { type: PLAN_PERIOD_TYPE, plane: this.plane, metadata: { start, end }, ...rest });
+    return new PeriodBuilder(id, this.m).interrupts(...interrupts);
   }
   /** a top-level event, drawn in the header */
   event(id: string, opts: EventOpts): NodeRef {
